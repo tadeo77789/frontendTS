@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: radial-gradient(ellipse at 50% 25%, #eceffe 0%, #e4e8f8 55%, #dde2f5 100%);
+    }
+    canvas { display: block; width: 100% !important; height: 100% !important; }
+
+    /* ── Barra de progreso ───────────────────────────────────────── */
+    #progress-bar {
+      position: absolute; top: 0; left: 0; height: 3px;
+      background: linear-gradient(90deg, #7C3AED, #A78BFA);
+      width: 0%;
+      border-radius: 0 2px 2px 0;
+      transition: width 0.25s ease;
+      z-index: 10;
+    }
+
+    /* ── Spinner de carga ────────────────────────────────────────── */
+    #spinner {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 44px; height: 44px;
+      z-index: 10;
+      opacity: 1; transition: opacity 0.4s;
+    }
+    #spinner.hidden { opacity: 0; pointer-events: none; }
+    #spinner::before {
+      content: '';
+      display: block; width: 44px; height: 44px;
+      border: 3px solid rgba(124, 58, 237, 0.18);
+      border-top-color: #7C3AED;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    #spinner::after {
+      content: '';
+      display: block; width: 30px; height: 30px;
+      border: 3px solid rgba(167, 139, 250, 0.20);
+      border-bottom-color: #A78BFA;
+      border-radius: 50%;
+      animation: spin 1.1s linear infinite reverse;
+      position: absolute; top: 7px; left: 7px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Etiqueta de letra activa ─────────────────────────────────── */
+    #label {
+      position: absolute; bottom: 14px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 22px;
+      padding: 6px 22px;
+      font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+      font-size: 16px; font-weight: 800; color: #7C3AED;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      white-space: nowrap;
+      box-shadow: 0 4px 16px rgba(124, 58, 237, 0.18);
+      border: 1.5px solid rgba(124, 58, 237, 0.12);
+      opacity: 0; transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+    }
+    #label.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    #label.pop {
+      animation: labelPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes labelPop {
+      0%   { transform: translateX(-50%) scale(0.85); }
+      100% { transform: translateX(-50%) scale(1.0); }
+    }
+  </style>
+</head>
+<body>
+<div id="progress-bar"></div>
+<div id="spinner"></div>
+<div id="label"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── Renderer ──────────────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace  = THREE.SRGBColorSpace;
+renderer.toneMapping       = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+document.body.appendChild(renderer.domElement);
+
+// ── Scene (fondo transparente → CSS gradient del body) ────────────────
+const scene = new THREE.Scene();
+// scene.background queda null para dejar pasar el gradiente CSS
+
+// ── Camera ────────────────────────────────────────────────────────────
+const cam = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.1, 100);
+cam.position.set(0, 5.8, 3.5);
+cam.lookAt(0, 5.2, 0);
+
+// ── Orbit Controls ────────────────────────────────────────────────────
+const controls = new OrbitControls(cam, renderer.domElement);
+controls.target.set(0, 5.2, 0);
+controls.enablePan    = false;
+controls.enableZoom   = false;
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.minPolarAngle  = Math.PI * 0.30;
+controls.maxPolarAngle  = Math.PI * 0.55;
+controls.minAzimuthAngle = -Math.PI * 0.30;
+controls.maxAzimuthAngle =  Math.PI * 0.30;
+controls.autoRotate      = false;
+controls.autoRotateSpeed = 0.6;
+controls.update();
+
+// Auto-rotación: activa cuando el modelo carga, pausa al tocar
+let rotateTimer = null;
+const pauseRotate = () => {
+  controls.autoRotate = false;
+  clearTimeout(rotateTimer);
+  rotateTimer = setTimeout(() => { controls.autoRotate = true; }, 3500);
+};
+renderer.domElement.addEventListener('pointerdown', pauseRotate, { passive: true });
+
+// ── Lights ────────────────────────────────────────────────────────────
+// Ambient suave cálida
+const ambient = new THREE.AmbientLight(0xfff8f0, 0.75);
+scene.add(ambient);
+
+// Key light — frontal derecha, sombras suaves
+const key = new THREE.DirectionalLight(0xfff5e0, 3.0);
+key.position.set(2.5, 8, 4);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.near   = 0.5;
+key.shadow.camera.far    = 30;
+key.shadow.camera.left   = key.shadow.camera.bottom = -3;
+key.shadow.camera.right  = key.shadow.camera.top    =  3;
+key.shadow.bias = -0.001;
+scene.add(key);
+
+// Fill light — azul suave izquierda
+const fill = new THREE.DirectionalLight(0xc8dcff, 1.1);
+fill.position.set(-3, 7, 2);
+scene.add(fill);
+
+// Rim light — contraluz, separa del fondo
+const rim = new THREE.DirectionalLight(0xffeedd, 1.5);
+rim.position.set(0, 8, -4);
+scene.add(rim);
+
+// Bottom fill — evita sombras duras abajo
+const bot = new THREE.PointLight(0xffe8d0, 0.65, 8);
+bot.position.set(0, 3.5, 2);
+scene.add(bot);
+
+// ── Shadow floor ──────────────────────────────────────────────────────
+const floorGeo = new THREE.CircleGeometry(1.4, 64);
+const floorMat = new THREE.ShadowMaterial({ opacity: 0.14 });
+const floor    = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.position.set(0, 2.53, 0);
+floor.receiveShadow = true;
+scene.add(floor);
+
+// Aro de luz en el suelo (efecto glow)
+const ringGeo = new THREE.TorusGeometry(0.85, 0.022, 6, 80);
+const ringMat = new THREE.MeshStandardMaterial({
+  color:            0x7C3AED,
+  emissive:         0x7C3AED,
+  emissiveIntensity: 0.9,
+  transparent: true,
+  opacity: 0.45,
+});
+const ring = new THREE.Mesh(ringGeo, ringMat);
+ring.rotation.x = -Math.PI / 2;
+ring.position.set(0, 2.535, 0);
+scene.add(ring);
+
+// Pulso del aro (oscila intensidad)
+let ringTime = 0;
+
+// ── Animation state ───────────────────────────────────────────────────
+let mixer   = null;
+let actions = {};
+let current = null;
+const clock = new THREE.Clock();
+const label = document.getElementById('label');
+const progressBar = document.getElementById('progress-bar');
+const spinner     = document.getElementById('spinner');
+
+function playAnimation(name) {
+  if (!mixer) return;
+  const next = actions[name];
+  if (!next) return;
+
+  if (current && current !== next) {
+    current.fadeOut(0.22);
+  }
+  next.reset().setLoop(THREE.LoopOnce, 1);
+  next.clampWhenFinished = true;
+  next.fadeIn(0.22).play();
+  current = next;
+
+  // Etiqueta con pop animation
+  label.textContent = name.replace('Letra_', '');
+  label.classList.add('visible');
+  label.classList.remove('pop');
+  void label.offsetWidth; // fuerza reflow para re-trigger animation
+  label.classList.add('pop');
+}
+
+// ── Load GLB ──────────────────────────────────────────────────────────
+const loader = new GLTFLoader();
+
+function loadModel(url) {
+  loader.load(
+    url,
+    (gltf) => {
+      const model = gltf.scene;
+
+      // Centrar y escalar
+      const box    = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      const size   = box.getSize(new THREE.Vector3());
+      model.position.sub(center);
+      model.position.y += size.y * 0.5;
+
+      // Sombras y materiales PBR
+      model.traverse(child => {
+        if (child.isMesh) {
+          child.castShadow    = true;
+          child.receiveShadow = true;
+          if (child.material) {
+            child.material.roughness   = child.material.roughness   ?? 0.65;
+            child.material.metalness   = child.material.metalness   ?? 0.1;
+            child.material.needsUpdate = true;
+          }
+        }
+      });
+
+      // Animación de entrada: escala de 0.82 → 1.0
+      model.scale.setScalar(0.82);
+      let entryProgress = 0;
+      const entryAnim = () => {
+        entryProgress += 0.06;
+        const t = Math.min(1, entryProgress);
+        // ease out cubic
+        const eased = 1 - Math.pow(1 - t, 3);
+        model.scale.setScalar(0.82 + 0.18 * eased);
+        if (t < 1) requestAnimationFrame(entryAnim);
+      };
+      requestAnimationFrame(entryAnim);
+
+      scene.add(model);
+
+      // Ocultar spinner + barra completa
+      progressBar.style.width = '100%';
+      setTimeout(() => { progressBar.style.opacity = '0'; }, 400);
+      spinner.classList.add('hidden');
+
+      // Animaciones
+      mixer = new THREE.AnimationMixer(model);
+      gltf.animations.forEach(clip => {
+        actions[clip.name] = mixer.clipAction(clip);
+      });
+
+      // Pose neutral por defecto + auto-rotación
+      if (actions['Pose_Neutral']) playAnimation('Pose_Neutral');
+      controls.autoRotate = true;
+
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({ type: 'MODEL_LOADED', animations: Object.keys(actions) })
+        );
+      }
+    },
+    (progress) => {
+      const pct = progress.total
+        ? Math.round((progress.loaded / progress.total) * 100)
+        : 0;
+      progressBar.style.width = Math.min(pct, 95) + '%';
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({ type: 'LOADING', progress: pct })
+        );
+      }
+    },
+    (error) => {
+      console.error('Error cargando modelo:', error);
+      spinner.classList.add('hidden');
+    }
+  );
+}
+
+// ── Auto-load desde URL param ?model= (para web en iframe) ──────────
+const _urlModel = new URLSearchParams(window.location.search).get('model');
+if (_urlModel) loadModel(decodeURIComponent(_urlModel));
+
+// ── Message bridge con React Native ──────────────────────────────────
+window.addEventListener('message', (e) => {
+  try {
+    const msg = JSON.parse(e.data);
+    if      (msg.type === 'LOAD_MODEL')      loadModel(msg.url);
+    else if (msg.type === 'PLAY_ANIMATION')  playAnimation(msg.animation);
+    else if (msg.type === 'SET_BG')          scene.background = new THREE.Color(msg.color);
+  } catch (_) {}
+});
+
+// Compatibilidad iOS WebView
+document.addEventListener('message', (e) => {
+  window.dispatchEvent(new MessageEvent('message', { data: e.data }));
+});
+
+// ── Render loop ───────────────────────────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  const delta = clock.getDelta();
+  if (mixer) mixer.update(delta);
+
+  // Pulso suave del aro de luz
+  ringTime += delta;
+  ringMat.emissiveIntensity = 0.65 + 0.35 * Math.sin(ringTime * 2.2);
+
+  controls.update();
+  renderer.render(scene, cam);
+}
+animate();
+
+// ── Resize ────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  cam.aspect = window.innerWidth / window.innerHeight;
+  cam.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Traduce Señas",
+    "slug": "traduce-senas",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "icon": "./src/assets/images/icono.png",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.traducsenas.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Necesitamos acceso a la cámara para traducir lengua de señas.",
+        "NSMicrophoneUsageDescription": "Necesitamos acceso al micrófono para traducir voz a señas."
+      }
+    },
+    "android": {
+      "package": "com.traducsenas.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/images/icono.png",
+        "backgroundColor": "#EDE9FE"
+      },
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "lang": "es",
+      "name": "Traduce Señas",
+      "shortName": "TraduceSeña",
+      "description": "Traduce Lengua de Señas Colombiana a texto en tiempo real.",
+      "themeColor": "#7C3AED",
+      "backgroundColor": "#EDE9FE",
+      "favicon": "./src/assets/images/icono.png"
+    },
+    "plugins": [
+      "expo-camera",
+      "expo-notifications",
+      "expo-font",
+      "expo-asset"
+    ]
+  }
+}
