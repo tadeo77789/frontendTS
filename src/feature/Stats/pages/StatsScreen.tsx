@@ -407,21 +407,21 @@ export const StatsScreen: React.FC = () => {
   const [openCard, setOpenCard] = useState<CardKey | null>(null);
 
   const SECTION_PIE = [
-    { label: t('sectionTranslation'), value: 47, color: C.primary },
-    { label: t('sectionAlphabet'),    value: 29, color: '#06B6D4' },
+    { label: t('sectionTranslation'), value: 47, color: '#10B981' },
+    { label: t('sectionAlphabet'),    value: 29, color: '#10B981' },
     { label: t('sectionHistory'),     value: 24, color: '#10B981' },
   ];
 
   const weeklyRows = WEEKLY_DATA.map(d => ({ label: d.label, value: d.value, color: C.primary }));
   const monthlyRows = MONTHLY_LINE.map((v, i) => ({ label: MONTHLY_LABELS[i], value: v, color: C.primary }));
-  const volumeRows = VOLUME_DATA.map(d => ({ label: d.label, value: d.value, color: '#06B6D4' }));
+  const volumeRows = VOLUME_DATA.map(d => ({ label: d.label, value: d.value, color: '#10B981' }));
   const sectionRows = SECTION_PIE.map(d => ({ label: d.label, value: `${d.value}%`, color: d.color }));
 
   const KPI_CARDS = [
-    { label: t('kpiTranslations'),  value: '1,248', icon: 'swap-horizontal-outline' as const, gradient: ['#A78BFA', '#8B5CF6'] as [string, string], glow: 'rgba(139,92,246,0.30)' },
+    { label: t('kpiTranslations'),  value: '1,248', icon: 'swap-horizontal-outline' as const, gradient: ['#A78BFA', '#734CCC'] as [string, string], glow: 'rgba(139,92,246,0.30)' },
     { label: t('kpiActiveUsers'),   value: '342',   icon: 'people-outline' as const,          gradient: ['#60A5FA', '#3B82F6'] as [string, string], glow: 'rgba(59,130,246,0.28)' },
-    { label: t('kpiHoursLearned'),  value: '89h',   icon: 'school-outline' as const,          gradient: ['#34D399', '#10B981'] as [string, string], glow: 'rgba(16,185,129,0.28)' },
-    { label: t('kpiSignsLearned'),  value: '84',    icon: 'hand-left-outline' as const,       gradient: ['#FBBF24', '#F59E0B'] as [string, string], glow: 'rgba(245,158,11,0.28)' },
+    { label: t('kpiSignsLearned'),  value: '84',    icon: 'hand-left-outline' as const,      gradient: ['#49B9B4', '#3A9D98'] as [string, string], glow: 'rgba(73,185,180,0.28)' },
+    { label: t('kpiSignsLearned'),  value: '84',    icon: 'hand-left-outline' as const,      gradient: ['#6793A9', '#527B8F'] as [string, string], glow: 'rgba(103,147,169,0.28)' },
   ];
 
   const titles: Record<CardKey, string> = {
