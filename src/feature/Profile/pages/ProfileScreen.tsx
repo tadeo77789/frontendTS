@@ -123,7 +123,10 @@ export const ProfileScreen: React.FC = () => {
                 <Text style={[styles.rowSub, { color: C.textSecondary }]}>{t('password')}</Text>
                 <Text style={[styles.rowValue, { color: C.textPrimary, letterSpacing: 2 }]}>••••••••</Text>
               </View>
-              <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate('ForgotPassword', { fromProfile: true })}>
+              
+              <TouchableOpacity style={styles.linkRow}
+               onPress={() => navigation.navigate('ChangePassword')}>
+
                 <Ionicons name="key-outline" size={15} color={C.primary} />
                 <Text style={[styles.link, { color: C.primary }]}>{t('profileChangePassword')}</Text>
               </TouchableOpacity>

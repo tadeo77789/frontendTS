@@ -10,6 +10,7 @@ import { AlphabetDemoScreen } from '../../feature/homescreen/pages/AlphabetDemoS
 import { LoginScreen } from '../../feature/auth/pages/LoginScreen';
 import { RegisterScreen } from '../../feature/auth/pages/RegisterScreen';
 import { ForgotPasswordScreen } from '../../feature/auth/pages/ForgotPasswordScreen';
+import { ChangePasswordScreen } from '../../feature/auth/pages/ChangePasswordScreen';
 import { VerifyCodeScreen } from '../../feature/auth/pages/VerifyCodeScreen';
 import { NewPasswordScreen } from '../../feature/auth/pages/NewPasswordScreen';
 import { TermsScreen } from '../../feature/Profile/pages/TermsScreen';
@@ -23,6 +24,7 @@ export type AuthStackParams = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: { fromProfile?: boolean } | undefined;
+  ChangePassword: undefined;
   VerifyCode: { fromProfile?: boolean } | undefined;
   NewPassword: { fromProfile?: boolean } | undefined;
   Terms: undefined;
@@ -51,6 +53,7 @@ export const AuthNavigator: React.FC = () => (
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="Register" component={RegisterScreen} />
     <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+    <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
     <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} />
     <Stack.Screen name="NewPassword" component={NewPasswordScreen} />
     <Stack.Screen name="Terms" component={TermsScreen} />
