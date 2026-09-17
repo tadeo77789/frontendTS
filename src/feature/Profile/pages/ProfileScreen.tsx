@@ -20,6 +20,8 @@ import { useAuth } from '../../../app/providers/AuthContext';
 import { useTheme, useColors, type ColorAccent } from '../../../app/providers/ThemeContext';
 import { useLanguage, type LanguageCode } from '../../../app/providers/LanguageContext';
 import { useTranslation } from '../../../app/config/i18n';
+import { AchievementsCard } from '../components/AchievementsCard';
+import { countUnlocked } from '../data/achievements';
 
 const LANG_CODES: LanguageCode[] = ['es', 'en', 'fr', 'pt'];
 
@@ -38,6 +40,8 @@ export const ProfileScreen: React.FC = () => {
   const { language, setLanguage } = useLanguage();
   const { t } = useTranslation();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  const unlockedAchievements = countUnlocked();
 
   const displayName = user?.email?.split('@')[0] ?? 'Usuario';
   const displayEmail = user?.email ?? 'usuario@traducesenas.com';
@@ -93,6 +97,10 @@ export const ProfileScreen: React.FC = () => {
               <View style={styles.heroStat}>
                 <Text style={[styles.heroStatValue, { color: C.primary }]}>84</Text>
                 <Text style={[styles.heroStatLabel, { color: C.textSecondary }]}>{t('profileLearned')}</Text>
+              </View>
+              <View style={styles.heroStat}>
+                <Text style={[styles.heroStatValue, { color: C.primary }]}>{unlockedAchievements}</Text>
+                <Text style={[styles.heroStatLabel, { color: C.textSecondary }]}>{t('achievements')}</Text>
               </View>
             </View>
           </View>
@@ -203,6 +211,9 @@ export const ProfileScreen: React.FC = () => {
               </View>
             </View>
           </View>
+
+          {/* Logros */}
+          <AchievementsCard isWide={isWide} />
 
           {/* Acerca de */}
           <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
