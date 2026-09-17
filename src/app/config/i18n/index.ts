@@ -10,9 +10,12 @@ const translations: Record<LanguageCode, typeof es> = { es, en, fr, pt };
 
 export const useTranslation = () => {
   const { language } = useLanguage();
-  const t = (key: TranslationKey): string => {
+  // Los parametros son opcionales: las cadenas sin marcadores {x} se devuelven tal cual.
+  const t = (key: TranslationKey, params?: Record<string, string | number>): string => {
     const dict = translations[language] as Record<string, string>;
-    return dict[key] ?? (es as Record<string, string>)[key] ?? key;
+    const text = dict[key] ?? (es as Record<string, string>)[key] ?? key;
+    if (!params) return text;
+    return text.replace(/\{(\w+)\}/g, (match, name) => (name in params ? String(params[name]) : match));
   };
   return { t, language };
 };
