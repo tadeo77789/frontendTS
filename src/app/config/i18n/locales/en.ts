@@ -189,6 +189,7 @@ const en: typeof es = {
   listen: 'Listen',
   copied: 'Copied',
   copiedToClipboard: 'Text copied to clipboard',
+  copyFailed: 'The text could not be copied',
   cameraPermissionTitle: 'Camera permission',
   cameraPermissionMsg: 'Camera access is required to translate signs.',
 

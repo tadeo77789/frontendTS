@@ -189,6 +189,7 @@ const pt: typeof es = {
   listen: 'Ouvir',
   copied: 'Copiado',
   copiedToClipboard: 'Texto copiado para a área de transferência',
+  copyFailed: 'Não foi possível copiar o texto',
   cameraPermissionTitle: 'Permissão de câmera',
   cameraPermissionMsg: 'É necessário acesso à câmera para traduzir sinais.',
 

@@ -20,6 +20,8 @@ import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { useSignAgent } from '../../../feature/Translation/hooks/useSignAgent';
 import { translationsService } from '../services/translations.service';
+import { copyToClipboard } from '../../../shared/utils/clipboard';
+import { showSuccess, showError } from '../../../shared/utils/dialogs';
 import type { SignAgentStatus } from '../../../shared/types';
 
 const SPEECH_LANG: Record<string, string> = {
@@ -97,6 +99,15 @@ export const TranslationScreen: React.FC = () => {
       await persistSignTranscript();
     }
   }, [isActive, permission, requestPermission, t, agentStart, agentStop, agentReset, persistSignTranscript]);
+
+  const handleCopy = useCallback(async (textToCopy: string) => {
+    const copied = await copyToClipboard(textToCopy);
+    if (copied) {
+      showSuccess(t('copiedToClipboard'), t('copied'));
+    } else {
+      showError(t('copyFailed'));
+    }
+  }, [t]);
 
   const speak = useCallback((textToSpeak: string) => {
     const value = textToSpeak.trim();
@@ -237,7 +248,7 @@ export const TranslationScreen: React.FC = () => {
                     <TouchableOpacity style={[styles.iconAction, { borderColor: C.border }]} onPress={() => speak(signResult)}>
                       <Ionicons name="volume-high-outline" size={19} color={C.primary} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.iconAction, { borderColor: C.border }]} onPress={() => Alert.alert(t('copied'), t('copiedToClipboard'))}>
+                    <TouchableOpacity style={[styles.iconAction, { borderColor: C.border }]} onPress={() => handleCopy(signResult)}>
                       <Ionicons name="copy-outline" size={18} color={C.primary} />
                     </TouchableOpacity>
                     {!!agentTranscript && (

@@ -189,6 +189,7 @@ const fr: typeof es = {
   listen: 'Écouter',
   copied: 'Copié',
   copiedToClipboard: 'Texte copié dans le presse-papiers',
+  copyFailed: 'Le texte n’a pas pu être copié',
   cameraPermissionTitle: 'Autorisation caméra',
   cameraPermissionMsg: 'L\'accès à la caméra est requis pour traduire les signes.',
 

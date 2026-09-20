@@ -188,6 +188,7 @@ const es = {
   listen: 'Escuchar',
   copied: 'Copiado',
   copiedToClipboard: 'Texto copiado al portapapeles',
+  copyFailed: 'No se pudo copiar el texto',
   cameraPermissionTitle: 'Permiso de cámara',
   cameraPermissionMsg: 'Se necesita acceso a la cámara para traducir señas.',
 
