@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation, type TranslationKey } from '../../../app/config/i18n';
@@ -25,13 +26,18 @@ export const PrivacyPolicyScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const C = useColors();
   const { t } = useTranslation();
+  // La pantalla no lleva cabecera: sin el area segura el boton de volver queda
+  // pegado a la barra de estado del movil. En web el inset es 0 y se mantienen
+  // los 44 de siempre.
+  const insets = useSafeAreaInsets();
+  const heroPaddingTop = Math.max(insets.top, 20) + 24;
 
   return (
     <View style={[styles.root, { backgroundColor: C.background }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <View style={[styles.hero, { backgroundColor: C.backgroundGray }]}>
-          <View style={styles.heroInner}>
+          <View style={[styles.heroInner, { paddingTop: heroPaddingTop }]}>
             <TouchableOpacity style={styles.backLink} onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={17} color={C.primaryDark} />
               <Text style={[styles.backLinkText, { color: C.primaryDark }]}>Volver</Text>
