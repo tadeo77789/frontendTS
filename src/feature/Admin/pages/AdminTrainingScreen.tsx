@@ -18,6 +18,7 @@ import { AppHeader } from '../../../shared/components/common/AppHeader';
 import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { useSignAgent } from '../../Translation/hooks/useSignAgent';
+import { useScrollToInput } from '../../../shared/hooks/useScrollToInput';
 import {
   recordSample,
   getSampleCounts,
@@ -60,6 +61,9 @@ export const AdminTrainingScreen: React.FC = () => {
   const [gestureWord, setGestureWord] = useState('');
   const [gestureCounts, setGestureCounts] = useState<Record<string, number>>({});
   const [recordingGesture, setRecordingGesture] = useState(false);
+  // La caja de la palabra queda al final de la pagina: al abrirse el teclado
+  // tapaba el campo y no se veia lo que se escribia.
+  const { scrollRef, handleInputFocus } = useScrollToInput(140);
 
   const refreshCounts = useCallback(async () => {
     setSampleCounts(await getSampleCounts());
@@ -179,7 +183,12 @@ export const AdminTrainingScreen: React.FC = () => {
   return (
     <View style={[styles.root, { backgroundColor: C.backgroundGray }]}>
       <AppHeader showBack onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <View style={styles.inner}>
 
           {/* Hero */}
@@ -285,6 +294,7 @@ export const AdminTrainingScreen: React.FC = () => {
                     placeholderTextColor={C.textHint}
                     value={gestureWord}
                     onChangeText={setGestureWord}
+                    onFocus={handleInputFocus}
                     autoCapitalize="characters"
                     editable={!recordingGesture}
                   />
@@ -332,7 +342,7 @@ export const AdminTrainingScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  content: { padding: 20, paddingBottom: 40 },
+  content: { padding: 20, paddingBottom: 140 },
   inner: { width: '100%', maxWidth: 1200, alignSelf: 'center', gap: 20 },
 
   hero: { gap: 12 },
