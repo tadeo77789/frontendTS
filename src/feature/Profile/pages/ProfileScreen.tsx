@@ -21,6 +21,7 @@ import { useTheme, useColors, type ColorAccent } from '../../../app/providers/Th
 import { useLanguage, type LanguageCode } from '../../../app/providers/LanguageContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { isAdmin } from '../../../shared/utils/adminAccess';
+import { userDisplayName } from '../../../shared/utils/userDisplayName';
 import { AchievementsCard } from '../components/AchievementsCard';
 import { countUnlocked } from '../data/achievements';
 
@@ -47,7 +48,7 @@ export const ProfileScreen: React.FC = () => {
 
   const unlockedAchievements = countUnlocked();
 
-  const displayName = user?.email?.split('@')[0] ?? 'Usuario';
+  const displayName = userDisplayName(user);
   const displayEmail = user?.email ?? 'usuario@traducesenas.com';
 
   const handleLogout = async () => {
