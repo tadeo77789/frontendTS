@@ -18,6 +18,11 @@ import { useTranslation } from '../../../app/config/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
+const BAR_GAP = 4;
+const BAR_CHART_HEIGHT = 100;
+/** Hueco reservado sobre la barra para el numero. */
+const BAR_VALUE_SPACE = 16;
+
 const BarChart: React.FC<{
   data: { label: string; value: number }[];
   colors: [string, string];
@@ -25,46 +30,55 @@ const BarChart: React.FC<{
   showAxes?: boolean;
 }> = ({ data, colors, maxValue, showAxes }) => {
   const C = useColors();
-  const max = maxValue || Math.max(...data.map(d => d.value));
-  const chartHeight = 100;
-  const axisWidth = showAxes ? 40 : 0;
+  // El grafico media las barras con porcentajes ('100%' en la fila, '80%' en
+  // cada barra). Dentro del ScrollView del modal ese porcentaje no resuelve y
+  // las barras salian con ancho cero: la tarjeta mostraba la tabla pero no el
+  // diagrama. Ahora medimos el area util y repartimos el ancho en pixeles.
+  const [plotWidth, setPlotWidth] = useState(0);
+  const max = maxValue || Math.max(...data.map(d => d.value)) || 1;
+  const rowHeight = BAR_CHART_HEIGHT + BAR_VALUE_SPACE;
+
+  const slot = plotWidth > 0 ? (plotWidth - BAR_GAP * (data.length - 1)) / data.length : 0;
+  const barWidth = Math.max(6, slot * 0.7);
+  // Hasta el primer onLayout no hay medida: repartimos con flex para no
+  // dibujar un hueco vacio.
+  const slotStyle = slot > 0 ? { width: slot } : { flex: 1 };
 
   const ticks = 4;
   const tickValues = Array.from({ length: ticks + 1 }, (_, i) => Math.round((max * (ticks - i)) / ticks));
 
   return (
     <View style={bar.container}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', width: '100%' }}>
+      <View style={bar.row}>
         {showAxes && (
-          <View style={{ width: axisWidth, alignItems: 'flex-end', paddingRight: 8 }}>
+          <View style={[bar.axis, { height: rowHeight }]}>
             {tickValues.map((tv, i) => (
-              <Text key={i} style={[bar.axisLabel, { color: C.textHint, height: (chartHeight / ticks) }]}>{tv}</Text>
+              <Text key={i} style={[bar.axisLabel, { color: C.textHint }]}>{tv}</Text>
             ))}
           </View>
         )}
 
-        <View style={[bar.chart, { flex: 1, height: chartHeight + 30 }]}>
-          {data.map((item, i) => (
-            <View key={i} style={bar.barGroup}>
-              <View style={{ alignItems: 'center' }}>
-                <Text style={[bar.valueLabel, { color: C.textHint }]}>{item.value}</Text>
-
-                <View style={[bar.barWrap, { height: Math.max(4, (item.value / max) * chartHeight) }]}>
+        <View style={bar.plot} onLayout={e => setPlotWidth(e.nativeEvent.layout.width)}>
+          <View style={[bar.bars, { height: rowHeight }]}>
+            {data.map((item, i) => (
+              <View key={i} style={[bar.barGroup, slotStyle]}>
+                <Text style={[bar.valueLabel, { color: C.textHint }]} numberOfLines={1}>{item.value}</Text>
+                <View style={[bar.barWrap, { width: barWidth, height: Math.max(4, (item.value / max) * BAR_CHART_HEIGHT) }]}>
                   <LinearGradient colors={colors} start={{ x: 0, y: 1 }} end={{ x: 0, y: 0 }} style={bar.bar} />
                 </View>
               </View>
-              <Text style={[bar.barLabel, { color: C.textHint }]}>{item.label}</Text>
-            </View>
-          ))}
+            ))}
+          </View>
+
+          {showAxes && <View style={[bar.axisLine, { borderTopColor: C.border }]} />}
+
+          <View style={bar.labels}>
+            {data.map((item, i) => (
+              <Text key={i} style={[bar.barLabel, { color: C.textHint }, slotStyle]} numberOfLines={1}>{item.label}</Text>
+            ))}
+          </View>
         </View>
       </View>
-
-      {showAxes && (
-        <View style={{ flexDirection: 'row', marginTop: 4, marginLeft: showAxes ? axisWidth : 0 }}>
-          <View style={{ width: 0 }} />
-          <View style={{ flex: 1, borderTopWidth: 1, borderTopColor: C.border }} />
-        </View>
-      )}
     </View>
   );
 };
@@ -172,13 +186,18 @@ const PieChart: React.FC<{ data: { label: string; value: number; color: string }
 
 const bar = StyleSheet.create({
   container: { marginVertical: 8 },
-  chart: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 130 },
-  barGroup: { alignItems: 'center', flex: 1, justifyContent: 'flex-end' },
-  valueLabel: { fontSize: 9, marginBottom: 3, fontWeight: '600' },
-  barWrap: { width: '80%', borderRadius: 6, overflow: 'hidden' },
-  bar: { flex: 1, borderRadius: 6 },
-  barLabel: { fontSize: 9, marginTop: 5 },
+  row: { flexDirection: 'row', alignItems: 'flex-start' },
+  axis: { width: 40, paddingRight: 8, alignItems: 'flex-end', justifyContent: 'space-between' },
   axisLabel: { fontSize: 10, textAlign: 'right' },
+  axisLine: { borderTopWidth: 1, marginTop: 4 },
+  plot: { flex: 1 },
+  bars: { flexDirection: 'row', alignItems: 'flex-end', gap: BAR_GAP },
+  barGroup: { alignItems: 'center', justifyContent: 'flex-end' },
+  valueLabel: { fontSize: 9, marginBottom: 3, fontWeight: '600' },
+  barWrap: { borderRadius: 6, overflow: 'hidden' },
+  bar: { flex: 1, borderRadius: 6 },
+  labels: { flexDirection: 'row', gap: BAR_GAP, marginTop: 5 },
+  barLabel: { fontSize: 9, textAlign: 'center' },
 });
 
 const lineStyle = StyleSheet.create({
