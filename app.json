@@ -44,7 +44,19 @@
       "expo-font",
       "expo-asset",
       "expo-secure-store",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./src/assets/images/icono.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#EDE9FE",
+          "dark": {
+            "image": "./src/assets/images/icono.png",
+            "backgroundColor": "#1A1327"
+          }
+        }
+      ],
       "expo-status-bar"
     ]
   }
