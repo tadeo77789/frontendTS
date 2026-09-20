@@ -392,7 +392,12 @@ const DetailModal: React.FC<DetailModalProps> = ({ cardKey, onClose, sectionPie,
                 </TouchableOpacity>
               </View>
 
-              <ScrollView contentContainerStyle={modal.body} showsVerticalScrollIndicator={false}>
+              <ScrollView
+                style={modal.scroll}
+                contentContainerStyle={modal.body}
+                showsVerticalScrollIndicator
+                bounces={false}
+              >
                 {renderChart()}
                 <Text style={[modal.desc, { color: C.textSecondary }]}>{descriptions[cardKey]}</Text>
               </ScrollView>
@@ -412,6 +417,10 @@ const modal = StyleSheet.create({
   title: { flex: 1, fontSize: 17, fontWeight: '800' },
   closeBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
 
+  // En React Native un hijo no encoge por defecto: sin flexShrink el scroll
+  // media lo que mide su contenido, la hoja lo recortaba con overflow hidden y
+  // no se podia arrastrar para ver el resto de la tabla.
+  scroll: { flexShrink: 1 },
   body: { padding: 16, paddingBottom: 24, gap: 12 },
   desc: { fontSize: 13, lineHeight: 20, marginTop: 16 },
 });
