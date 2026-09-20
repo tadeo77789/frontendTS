@@ -322,7 +322,7 @@ export const AlphabetScreen: React.FC = () => {
                 )}
               </View>
 
-              {/* Reproducir + repetir */}
+              {/* Repetir */}
               <View style={styles.playRow}>
                 <TouchableOpacity
                   style={[styles.playBtnWrap, { opacity: modelReady ? 1 : 0.5 }]}
@@ -334,13 +334,6 @@ export const AlphabetScreen: React.FC = () => {
                     <Ionicons name="play" size={18} color="#fff" />
                     <Text style={styles.playBtnText}>{t('alphabetRepeat')}</Text>
                   </LinearGradient>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.replaySquare, { borderColor: C.borderInput, opacity: modelReady ? 1 : 0.5 }]}
-                  onPress={replayAnimation}
-                  disabled={!modelReady}
-                >
-                  <Ionicons name="refresh" size={19} color={C.primary} />
                 </TouchableOpacity>
               </View>
 
@@ -437,7 +430,6 @@ const styles = StyleSheet.create({
   playBtnWrap: { flex: 1, borderRadius: 12, overflow: 'hidden' },
   playBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, height: 48 },
   playBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  replaySquare: { width: 48, height: 48, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
 
   tipCard: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', borderWidth: 1, borderRadius: 14, padding: 15 },
   tipIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
