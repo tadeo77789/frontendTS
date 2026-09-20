@@ -105,11 +105,11 @@ export const AdminTrainingScreen: React.FC = () => {
   const handleRecordGesture = useCallback(async () => {
     const label = gestureWord.trim().toUpperCase();
     if (!label) {
-      showInfo(t('trainGestureNeedLabel'));
+      showInfo(t('trainGestureNeedLabel'), t('trainGestureTitle'));
       return;
     }
     if (!isActive) {
-      showInfo(t('tapStartCamera'));
+      showInfo(t('tapStartCamera'), t('trainGestureTitle'));
       return;
     }
     setRecordingGesture(true);
@@ -298,11 +298,14 @@ export const AdminTrainingScreen: React.FC = () => {
                     autoCapitalize="characters"
                     editable={!recordingGesture}
                   />
+                  {/* Solo se bloquea mientras graba: si la camara esta apagada o
+                      falta la palabra, el propio handler dice que hace falta en
+                      vez de dejar un boton muerto. */}
                   <TouchableOpacity
-                    style={[styles.gestureRecordBtn, { backgroundColor: recordingGesture ? '#EF4444' : C.primary, opacity: isActive ? 1 : 0.5 }]}
+                    style={[styles.gestureRecordBtn, { backgroundColor: recordingGesture ? '#EF4444' : C.primary, opacity: isActive ? 1 : 0.6 }]}
                     onPress={handleRecordGesture}
                     activeOpacity={0.85}
-                    disabled={!isActive || recordingGesture}
+                    disabled={recordingGesture}
                   >
                     <Ionicons name={recordingGesture ? 'radio-button-on' : 'videocam-outline'} size={16} color="#fff" />
                     <Text style={styles.gestureRecordText}>{recordingGesture ? t('trainGestureRecording') : t('trainGestureRecord')}</Text>
