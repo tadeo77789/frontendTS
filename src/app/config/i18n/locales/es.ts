@@ -121,7 +121,7 @@ const es = {
   loginContinueGoogle: 'Continuar con Google',
   loginContinueFacebook: 'Continuar con Facebook',
   loginAcceptTerms: 'Al continuar aceptas los',
-  loginTermsLink: 'Términos',
+  loginTermsLink: 'Términos y condiciones',
   loginAnd: 'y',
   loginPrivacyLink: 'Política de privacidad',
 

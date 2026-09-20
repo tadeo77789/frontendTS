@@ -122,7 +122,7 @@ const en: typeof es = {
   loginContinueGoogle: 'Continue with Google',
   loginContinueFacebook: 'Continue with Facebook',
   loginAcceptTerms: 'By continuing you accept the',
-  loginTermsLink: 'Terms',
+  loginTermsLink: 'Terms and conditions',
   loginAnd: 'and',
   loginPrivacyLink: 'Privacy Policy',
 
