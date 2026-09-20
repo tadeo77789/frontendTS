@@ -433,6 +433,8 @@ const es = {
   achievementsCatConsistency: 'Constancia',
   achievementsCatCommunity: 'Comunidad',
   achievementsEmpty: 'Aún no hay logros en esta categoría.',
+  achievementsSeeMore: 'Ver más ({count})',
+  achievementsSeeLess: 'Ver menos',
   achievementLevelBronze: 'Bronce',
   achievementLevelSilver: 'Plata',
   achievementLevelGold: 'Oro',

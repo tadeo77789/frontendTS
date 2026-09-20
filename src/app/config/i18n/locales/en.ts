@@ -434,6 +434,8 @@ const en: typeof es = {
   achievementsCatConsistency: 'Consistency',
   achievementsCatCommunity: 'Community',
   achievementsEmpty: 'No achievements in this category yet.',
+  achievementsSeeMore: 'See more ({count})',
+  achievementsSeeLess: 'See less',
   achievementLevelBronze: 'Bronze',
   achievementLevelSilver: 'Silver',
   achievementLevelGold: 'Gold',
