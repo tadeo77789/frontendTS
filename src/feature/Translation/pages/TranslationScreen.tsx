@@ -162,7 +162,7 @@ export const TranslationScreen: React.FC = () => {
 
                 <View style={[styles.cameraInner, { height: cameraHeight, backgroundColor: C.backgroundGray, borderColor: C.border }]}>
                   {isActive && cameraGranted && (
-                    <CameraView ref={cameraRef} style={styles.cameraFill} facing="front" />
+                    <CameraView ref={cameraRef} style={styles.cameraFill} facing="front" animateShutter={false} />
                   )}
 
                   <View style={[styles.corner, styles.cornerTL]} />

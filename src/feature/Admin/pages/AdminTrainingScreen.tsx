@@ -296,7 +296,7 @@ export const AdminTrainingScreen: React.FC = () => {
 
                 <View style={styles.cameraInner}>
                   {isActive && cameraGranted && (
-                    <CameraView ref={cameraRef} style={styles.cameraFill} facing="front" />
+                    <CameraView ref={cameraRef} style={styles.cameraFill} facing="front" animateShutter={false} />
                   )}
                   {!isActive && (
                     <Ionicons name="person-outline" size={110} color="rgba(255,255,255,0.14)" />
