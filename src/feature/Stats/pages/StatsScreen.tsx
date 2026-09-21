@@ -18,6 +18,11 @@ import { useTranslation } from '../../../app/config/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
+const BAR_GAP = 4;
+const BAR_CHART_HEIGHT = 100;
+/** Hueco reservado sobre la barra para el numero. */
+const BAR_VALUE_SPACE = 16;
+
 const BarChart: React.FC<{
   data: { label: string; value: number }[];
   colors: [string, string];
@@ -25,46 +30,55 @@ const BarChart: React.FC<{
   showAxes?: boolean;
 }> = ({ data, colors, maxValue, showAxes }) => {
   const C = useColors();
-  const max = maxValue || Math.max(...data.map(d => d.value));
-  const chartHeight = 100;
-  const axisWidth = showAxes ? 40 : 0;
+  // El grafico media las barras con porcentajes ('100%' en la fila, '80%' en
+  // cada barra). Dentro del ScrollView del modal ese porcentaje no resuelve y
+  // las barras salian con ancho cero: la tarjeta mostraba la tabla pero no el
+  // diagrama. Ahora medimos el area util y repartimos el ancho en pixeles.
+  const [plotWidth, setPlotWidth] = useState(0);
+  const max = maxValue || Math.max(...data.map(d => d.value)) || 1;
+  const rowHeight = BAR_CHART_HEIGHT + BAR_VALUE_SPACE;
+
+  const slot = plotWidth > 0 ? (plotWidth - BAR_GAP * (data.length - 1)) / data.length : 0;
+  const barWidth = Math.max(6, slot * 0.7);
+  // Hasta el primer onLayout no hay medida: repartimos con flex para no
+  // dibujar un hueco vacio.
+  const slotStyle = slot > 0 ? { width: slot } : { flex: 1 };
 
   const ticks = 4;
   const tickValues = Array.from({ length: ticks + 1 }, (_, i) => Math.round((max * (ticks - i)) / ticks));
 
   return (
     <View style={bar.container}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', width: '100%' }}>
+      <View style={bar.row}>
         {showAxes && (
-          <View style={{ width: axisWidth, alignItems: 'flex-end', paddingRight: 8 }}>
+          <View style={[bar.axis, { height: rowHeight }]}>
             {tickValues.map((tv, i) => (
-              <Text key={i} style={[bar.axisLabel, { color: C.textHint, height: (chartHeight / ticks) }]}>{tv}</Text>
+              <Text key={i} style={[bar.axisLabel, { color: C.textHint }]}>{tv}</Text>
             ))}
           </View>
         )}
 
-        <View style={[bar.chart, { flex: 1, height: chartHeight + 30 }]}>
-          {data.map((item, i) => (
-            <View key={i} style={bar.barGroup}>
-              <View style={{ alignItems: 'center' }}>
-                <Text style={[bar.valueLabel, { color: C.textHint }]}>{item.value}</Text>
-
-                <View style={[bar.barWrap, { height: Math.max(4, (item.value / max) * chartHeight) }]}>
+        <View style={bar.plot} onLayout={e => setPlotWidth(e.nativeEvent.layout.width)}>
+          <View style={[bar.bars, { height: rowHeight }]}>
+            {data.map((item, i) => (
+              <View key={i} style={[bar.barGroup, slotStyle]}>
+                <Text style={[bar.valueLabel, { color: C.textHint }]} numberOfLines={1}>{item.value}</Text>
+                <View style={[bar.barWrap, { width: barWidth, height: Math.max(4, (item.value / max) * BAR_CHART_HEIGHT) }]}>
                   <LinearGradient colors={colors} start={{ x: 0, y: 1 }} end={{ x: 0, y: 0 }} style={bar.bar} />
                 </View>
               </View>
-              <Text style={[bar.barLabel, { color: C.textHint }]}>{item.label}</Text>
-            </View>
-          ))}
+            ))}
+          </View>
+
+          {showAxes && <View style={[bar.axisLine, { borderTopColor: C.border }]} />}
+
+          <View style={bar.labels}>
+            {data.map((item, i) => (
+              <Text key={i} style={[bar.barLabel, { color: C.textHint }, slotStyle]} numberOfLines={1}>{item.label}</Text>
+            ))}
+          </View>
         </View>
       </View>
-
-      {showAxes && (
-        <View style={{ flexDirection: 'row', marginTop: 4, marginLeft: showAxes ? axisWidth : 0 }}>
-          <View style={{ width: 0 }} />
-          <View style={{ flex: 1, borderTopWidth: 1, borderTopColor: C.border }} />
-        </View>
-      )}
     </View>
   );
 };
@@ -76,20 +90,20 @@ const LineChart: React.FC<{
   showAxes?: boolean;
   height?: number;
 }> = ({ data, color, labels, showAxes, height }) => {
-
-  const [containerWidth, setContainerWidth] = useState(0);
-  const max = Math.max(...data);
+  const C = useColors();
+  // Antes se media el contenedor entero pero la linea se dibujaba dentro de un
+  // hijo desplazado 48px por el eje, asi que los ultimos puntos se salian y el
+  // recorte se los comia; ademas ese hijo no tenia altura y el eje acababa
+  // encima de la grafica. Ahora medimos el area de dibujo, que es la que manda.
+  const [plotWidth, setPlotWidth] = useState(0);
+  const max = Math.max(...data) || 1;
   const chartHeight = height || 80;
-  const step = containerWidth / (data.length - 1 || 1);
+  const step = data.length > 1 ? plotWidth / (data.length - 1) : 0;
 
   const handleLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
-    if (w > 0) setContainerWidth(w);
+    if (w > 0 && w !== plotWidth) setPlotWidth(w);
   };
-
-  if (containerWidth === 0) {
-    return <View style={{ height: chartHeight }} onLayout={handleLayout} />;
-  }
 
   const points = data.map((v, i) => ({
     x: i * step,
@@ -100,51 +114,55 @@ const LineChart: React.FC<{
   const tickValues = Array.from({ length: ticks + 1 }, (_, i) => Math.round((max * (ticks - i)) / ticks));
 
   return (
-    <View style={[lineStyle.container, { height: chartHeight + (showAxes ? 40 : 20) }]} onLayout={handleLayout}>
-      {showAxes && (
-        <View style={{ position: 'absolute', left: 0, top: 0, bottom: showAxes ? 34 : 0, width: 42, justifyContent: 'space-between', paddingVertical: 4 }}>
-          {tickValues.map((tv, i) => (
-            <Text key={i} style={[lineStyle.axisLabel, { color: '#8a8a8a', fontSize: 10 }]}>{tv}</Text>
-          ))}
-        </View>
-      )}
-
-      <View style={{ marginLeft: showAxes ? 48 : 0 }}>
-        {points.slice(0, -1).map((pt, i) => {
-          const next = points[i + 1];
-          const dx = next.x - pt.x;
-          const dy = next.y - pt.y;
-          const length = Math.sqrt(dx * dx + dy * dy);
-          const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-          return (
-            <View
-              key={i}
-              style={[lineStyle.segment, {
-                left: pt.x,
-                top: pt.y + 5,
-                width: length,
-                transform: [{ rotate: `${angle}deg` }],
-                backgroundColor: color + '50',
-              }]}
-            />
-          );
-        })}
-        {points.map((pt, i) => (
-          <View key={i} style={[lineStyle.dot, { left: pt.x - 5, top: pt.y, backgroundColor: color }]}>
-            {i === points.length - 1 && <View style={[lineStyle.dotPulse, { borderColor: color }]} />}
-          </View>
-        ))}
-
+    <View style={lineStyle.container}>
+      <View style={lineStyle.row}>
         {showAxes && (
-          <View style={{ marginTop: 12 }}>
-            <View style={{ borderTopWidth: 1, borderTopColor: '#e0e0e0' }} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-              {(labels || data.map((_, i) => String(i))).map((lab, i) => (
-                <Text key={i} style={{ fontSize: 11, color: '#8a8a8a' }}>{lab}</Text>
-              ))}
-            </View>
+          <View style={[lineStyle.axis, { height: chartHeight }]}>
+            {tickValues.map((tv, i) => (
+              <Text key={i} style={[lineStyle.axisLabel, { color: C.textHint }]}>{tv}</Text>
+            ))}
           </View>
         )}
+
+        <View style={lineStyle.plotCol}>
+          <View style={[lineStyle.plot, { height: chartHeight }]} onLayout={handleLayout}>
+            {plotWidth > 0 && points.slice(0, -1).map((pt, i) => {
+              const next = points[i + 1];
+              const dx = next.x - pt.x;
+              const dy = next.y - pt.y;
+              const length = Math.sqrt(dx * dx + dy * dy);
+              const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+              return (
+                <View
+                  key={i}
+                  style={[lineStyle.segment, {
+                    left: pt.x,
+                    top: pt.y + 5,
+                    width: length,
+                    transform: [{ rotate: `${angle}deg` }],
+                    backgroundColor: color + '50',
+                  }]}
+                />
+              );
+            })}
+            {plotWidth > 0 && points.map((pt, i) => (
+              <View key={i} style={[lineStyle.dot, { left: pt.x - 5, top: pt.y, backgroundColor: color }]}>
+                {i === points.length - 1 && <View style={[lineStyle.dotPulse, { borderColor: color }]} />}
+              </View>
+            ))}
+          </View>
+
+          {showAxes && (
+            <>
+              <View style={[lineStyle.axisLine, { borderTopColor: C.border }]} />
+              <View style={lineStyle.labels}>
+                {(labels || data.map((_, i) => String(i))).map((lab, i) => (
+                  <Text key={i} style={[lineStyle.tickLabel, { color: C.textHint }]}>{lab}</Text>
+                ))}
+              </View>
+            </>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -172,21 +190,35 @@ const PieChart: React.FC<{ data: { label: string; value: number; color: string }
 
 const bar = StyleSheet.create({
   container: { marginVertical: 8 },
-  chart: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 130 },
-  barGroup: { alignItems: 'center', flex: 1, justifyContent: 'flex-end' },
-  valueLabel: { fontSize: 9, marginBottom: 3, fontWeight: '600' },
-  barWrap: { width: '80%', borderRadius: 6, overflow: 'hidden' },
-  bar: { flex: 1, borderRadius: 6 },
-  barLabel: { fontSize: 9, marginTop: 5 },
+  row: { flexDirection: 'row', alignItems: 'flex-start' },
+  axis: { width: 40, paddingRight: 8, alignItems: 'flex-end', justifyContent: 'space-between' },
   axisLabel: { fontSize: 10, textAlign: 'right' },
+  axisLine: { borderTopWidth: 1, marginTop: 4 },
+  plot: { flex: 1 },
+  bars: { flexDirection: 'row', alignItems: 'flex-end', gap: BAR_GAP },
+  barGroup: { alignItems: 'center', justifyContent: 'flex-end' },
+  valueLabel: { fontSize: 9, marginBottom: 3, fontWeight: '600' },
+  barWrap: { borderRadius: 6, overflow: 'hidden' },
+  bar: { flex: 1, borderRadius: 6 },
+  labels: { flexDirection: 'row', gap: BAR_GAP, marginTop: 5 },
+  barLabel: { fontSize: 9, textAlign: 'center' },
 });
 
 const lineStyle = StyleSheet.create({
-  container: { position: 'relative', width: '100%', overflow: 'hidden' },
+  container: { marginVertical: 8 },
+  row: { flexDirection: 'row', alignItems: 'flex-start' },
+  axis: { width: 42, paddingRight: 8, alignItems: 'flex-end', justifyContent: 'space-between' },
+  axisLabel: { fontSize: 10, textAlign: 'right' },
+  axisLine: { borderTopWidth: 1, marginTop: 12 },
+  plotCol: { flex: 1 },
+  // Los puntos van en absoluto: el area necesita altura propia o se aplasta y
+  // el eje se monta sobre la linea.
+  plot: { position: 'relative' },
+  labels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  tickLabel: { fontSize: 11 },
   segment: { position: 'absolute', height: 2, borderRadius: 1, transformOrigin: 'left center' },
   dot: { position: 'absolute', width: 10, height: 10, borderRadius: 5, borderWidth: 2, borderColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
   dotPulse: { position: 'absolute', width: 18, height: 18, borderRadius: 9, borderWidth: 2, opacity: 0.35, top: -4, left: -4 },
-  axisLabel: { fontSize: 10, color: '#8a8a8a' },
 });
 
 const pie = StyleSheet.create({
@@ -322,7 +354,7 @@ const DetailModal: React.FC<DetailModalProps> = ({ cardKey, onClose, sectionPie,
 
   const weeklyRows = WEEKLY_DATA.map(d => ({ label: d.label, value: d.value, color: C.primary }));
   const monthlyRows = MONTHLY_LINE.map((v, i) => ({ label: MONTHLY_LABELS[i], value: v, color: C.primary }));
-  const volumeRows = VOLUME_DATA.map(d => ({ label: d.label, value: d.value, color: '#06B6D4' }));
+  const volumeRows = VOLUME_DATA.map(d => ({ label: d.label, value: d.value, color: '#2F8D9E' }));
   const sectionRows = sectionPie.map(d => ({ label: d.label, value: `${d.value}%`, color: d.color }));
 
   const renderChart = () => {
@@ -344,7 +376,7 @@ const DetailModal: React.FC<DetailModalProps> = ({ cardKey, onClose, sectionPie,
       case 'volume':
         return (
           <>
-            <BarChart data={VOLUME_DATA} colors={['#67E8F9', '#06B6D4']} showAxes />
+            <BarChart data={VOLUME_DATA} colors={['#5BB8C9', '#2F8D9E']} showAxes />
             <CardinalityTable rows={volumeRows} />
           </>
         );
@@ -373,7 +405,12 @@ const DetailModal: React.FC<DetailModalProps> = ({ cardKey, onClose, sectionPie,
                 </TouchableOpacity>
               </View>
 
-              <ScrollView contentContainerStyle={modal.body} showsVerticalScrollIndicator={false}>
+              <ScrollView
+                style={modal.scroll}
+                contentContainerStyle={modal.body}
+                showsVerticalScrollIndicator
+                bounces={false}
+              >
                 {renderChart()}
                 <Text style={[modal.desc, { color: C.textSecondary }]}>{descriptions[cardKey]}</Text>
               </ScrollView>
@@ -393,6 +430,10 @@ const modal = StyleSheet.create({
   title: { flex: 1, fontSize: 17, fontWeight: '800' },
   closeBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
 
+  // En React Native un hijo no encoge por defecto: sin flexShrink el scroll
+  // media lo que mide su contenido, la hoja lo recortaba con overflow hidden y
+  // no se podia arrastrar para ver el resto de la tabla.
+  scroll: { flexShrink: 1 },
   body: { padding: 16, paddingBottom: 24, gap: 12 },
   desc: { fontSize: 13, lineHeight: 20, marginTop: 16 },
 });
@@ -407,21 +448,24 @@ export const StatsScreen: React.FC = () => {
   const [openCard, setOpenCard] = useState<CardKey | null>(null);
 
   const SECTION_PIE = [
-    { label: t('sectionTranslation'), value: 47, color: '#10B981' },
-    { label: t('sectionAlphabet'),    value: 29, color: '#10B981' },
-    { label: t('sectionHistory'),     value: 24, color: '#10B981' },
+    { label: t('sectionTranslation'), value: 47, color: C.primary },
+    { label: t('sectionAlphabet'),    value: 29, color: '#2F8D9E' },
+    { label: t('sectionHistory'),     value: 24, color: '#2F8F6F' },
   ];
 
   const weeklyRows = WEEKLY_DATA.map(d => ({ label: d.label, value: d.value, color: C.primary }));
   const monthlyRows = MONTHLY_LINE.map((v, i) => ({ label: MONTHLY_LABELS[i], value: v, color: C.primary }));
-  const volumeRows = VOLUME_DATA.map(d => ({ label: d.label, value: d.value, color: '#10B981' }));
+  const volumeRows = VOLUME_DATA.map(d => ({ label: d.label, value: d.value, color: '#2F8D9E' }));
   const sectionRows = SECTION_PIE.map(d => ({ label: d.label, value: `${d.value}%`, color: d.color }));
 
+  // Los cuatro degradados son una sola rampa violeta -> indigo -> cian -> verde:
+  // acompanan a los dos acentos de la app en vez del arcoiris de antes, y todos
+  // terminan lo bastante oscuros para que el texto blanco se lea.
   const KPI_CARDS = [
-    { label: t('kpiTranslations'),  value: '1,248', icon: 'swap-horizontal-outline' as const, gradient: ['#A78BFA', '#734CCC'] as [string, string], glow: 'rgba(139,92,246,0.30)' },
-    { label: t('kpiActiveUsers'),   value: '342',   icon: 'people-outline' as const,          gradient: ['#60A5FA', '#3B82F6'] as [string, string], glow: 'rgba(59,130,246,0.28)' },
-    { label: t('kpiSignsLearned'),  value: '84',    icon: 'hand-left-outline' as const,      gradient: ['#49B9B4', '#3A9D98'] as [string, string], glow: 'rgba(73,185,180,0.28)' },
-    { label: t('kpiSignsLearned'),  value: '84',    icon: 'hand-left-outline' as const,      gradient: ['#6793A9', '#527B8F'] as [string, string], glow: 'rgba(103,147,169,0.28)' },
+    { label: t('kpiTranslations'),  value: '1,248', icon: 'swap-horizontal-outline' as const, gradient: ['#A78BFA', '#7C5AD6'] as [string, string], glow: 'rgba(124,90,214,0.30)' },
+    { label: t('kpiActiveUsers'),   value: '342',   icon: 'people-outline' as const,          gradient: ['#7C93F0', '#4F63C8'] as [string, string], glow: 'rgba(79,99,200,0.28)' },
+    { label: t('kpiHoursLearned'),  value: '89h',   icon: 'school-outline' as const,          gradient: ['#5BB8C9', '#2F8D9E'] as [string, string], glow: 'rgba(47,141,158,0.28)' },
+    { label: t('kpiSignsLearned'),  value: '84',    icon: 'hand-left-outline' as const,       gradient: ['#63C2A0', '#2F8F6F'] as [string, string], glow: 'rgba(47,143,111,0.28)' },
   ];
 
   const titles: Record<CardKey, string> = {

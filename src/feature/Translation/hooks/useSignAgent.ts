@@ -49,6 +49,7 @@ const isCameraViewWithCapture = (
     base64?: boolean;
     quality?: number;
     skipProcessing?: boolean;
+    shutterSound?: boolean;
   }) => Promise<{ base64?: string; width: number; height: number; uri: string }>;
 } => !!ref && typeof (ref as unknown as { takePictureAsync?: unknown }).takePictureAsync === 'function';
 
@@ -95,12 +96,17 @@ export const useSignAgent = (
       let width = 0;
       let height = 0;
 
-      if (isCameraViewWithCapture(cam)) {
+      // Sin esto Android disparaba una foto cada intervalo aunque el proveedor
+      // ni la mirara: sonaba el obturador y la vista previa parpadeaba.
+      if (signVisionProvider.requiresFrame !== false && isCameraViewWithCapture(cam)) {
         try {
           const photo = await cam.takePictureAsync({
             base64: true,
             quality,
             skipProcessing: true,
+            // El agente dispara en bucle: el obturador de Android convertiria
+            // la traduccion en una rafaga de fotos.
+            shutterSound: false,
           });
           base64 = photo?.base64 ?? '';
           width = photo?.width ?? 0;

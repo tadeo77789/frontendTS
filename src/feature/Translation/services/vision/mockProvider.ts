@@ -24,6 +24,8 @@ let frameCounter = 0;
 
 export const mockProvider: SignVisionProvider = {
   name: 'mock',
+  // Solo usa el base64 como semilla del azar: no hace falta disparar la camara.
+  requiresFrame: false,
 
   async detect(frame: VisionFrame): Promise<SignDetectionResult> {
     frameCounter += 1;

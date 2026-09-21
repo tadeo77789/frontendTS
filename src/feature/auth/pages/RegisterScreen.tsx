@@ -11,6 +11,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LandingTheme as D } from '../../../shared/constants/landingTheme';
@@ -24,6 +25,10 @@ export const RegisterScreen: React.FC = () => {
   const { t } = useTranslation();
   const [showPw, setShowPw] = useState(false);
   const { scrollRef, handleInputFocus } = useScrollToInput();
+  // El boton flota sobre el scroll: sin el area segura se monta en la barra de
+  // estado del movil. En web el inset es 0 y se queda donde estaba.
+  const insets = useSafeAreaInsets();
+  const backTop = insets.top + 26;
 
   const pw = form.password;
   const reqs = [
@@ -43,7 +48,7 @@ export const RegisterScreen: React.FC = () => {
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+      <TouchableOpacity style={[styles.backBtn, { top: backTop }]} onPress={() => navigation.goBack()}>
         <Ionicons name="arrow-back" size={22} color={D.purpleDark} />
       </TouchableOpacity>
 
@@ -181,6 +186,7 @@ const ErrorLine: React.FC<{ text: string }> = ({ text }) => (
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#EDE7FB' },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24, paddingTop: 88 },
+  // top lo fija la pantalla sumando el area segura.
   backBtn: {
     position: 'absolute', top: 26, left: 26, zIndex: 20,
     width: 48, height: 48, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E7DEF8',

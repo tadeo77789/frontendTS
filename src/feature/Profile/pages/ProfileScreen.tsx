@@ -20,6 +20,8 @@ import { useAuth } from '../../../app/providers/AuthContext';
 import { useTheme, useColors, type ColorAccent } from '../../../app/providers/ThemeContext';
 import { useLanguage, type LanguageCode } from '../../../app/providers/LanguageContext';
 import { useTranslation } from '../../../app/config/i18n';
+import { isAdmin } from '../../../shared/utils/adminAccess';
+import { userDisplayName } from '../../../shared/utils/userDisplayName';
 import { AchievementsCard } from '../components/AchievementsCard';
 import { countUnlocked } from '../data/achievements';
 
@@ -40,10 +42,13 @@ export const ProfileScreen: React.FC = () => {
   const { language, setLanguage } = useLanguage();
   const { t } = useTranslation();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  // Las notificaciones son una herramienta de administracion: el resto de
+  // cuentas no ve el interruptor.
+  const showNotifications = isAdmin(user);
 
   const unlockedAchievements = countUnlocked();
 
-  const displayName = user?.email?.split('@')[0] ?? 'Usuario';
+  const displayName = userDisplayName(user);
   const displayEmail = user?.email ?? 'usuario@traducesenas.com';
 
   const handleLogout = async () => {
@@ -182,13 +187,15 @@ export const ProfileScreen: React.FC = () => {
               <Switch value={isDark} onValueChange={toggleTheme} trackColor={{ false: C.toggleOff, true: C.primary }} thumbColor="#fff" />
             </View>
 
-            <View style={[styles.prefRow, styles.rowDivider, { borderBottomColor: C.border }]}>
-              <View style={styles.prefLeft}>
-                <IconBox name="notifications-outline" />
-                <Text style={[styles.prefLabel, { color: C.textPrimary }]}>{t('profileNotifications')}</Text>
+            {showNotifications && (
+              <View style={[styles.prefRow, styles.rowDivider, { borderBottomColor: C.border }]}>
+                <View style={styles.prefLeft}>
+                  <IconBox name="notifications-outline" />
+                  <Text style={[styles.prefLabel, { color: C.textPrimary }]}>{t('profileNotifications')}</Text>
+                </View>
+                <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} trackColor={{ false: C.toggleOff, true: C.primary }} thumbColor="#fff" />
               </View>
-              <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} trackColor={{ false: C.toggleOff, true: C.primary }} thumbColor="#fff" />
-            </View>
+            )}
 
             <View style={[styles.prefRow, !isWide && styles.prefRowStacked]}>
               <View style={styles.prefLeft}>

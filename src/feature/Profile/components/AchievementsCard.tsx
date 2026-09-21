@@ -20,6 +20,8 @@ type Filter = AchievementCategory | 'all';
 
 const GRID_GAP = 12;
 const MIN_TILE = 150;
+/** Medallas visibles antes de pulsar "ver mas". */
+const PREVIEW_COUNT = 2;
 /** Ancho real de la tarjeta antes de medirla: 20 de padding del scroll a cada
  *  lado, 880 de ancho maximo del perfil y 26 de padding de la tarjeta. */
 const estimateGridWidth = (windowWidth: number) => Math.max(160, Math.min(windowWidth - 40, 880) - 52);
@@ -35,6 +37,7 @@ export const AchievementsCard: React.FC<AchievementsCardProps> = ({ isWide }) =>
   const { width } = useWindowDimensions();
 
   const [filter, setFilter] = useState<Filter>('all');
+  const [showAll, setShowAll] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [gridWidth, setGridWidth] = useState(0);
 
@@ -55,6 +58,10 @@ export const AchievementsCard: React.FC<AchievementsCardProps> = ({ isWide }) =>
   );
 
   const visible = filter === 'all' ? ACHIEVEMENTS : ACHIEVEMENTS.filter(a => a.category === filter);
+  // La tarjeta abre con dos medallas para no alargar el perfil; el resto queda
+  // detras del boton de ver mas.
+  const shown = showAll ? visible : visible.slice(0, PREVIEW_COUNT);
+  const hidden = visible.length - shown.length;
   const open = ACHIEVEMENTS.find(a => a.id === openId) ?? null;
 
   const available = gridWidth || estimateGridWidth(width);
@@ -118,7 +125,7 @@ export const AchievementsCard: React.FC<AchievementsCardProps> = ({ isWide }) =>
           return (
             <TouchableOpacity
               key={key}
-              onPress={() => setFilter(key)}
+              onPress={() => { setFilter(key); setShowAll(false); }}
               activeOpacity={0.8}
               style={[
                 styles.filterChip,
@@ -134,7 +141,7 @@ export const AchievementsCard: React.FC<AchievementsCardProps> = ({ isWide }) =>
       </View>
 
       <View style={styles.grid} onLayout={event => setGridWidth(event.nativeEvent.layout.width)}>
-        {visible.map(achievement => {
+        {shown.map(achievement => {
           const { unlocked } = progressOf(achievement);
           return (
             <TouchableOpacity
@@ -166,6 +173,20 @@ export const AchievementsCard: React.FC<AchievementsCardProps> = ({ isWide }) =>
           );
         })}
       </View>
+
+      {(hidden > 0 || showAll) && (
+        <TouchableOpacity
+          onPress={() => setShowAll(value => !value)}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          style={[styles.seeMore, { borderColor: C.borderInput, backgroundColor: C.surface }]}
+        >
+          <Text style={[styles.seeMoreText, { color: C.primaryDark }]}>
+            {showAll ? t('achievementsSeeLess') : t('achievementsSeeMore', { count: hidden })}
+          </Text>
+          <Ionicons name={showAll ? 'chevron-up' : 'chevron-down'} size={15} color={C.primaryDark} />
+        </TouchableOpacity>
+      )}
 
       {visible.length === 0 && (
         <Text style={[styles.empty, { color: C.textSecondary }]}>{t('achievementsEmpty')}</Text>
@@ -227,6 +248,18 @@ const styles = StyleSheet.create({
   },
   tileName: { fontSize: 13, fontWeight: '700', lineHeight: 17, textAlign: 'center' },
   tileLevel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
+
+  seeMore: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 46,
+    marginTop: 16,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  seeMoreText: { fontSize: 14, fontWeight: '800' },
 
   empty: { fontSize: 14, fontWeight: '600', textAlign: 'center', paddingVertical: 24 },
 });

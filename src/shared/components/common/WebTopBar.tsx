@@ -10,6 +10,7 @@ import { useTranslation } from '../../../app/config/i18n';
 import { useLanguage, LANGUAGE_NAMES, type LanguageCode } from '../../../app/providers/LanguageContext';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { isAdmin } from '../../../shared/utils/adminAccess';
+import { userDisplayName } from '../../../shared/utils/userDisplayName';
 import { HoverShadowSoft } from '../../../shared/constants/hoverStyles';
 
 const LANG_CODES: LanguageCode[] = ['es', 'en', 'fr', 'pt'];
@@ -24,7 +25,7 @@ export const WebTopBar: React.FC<BottomTabHeaderProps> = ({ navigation, route })
   const { user } = useAuth();
   const [langOpen, setLangOpen] = useState(false);
 
-  const userName = (user?.email?.split('@')[0] ?? 'Usuario');
+  const userName = userDisplayName(user);
   const admin = isAdmin(user);
 
   const TAB_ITEMS: { name: string; label: string; icon: string }[] = admin
