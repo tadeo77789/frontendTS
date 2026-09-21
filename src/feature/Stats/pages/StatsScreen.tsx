@@ -90,20 +90,20 @@ const LineChart: React.FC<{
   showAxes?: boolean;
   height?: number;
 }> = ({ data, color, labels, showAxes, height }) => {
-
-  const [containerWidth, setContainerWidth] = useState(0);
-  const max = Math.max(...data);
+  const C = useColors();
+  // Antes se media el contenedor entero pero la linea se dibujaba dentro de un
+  // hijo desplazado 48px por el eje, asi que los ultimos puntos se salian y el
+  // recorte se los comia; ademas ese hijo no tenia altura y el eje acababa
+  // encima de la grafica. Ahora medimos el area de dibujo, que es la que manda.
+  const [plotWidth, setPlotWidth] = useState(0);
+  const max = Math.max(...data) || 1;
   const chartHeight = height || 80;
-  const step = containerWidth / (data.length - 1 || 1);
+  const step = data.length > 1 ? plotWidth / (data.length - 1) : 0;
 
   const handleLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
-    if (w > 0) setContainerWidth(w);
+    if (w > 0 && w !== plotWidth) setPlotWidth(w);
   };
-
-  if (containerWidth === 0) {
-    return <View style={{ height: chartHeight }} onLayout={handleLayout} />;
-  }
 
   const points = data.map((v, i) => ({
     x: i * step,
@@ -114,51 +114,55 @@ const LineChart: React.FC<{
   const tickValues = Array.from({ length: ticks + 1 }, (_, i) => Math.round((max * (ticks - i)) / ticks));
 
   return (
-    <View style={[lineStyle.container, { height: chartHeight + (showAxes ? 40 : 20) }]} onLayout={handleLayout}>
-      {showAxes && (
-        <View style={{ position: 'absolute', left: 0, top: 0, bottom: showAxes ? 34 : 0, width: 42, justifyContent: 'space-between', paddingVertical: 4 }}>
-          {tickValues.map((tv, i) => (
-            <Text key={i} style={[lineStyle.axisLabel, { color: '#8a8a8a', fontSize: 10 }]}>{tv}</Text>
-          ))}
-        </View>
-      )}
-
-      <View style={{ marginLeft: showAxes ? 48 : 0 }}>
-        {points.slice(0, -1).map((pt, i) => {
-          const next = points[i + 1];
-          const dx = next.x - pt.x;
-          const dy = next.y - pt.y;
-          const length = Math.sqrt(dx * dx + dy * dy);
-          const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-          return (
-            <View
-              key={i}
-              style={[lineStyle.segment, {
-                left: pt.x,
-                top: pt.y + 5,
-                width: length,
-                transform: [{ rotate: `${angle}deg` }],
-                backgroundColor: color + '50',
-              }]}
-            />
-          );
-        })}
-        {points.map((pt, i) => (
-          <View key={i} style={[lineStyle.dot, { left: pt.x - 5, top: pt.y, backgroundColor: color }]}>
-            {i === points.length - 1 && <View style={[lineStyle.dotPulse, { borderColor: color }]} />}
-          </View>
-        ))}
-
+    <View style={lineStyle.container}>
+      <View style={lineStyle.row}>
         {showAxes && (
-          <View style={{ marginTop: 12 }}>
-            <View style={{ borderTopWidth: 1, borderTopColor: '#e0e0e0' }} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-              {(labels || data.map((_, i) => String(i))).map((lab, i) => (
-                <Text key={i} style={{ fontSize: 11, color: '#8a8a8a' }}>{lab}</Text>
-              ))}
-            </View>
+          <View style={[lineStyle.axis, { height: chartHeight }]}>
+            {tickValues.map((tv, i) => (
+              <Text key={i} style={[lineStyle.axisLabel, { color: C.textHint }]}>{tv}</Text>
+            ))}
           </View>
         )}
+
+        <View style={lineStyle.plotCol}>
+          <View style={[lineStyle.plot, { height: chartHeight }]} onLayout={handleLayout}>
+            {plotWidth > 0 && points.slice(0, -1).map((pt, i) => {
+              const next = points[i + 1];
+              const dx = next.x - pt.x;
+              const dy = next.y - pt.y;
+              const length = Math.sqrt(dx * dx + dy * dy);
+              const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+              return (
+                <View
+                  key={i}
+                  style={[lineStyle.segment, {
+                    left: pt.x,
+                    top: pt.y + 5,
+                    width: length,
+                    transform: [{ rotate: `${angle}deg` }],
+                    backgroundColor: color + '50',
+                  }]}
+                />
+              );
+            })}
+            {plotWidth > 0 && points.map((pt, i) => (
+              <View key={i} style={[lineStyle.dot, { left: pt.x - 5, top: pt.y, backgroundColor: color }]}>
+                {i === points.length - 1 && <View style={[lineStyle.dotPulse, { borderColor: color }]} />}
+              </View>
+            ))}
+          </View>
+
+          {showAxes && (
+            <>
+              <View style={[lineStyle.axisLine, { borderTopColor: C.border }]} />
+              <View style={lineStyle.labels}>
+                {(labels || data.map((_, i) => String(i))).map((lab, i) => (
+                  <Text key={i} style={[lineStyle.tickLabel, { color: C.textHint }]}>{lab}</Text>
+                ))}
+              </View>
+            </>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -201,11 +205,20 @@ const bar = StyleSheet.create({
 });
 
 const lineStyle = StyleSheet.create({
-  container: { position: 'relative', width: '100%', overflow: 'hidden' },
+  container: { marginVertical: 8 },
+  row: { flexDirection: 'row', alignItems: 'flex-start' },
+  axis: { width: 42, paddingRight: 8, alignItems: 'flex-end', justifyContent: 'space-between' },
+  axisLabel: { fontSize: 10, textAlign: 'right' },
+  axisLine: { borderTopWidth: 1, marginTop: 12 },
+  plotCol: { flex: 1 },
+  // Los puntos van en absoluto: el area necesita altura propia o se aplasta y
+  // el eje se monta sobre la linea.
+  plot: { position: 'relative' },
+  labels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  tickLabel: { fontSize: 11 },
   segment: { position: 'absolute', height: 2, borderRadius: 1, transformOrigin: 'left center' },
   dot: { position: 'absolute', width: 10, height: 10, borderRadius: 5, borderWidth: 2, borderColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
   dotPulse: { position: 'absolute', width: 18, height: 18, borderRadius: 9, borderWidth: 2, opacity: 0.35, top: -4, left: -4 },
-  axisLabel: { fontSize: 10, color: '#8a8a8a' },
 });
 
 const pie = StyleSheet.create({
