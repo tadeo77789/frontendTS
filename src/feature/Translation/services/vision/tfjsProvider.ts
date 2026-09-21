@@ -143,6 +143,7 @@ const initModel = async (): Promise<void> => {
 
 export const tfjsProvider: SignVisionProvider = {
   name: 'tfjs-mobile',
+  requiresFrame: true,
 
   async init() {
     const { tf: tfMod, jpeg: jpegMod } = loadDeps();

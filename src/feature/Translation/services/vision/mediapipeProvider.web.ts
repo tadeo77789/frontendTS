@@ -143,6 +143,7 @@ const ensureMotionLoop = (): void => {
 
 export const mediapipeProvider: SignVisionProvider = {
   name: 'mediapipe-web',
+  requiresFrame: true,
 
   async init() {
     await getLandmarker();
