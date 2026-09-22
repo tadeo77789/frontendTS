@@ -68,3 +68,14 @@ export const importGesturesJson = (
 export { mockProvider } from './mockProvider';
 export { mediapipeProvider } from './mediapipeProvider';
 export type { SignVisionProvider, VisionFrame, SignDetectionResult } from './types';
+
+// Modo "palabras": GestureRecognizer pre-entrenado (7 senas -> palabra).
+export { gestureEngine } from './gestureProvider';
+export type { GestureEngine, GestureRecognition } from './gestureProvider';
+export {
+  GESTURE_DICTIONARY,
+  GESTURE_CATEGORIES,
+  lookupGestureWord,
+  lookupGestureHint,
+} from './gestureDictionary';
+export type { GestureEntry } from './gestureDictionary';

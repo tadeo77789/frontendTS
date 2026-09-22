@@ -201,6 +201,20 @@ const en: typeof es = {
   agentConfidence: 'Confidence',
   agentTranscriptLabel: 'Recognized text',
   agentClear: 'Clear',
+
+  // Modo palabras (MediaPipe Gesture Recognizer)
+  engineWords: 'Words',
+  engineAlphabet: 'Alphabet',
+  gestureLoadingModel: 'Loading gesture model...',
+  gestureSearching: 'Show a sign to the camera',
+  gestureHolding: 'Hold the sign',
+  gestureModelError: 'Could not load the gesture model',
+  gestureUnsupported: 'Gesture recognition is only available on the web version',
+  gestureSaving: 'Saving...',
+  gestureSaved: 'Saved',
+  gestureVocabulary: 'Available signs',
+  gestureConfirmedTitle: 'Confirmed signs',
+  resultPlaceholderGestures: 'Confirmed signs will appear here',
   agentBackspace: 'Delete',
   agentSpace: 'Space',
 

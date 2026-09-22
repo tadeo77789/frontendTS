@@ -19,6 +19,8 @@ import { Colors } from '../../../shared/constants/colors';
 import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { useSignAgent } from '../../../feature/Translation/hooks/useSignAgent';
+import { useGestureAgent } from '../hooks/useGestureAgent';
+import { GESTURE_CATEGORIES, GESTURE_DICTIONARY } from '../services/vision';
 import { translationsService } from '../services/translations.service';
 import { copyToClipboard } from '../../../shared/utils/clipboard';
 import { showSuccess, showError } from '../../../shared/utils/dialogs';
@@ -30,6 +32,13 @@ const SPEECH_LANG: Record<string, string> = {
   fr: 'fr-FR',
   pt: 'pt-BR',
 };
+
+/**
+ * Motor de reconocimiento de la camara:
+ * - `palabras`: GestureRecognizer de MediaPipe (sena -> palabra completa, solo web)
+ * - `abecedario`: clasificador LSC letra por letra ya existente
+ */
+type Engine = 'palabras' | 'abecedario';
 
 export const TranslationScreen: React.FC = () => {
   const { width, height } = useWindowDimensions();
@@ -54,6 +63,10 @@ export const TranslationScreen: React.FC = () => {
     appendSpace: agentAppendSpace,
   } = useSignAgent(cameraRef, { intervalMs: 1500, minConfidence: 0.7, confirmFrames: 2 });
 
+  // Agente de palabras: lee el <video> directo, estabiliza y guarda cada sena.
+  const gesture = useGestureAgent();
+  const { start: gestureStart, stop: gestureStop, reset: gestureReset } = gesture;
+
   const TIPS = [
     { icon: 'hand-left-outline' as const, text: t('tip1') },
     { icon: 'sunny-outline' as const, text: t('tip2') },
@@ -61,6 +74,8 @@ export const TranslationScreen: React.FC = () => {
   ];
 
   const [isActive, setIsActive] = useState(false);
+  const [engine, setEngine] = useState<Engine>('palabras');
+  const usingGestures = engine === 'palabras';
 
   const persistSignTranscript = useCallback(async () => {
     const transcript = agentTranscript.trim();
@@ -91,14 +106,33 @@ export const TranslationScreen: React.FC = () => {
         }
       }
       setIsActive(true);
-      agentReset();
-      agentStart();
+      if (usingGestures) {
+        // Cada sena confirmada se guarda sola; aqui solo se limpia el panel.
+        gestureReset();
+        gestureStart();
+      } else {
+        agentReset();
+        agentStart();
+      }
     } else {
-      agentStop();
       setIsActive(false);
-      await persistSignTranscript();
+      if (usingGestures) {
+        gestureStop();
+      } else {
+        agentStop();
+        await persistSignTranscript();
+      }
     }
-  }, [isActive, permission, requestPermission, t, agentStart, agentStop, agentReset, persistSignTranscript]);
+  }, [isActive, usingGestures, permission, requestPermission, t, agentStart, agentStop, agentReset, persistSignTranscript, gestureStart, gestureStop, gestureReset]);
+
+  const switchEngine = useCallback((e: Engine) => {
+    setEngine(e);
+    setIsActive(false);
+    agentStop();
+    agentReset();
+    gestureStop();
+    gestureReset();
+  }, [agentStop, agentReset, gestureStop, gestureReset]);
 
   const handleCopy = useCallback(async (textToCopy: string) => {
     const copied = await copyToClipboard(textToCopy);
@@ -127,12 +161,28 @@ export const TranslationScreen: React.FC = () => {
     error: 'agentError',
   };
 
-  const cameraStatusLabel = isActive
-    ? t(statusLabelKey[agentStatus] as Parameters<typeof t>[0])
-    : t('tapStartCamera');
+  const gestureStatusLabel = (): string => {
+    if (!isActive) return t('tapStartCamera');
+    if (gesture.status === 'loading') return t('gestureLoadingModel');
+    if (gesture.status === 'error') return t('gestureModelError');
+    if (gesture.status === 'holding') return t('gestureHolding');
+    return t('gestureSearching');
+  };
 
-  const signResult = agentTranscript;
-  const confidencePct = agentLastResult ? Math.round(agentLastResult.confidence * 100) : 0;
+  const cameraStatusLabel = usingGestures
+    ? gestureStatusLabel()
+    : isActive
+      ? t(statusLabelKey[agentStatus] as Parameters<typeof t>[0])
+      : t('tapStartCamera');
+
+  // En modo palabras el "resultado" es la lista de senas confirmadas.
+  const gestureTranscript = gesture.confirmed.map(c => c.word).join(' ');
+  const signResult = usingGestures ? gestureTranscript : agentTranscript;
+  const confidencePct = usingGestures
+    ? Math.round(gesture.liveScore * 100)
+    : agentLastResult
+      ? Math.round(agentLastResult.confidence * 100)
+      : 0;
   const cameraGranted = permission?.granted ?? false;
 
   return (
@@ -160,6 +210,51 @@ export const TranslationScreen: React.FC = () => {
                   )}
                 </View>
 
+                <View style={styles.engineToggle}>
+                  {(['palabras', 'abecedario'] as const).map(e => (
+                    <TouchableOpacity
+                      key={e}
+                      onPress={() => switchEngine(e)}
+                      activeOpacity={0.8}
+                      style={[
+                        styles.engineChip,
+                        { borderColor: C.border, backgroundColor: C.surface },
+                        engine === e && { backgroundColor: C.primaryBg, borderColor: C.primary },
+                      ]}
+                    >
+                      <Ionicons
+                        name={e === 'palabras' ? 'chatbox-ellipses-outline' : 'text-outline'}
+                        size={14}
+                        color={engine === e ? C.primary : C.textSecondary}
+                      />
+                      <Text style={[styles.engineChipText, { color: engine === e ? C.primary : C.textSecondary }]}>
+                        {t(e === 'palabras' ? 'engineWords' : 'engineAlphabet')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {usingGestures && !gesture.isSupported && (
+                  <View style={[styles.banner, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
+                    <Ionicons name="warning-outline" size={16} color="#B45309" />
+                    <Text style={[styles.bannerText, { color: '#B45309' }]}>{t('gestureUnsupported')}</Text>
+                  </View>
+                )}
+
+                {usingGestures && gesture.error && (
+                  <View style={[styles.banner, { backgroundColor: '#FEE2E2', borderColor: '#EF4444' }]}>
+                    <Ionicons name="close-circle-outline" size={16} color="#B91C1C" />
+                    <Text style={[styles.bannerText, { color: '#B91C1C' }]}>{t('gestureModelError')}</Text>
+                  </View>
+                )}
+
+                {usingGestures && gesture.saveError && (
+                  <View style={[styles.banner, { backgroundColor: '#FEE2E2', borderColor: '#EF4444' }]}>
+                    <Ionicons name="cloud-offline-outline" size={16} color="#B91C1C" />
+                    <Text style={[styles.bannerText, { color: '#B91C1C' }]}>{gesture.saveError}</Text>
+                  </View>
+                )}
+
                 <View style={[styles.cameraInner, { height: cameraHeight, backgroundColor: C.backgroundGray, borderColor: C.border }]}>
                   {isActive && cameraGranted && (
                     <CameraView ref={cameraRef} style={styles.cameraFill} facing="front" animateShutter={false} />
@@ -170,7 +265,17 @@ export const TranslationScreen: React.FC = () => {
                   <View style={[styles.corner, styles.cornerBL]} />
                   <View style={[styles.corner, styles.cornerBR]} />
 
-                  {isActive && agentPendingLetter && (
+                  {usingGestures && isActive && !!gesture.liveWord && (
+                    <View style={styles.gestureOverlay} pointerEvents="none">
+                      <Text style={styles.gestureWord}>{gesture.liveWord}</Text>
+                      <Text style={styles.gestureScore}>{confidencePct}%</Text>
+                      <View style={styles.gestureProgressTrack}>
+                        <View style={[styles.gestureProgressFill, { width: `${Math.round(gesture.holdProgress * 100)}%` }]} />
+                      </View>
+                    </View>
+                  )}
+
+                  {!usingGestures && isActive && agentPendingLetter && (
                     <View style={styles.pendingBubble}>
                       <Text style={styles.pendingLetterText}>{agentPendingLetter}</Text>
                       <View style={styles.pendingProgressTrack}>
@@ -192,21 +297,35 @@ export const TranslationScreen: React.FC = () => {
                     <View style={styles.cameraStatusBar}>
                       <Ionicons name="ellipse" size={9} color="#10B981" />
                       <Text style={styles.cameraStatusText}>{cameraStatusLabel}</Text>
-                      {agentLastResult && agentLastResult.confidence > 0 && (
+                      {confidencePct > 0 && (
                         <Text style={styles.cameraStatusPct}>· {confidencePct}%</Text>
                       )}
                     </View>
                   )}
                 </View>
 
-                <View style={styles.tipsRow}>
-                  {TIPS.map((tip, i) => (
-                    <View key={i} style={[styles.tipChip, { backgroundColor: C.primaryBg }]}>
-                      <Ionicons name={tip.icon} size={13} color={C.primary} />
-                      <Text style={[styles.tipText, { color: C.primary }]}>{tip.text}</Text>
+                {usingGestures ? (
+                  <View style={styles.vocabBlock}>
+                    <Text style={[styles.vocabTitle, { color: C.textSecondary }]}>{t('gestureVocabulary')}</Text>
+                    <View style={styles.vocabRow}>
+                      {GESTURE_CATEGORIES.map(category => (
+                        <View key={category} style={[styles.vocabChip, { backgroundColor: C.primaryBg }]}>
+                          <Text style={[styles.vocabWord, { color: C.primary }]}>{GESTURE_DICTIONARY[category].word}</Text>
+                          <Text style={[styles.vocabHint, { color: C.textHint }]}>{GESTURE_DICTIONARY[category].hint}</Text>
+                        </View>
+                      ))}
                     </View>
-                  ))}
-                </View>
+                  </View>
+                ) : (
+                  <View style={styles.tipsRow}>
+                    {TIPS.map((tip, i) => (
+                      <View key={i} style={[styles.tipChip, { backgroundColor: C.primaryBg }]}>
+                        <Ionicons name={tip.icon} size={13} color={C.primary} />
+                        <Text style={[styles.tipText, { color: C.primary }]}>{tip.text}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
             </View>
 
@@ -234,11 +353,30 @@ export const TranslationScreen: React.FC = () => {
 
                 <View style={[styles.resultInner, { backgroundColor: C.backgroundGray, borderColor: C.border }]}>
                   {signResult ? (
-                    <Text style={[styles.resultText, { color: C.textPrimary }]}>{signResult}</Text>
+                    <>
+                      <Text style={[styles.resultText, { color: C.textPrimary }]}>{signResult}</Text>
+                      {usingGestures && gesture.confirmed.length > 0 && (
+                        <View style={styles.confirmedList}>
+                          {gesture.confirmed.map(item => (
+                            <View key={item.id} style={[styles.confirmedChip, { backgroundColor: C.inputBg }]}>
+                              <Ionicons
+                                name={item.saved ? 'cloud-done-outline' : 'cloud-upload-outline'}
+                                size={13}
+                                color={item.saved ? '#059669' : C.textHint}
+                              />
+                              <Text style={[styles.confirmedWord, { color: C.textPrimary }]}>{item.word}</Text>
+                              <Text style={[styles.confirmedScore, { color: C.textHint }]}>{Math.round(item.score * 100)}%</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </>
                   ) : (
                     <View style={styles.resultEmpty}>
                       <Ionicons name="scan-outline" size={32} color={C.primaryLighter} />
-                      <Text style={[styles.resultEmptyText, { color: C.textHint }]}>{t('resultPlaceholderSigns')}</Text>
+                      <Text style={[styles.resultEmptyText, { color: C.textHint }]}>
+                        {usingGestures ? t('resultPlaceholderGestures') : t('resultPlaceholderSigns')}
+                      </Text>
                     </View>
                   )}
                 </View>
@@ -251,7 +389,12 @@ export const TranslationScreen: React.FC = () => {
                     <TouchableOpacity style={[styles.iconAction, { borderColor: C.border }]} onPress={() => handleCopy(signResult)}>
                       <Ionicons name="copy-outline" size={18} color={C.primary} />
                     </TouchableOpacity>
-                    {!!agentTranscript && (
+                    {usingGestures && gesture.confirmed.length > 0 && (
+                      <TouchableOpacity style={[styles.iconAction, { borderColor: C.border }]} onPress={gestureReset}>
+                        <Ionicons name="trash-outline" size={17} color={C.textSecondary} />
+                      </TouchableOpacity>
+                    )}
+                    {!usingGestures && !!agentTranscript && (
                       <>
                         <TouchableOpacity style={[styles.iconAction, { borderColor: C.border }]} onPress={agentBackspace}>
                           <Ionicons name="backspace-outline" size={18} color={C.textSecondary} />
@@ -336,6 +479,31 @@ const styles = StyleSheet.create({
   pendingLetterText: { color: '#fff', fontSize: 26, fontWeight: '800', lineHeight: 30 },
   pendingProgressTrack: { width: 44, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.25)', marginTop: 6, overflow: 'hidden' },
   pendingProgressFill: { height: '100%', borderRadius: 2, backgroundColor: '#fff' },
+
+  engineToggle: { flexDirection: 'row', gap: 10, marginBottom: 14 },
+  engineChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 14, borderWidth: 1.5 },
+  engineChipText: { fontSize: 13, fontWeight: '700' },
+
+  banner: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 14, borderWidth: 1, marginBottom: 14 },
+  bannerText: { flex: 1, fontSize: 12.5, fontWeight: '600', lineHeight: 18 },
+
+  gestureOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  gestureWord: { color: '#fff', fontSize: 52, fontWeight: '800', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 },
+  gestureScore: { color: 'rgba(255,255,255,0.9)', fontSize: 18, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
+  gestureProgressTrack: { width: 140, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.3)', overflow: 'hidden', marginTop: 6 },
+  gestureProgressFill: { height: '100%', borderRadius: 3, backgroundColor: '#fff' },
+
+  vocabBlock: { gap: 10, marginTop: 16 },
+  vocabTitle: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  vocabRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  vocabChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, gap: 2 },
+  vocabWord: { fontSize: 13, fontWeight: '800' },
+  vocabHint: { fontSize: 10.5, fontWeight: '500' },
+
+  confirmedList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  confirmedChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+  confirmedWord: { fontSize: 13, fontWeight: '700' },
+  confirmedScore: { fontSize: 11, fontWeight: '600' },
 
   tipsRow: { gap: 10, marginTop: 16 },
   tipChip: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 },

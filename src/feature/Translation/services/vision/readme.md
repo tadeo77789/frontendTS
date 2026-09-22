@@ -1,5 +1,17 @@
 # services/vision — Agente de reconocimiento de señas
 
+## Dos motores
+
+La pantalla de traducción expone un selector con dos motores independientes:
+
+| Motor | Qué reconoce | Archivos | Plataformas |
+|---|---|---|---|
+| **Palabras** (por defecto) | 7 gestos pre-entrenados de MediaPipe → palabra completa | `gestureProvider*.ts` + `gestureDictionary.ts` | Solo web |
+| **Abecedario** | A–Z de LSC letra por letra, con KNN y señas en movimiento | `mediapipeProvider*.ts` + `classifier.ts` y compañía | Web (completo) · nativo (fallback) |
+
+El resto de este documento describe el motor **Abecedario**; el motor
+**Palabras** se documenta al final.
+
 ## Arquitectura
 
 El agente expone un único contrato `SignVisionProvider` (`types.ts`) y elige
@@ -112,3 +124,84 @@ ocurre una sola vez) y consumen el buffer para no re-dispararse.
 
 En mobile el clasificador de movimiento aún no corre (el provider TFJS
 clasifica frames sueltos); queda como mejora futura.
+
+---
+
+# Motor "Palabras" — MediaPipe Gesture Recognizer
+
+Modo por defecto de la pantalla de traducción y objetivo de la demo: el
+modelo **pre-entrenado** de Google, sin entrenamiento propio.
+
+## Piezas
+
+| Archivo | Rol |
+|---|---|
+| `gestureDictionary.ts` | Único punto de configuración del vocabulario: categoría de MediaPipe → palabra en español |
+| `gestureProvider.ts` | Contrato `GestureEngine` + stub para iOS/Android (`isSupported: false`) |
+| `gestureProvider.web.ts` | Implementación real: carga el modelo y corre el bucle de reconocimiento |
+| `hooks/useGestureAgent.ts` | Estabilización, anti-rebote y persistencia de cada seña confirmada |
+
+## Vocabulario
+
+| `categoryName` | Palabra |
+|---|---|
+| `Open_Palm` | Hola |
+| `Thumb_Up` | Bien |
+| `Thumb_Down` | Mal |
+| `Victory` | Paz |
+| `ILoveYou` | Te quiero |
+| `Closed_Fist` | Sí |
+| `Pointing_Up` | Atención |
+| `None` | (se ignora) |
+
+Para cambiar el vocabulario basta editar `gestureDictionary.ts`. Cuando exista
+un modelo propio de LSC, se cambia además `GESTURE_MODEL_URL` en
+`app/config/api.config.ts` y nada más: ni el provider ni la UI se tocan.
+
+## Cómo funciona
+
+1. `gestureProvider.web.ts` importa `@mediapipe/tasks-vision` desde el CDN en
+   runtime (un `import()` literal haría que Metro intentara resolver la URL en
+   build time) y crea el `GestureRecognizer` en `runningMode: 'VIDEO'`.
+
+   > **Sobre la dependencia.** `@mediapipe/tasks-vision` **sí** está en
+   > `package.json`, pero se usa solo con `import type`: aporta los tipos y fija
+   > la versión en el lock, y al borrarse en compilación no entra al bundle
+   > (verificado: el bundle web pesa igual con y sin ella). El código que corre
+   > se baja del CDN, que es lo que evita tener que servir los `.wasm` desde
+   > `node_modules`. **La versión del paquete y la de `MEDIAPIPE_VISION_CDN` en
+   > `app/config/api.config.ts` deben coincidir.**
+2. El bucle es un `requestAnimationFrame` que lee el `<video>` que monta
+   expo-camera y llama `recognizeForVideo`. Se lee el video directo en vez de
+   `takePictureAsync` porque la estabilización necesita decenas de frames por
+   segundo, no una foto cada 1,5 s.
+3. `useGestureAgent` recibe un resultado por frame y **solo confirma** una seña
+   cuando se cumple todo:
+   - `score >= 0.7`
+   - la misma seña se sostiene **10 frames** y **≥ 500 ms**
+   - no es una repetición dentro de los **2 s** de enfriamiento
+4. Al confirmar, hace `POST /api/translations` con
+   `type: 'sena_texto'`, `source: 'mediapipe'`, `inputText` = categoría cruda
+   (`Open_Palm`) y `outputText` = palabra (`Hola`).
+
+Sin ese filtro el bucle generaría cientos de POST por segundo.
+
+## Modelo
+
+Por defecto se sirve desde el CDN de Google (~8 MB), para no versionar el
+binario:
+
+```
+https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task
+```
+
+Para trabajar sin internet, descargarlo a `src/web/models/gesture_recognizer.task`
+y poner `GESTURE_MODEL_URL = '/models/gesture_recognizer.task'`.
+
+## Limitación en móvil
+
+`@mediapipe/tasks-vision` es una librería **web**. Expo Go no trae binding de
+MediaPipe Tasks, así que en iOS/Android `gestureEngine.isSupported` es `false`
+y la pantalla muestra el aviso en vez de fallar. Habilitarlo en nativo exige
+un dev-client con un módulo nativo de MediaPipe Tasks (Android/iOS), que está
+fuera del alcance de esta demo.

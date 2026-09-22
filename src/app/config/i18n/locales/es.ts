@@ -200,6 +200,20 @@ const es = {
   agentConfidence: 'Confianza',
   agentTranscriptLabel: 'Texto reconocido',
   agentClear: 'Limpiar',
+
+  // Modo palabras (MediaPipe Gesture Recognizer)
+  engineWords: 'Palabras',
+  engineAlphabet: 'Abecedario',
+  gestureLoadingModel: 'Cargando modelo de gestos...',
+  gestureSearching: 'Muestra una seña a la cámara',
+  gestureHolding: 'Mantén la seña',
+  gestureModelError: 'No se pudo cargar el modelo de gestos',
+  gestureUnsupported: 'El reconocimiento de gestos solo está disponible en la versión web',
+  gestureSaving: 'Guardando...',
+  gestureSaved: 'Guardado',
+  gestureVocabulary: 'Señas disponibles',
+  gestureConfirmedTitle: 'Señas confirmadas',
+  resultPlaceholderGestures: 'Las señas confirmadas aparecerán aquí',
   agentBackspace: 'Borrar',
   agentSpace: 'Espacio',
 
