@@ -3,14 +3,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, AuthState, LoginPayload, RegisterPayload } from '../../shared/types';
+import { authService, type BackendUser } from '../../feature/auth/services/auth.service';
 
-const SIM_TOKEN = 'sim-token';
-
-interface BackendUser {
-  user_id: number;
-  name: string;
-  email: string;
-}
+const LEGACY_FAKE_TOKENS = ['mock-token-123', 'sim-token'];
 
 const mapBackendUser = (u: BackendUser, extras?: Partial<User>): User => ({
   id_usuario: u.user_id,
@@ -45,7 +40,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           AsyncStorage.getItem('@auth_token'),
           AsyncStorage.getItem('@auth_user'),
         ]);
-        if (token === 'mock-token-123') {
+        // Sesiones guardadas por las versiones simuladas: el backend las
+        // rechaza con 401, asi que se descartan en vez de arrastrarlas.
+        if (token && LEGACY_FAKE_TOKENS.includes(token)) {
           await AsyncStorage.multiRemove(['@auth_token', '@auth_user']);
           setState(prev => ({ ...prev, isLoading: false }));
         } else if (token && userStr) {
@@ -72,22 +69,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = useCallback(async (payload: LoginPayload) => {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    const simulatedUser = mapBackendUser({
-      user_id: 1,
-      name: payload.email.split('@')[0] || 'Usuario',
-      email: payload.email,
-    });
-    await persistSession(simulatedUser, SIM_TOKEN);
+    const { token, user } = await authService.login(payload.email, payload.password);
+    await persistSession(mapBackendUser(user), token);
   }, [persistSession]);
 
   const register = useCallback(async (payload: RegisterPayload) => {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    const simulatedUser = mapBackendUser(
-      { user_id: 1, name: payload.nombre, email: payload.email },
-      { edad: payload.edad, termino_acept: payload.termino_acept },
+    await authService.register(payload.nombre, payload.email, payload.password);
+
+    // El endpoint de registro no devuelve token; se inicia sesion enseguida
+    // para que el usuario quede con un JWT valido sin volver a escribir nada.
+    const { token, user } = await authService.login(payload.email, payload.password);
+    await persistSession(
+      mapBackendUser(user, { edad: payload.edad, termino_acept: payload.termino_acept }),
+      token,
     );
-    await persistSession(simulatedUser, SIM_TOKEN);
   }, [persistSession]);
 
   const logout = useCallback(async () => {

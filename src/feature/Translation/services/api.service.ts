@@ -14,7 +14,7 @@ api.interceptors.request.use(async (config) => {
   try {
     const token = await AsyncStorage.getItem('@auth_token');
 
-    if (token && token !== 'mock-token-123') {
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
   } catch {
