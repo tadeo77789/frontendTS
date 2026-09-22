@@ -28,6 +28,8 @@ export const ENDPOINTS = {
   lexicon: '/lexicon',
   lexiconSearch: '/lexicon/search',
 
+  signTemplates: '/sign-templates',
+
   stats: '/stats',
 
   profile: '/users/profile',

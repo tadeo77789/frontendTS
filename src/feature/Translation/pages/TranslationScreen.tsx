@@ -22,6 +22,7 @@ import { useSignAgent } from '../../../feature/Translation/hooks/useSignAgent';
 import { useGestureAgent } from '../hooks/useGestureAgent';
 import { GESTURE_CATEGORIES, GESTURE_DICTIONARY } from '../services/vision';
 import { translationsService } from '../services/translations.service';
+import { downloadMotionTemplates } from '../services/signTemplates.service';
 import { copyToClipboard } from '../../../shared/utils/clipboard';
 import { showSuccess, showError } from '../../../shared/utils/dialogs';
 import type { SignAgentStatus } from '../../../shared/types';
@@ -151,6 +152,12 @@ export const TranslationScreen: React.FC = () => {
   }, [language]);
 
   useEffect(() => () => { agentStop(); Speech.stop(); }, [agentStop]);
+
+  // Las plantillas de palabras viven en el servidor: se bajan al abrir la
+  // pantalla. Si falla (sin red o sin backend), se sigue con las locales.
+  useEffect(() => {
+    void downloadMotionTemplates('replace').catch(() => undefined);
+  }, []);
 
   const statusLabelKey: Record<SignAgentStatus, string> = {
     idle: 'tapStartCamera',

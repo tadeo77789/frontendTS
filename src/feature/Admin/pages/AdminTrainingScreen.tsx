@@ -28,6 +28,7 @@ import {
   getGestureCounts,
   clearGestureLabel,
 } from '../../../feature/Translation/services/vision';
+import { downloadMotionTemplates, uploadMotionTemplates } from '../../Translation/services/signTemplates.service';
 import { showInfo, showError, showConfirm } from '../../../shared/utils/dialogs';
 import type { AdminStackParams } from '../../../app/routes/AdminStackNavigator';
 
@@ -79,6 +80,7 @@ export const AdminTrainingScreen: React.FC = () => {
   const [gestureWord, setGestureWord] = useState('');
   const [gestureCounts, setGestureCounts] = useState<Record<string, number>>({});
   const [recordingGesture, setRecordingGesture] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   // La caja de la palabra queda al final de la pagina: al abrirse el teclado
   // tapaba el campo y no se veia lo que se escribia.
   const { scrollRef, handleInputFocus } = useScrollToInput(140);
@@ -155,6 +157,32 @@ export const AdminTrainingScreen: React.FC = () => {
     if (!ok) return;
     await clearGestureLabel(label);
     await refreshCounts();
+  }, [t, refreshCounts]);
+
+  // Sincronizacion de plantillas de palabras con el backend.
+  const handleUploadTemplates = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const n = await uploadMotionTemplates();
+      showInfo(n === 0 ? t('syncEmpty') : t('syncUploaded').replace('{n}', String(n)));
+    } catch {
+      showError(t('syncFailed'));
+    } finally {
+      setSyncing(false);
+    }
+  }, [t]);
+
+  const handleDownloadTemplates = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const n = await downloadMotionTemplates('replace');
+      showInfo(n === 0 ? t('syncEmpty') : t('syncDownloaded').replace('{n}', String(n)));
+      await refreshCounts();
+    } catch {
+      showError(t('syncFailed'));
+    } finally {
+      setSyncing(false);
+    }
   }, [t, refreshCounts]);
 
   const handleClearTraining = useCallback(async () => {
@@ -426,6 +454,29 @@ export const AdminTrainingScreen: React.FC = () => {
                 )}
               </View>
 
+              {isWords && (
+                <View style={styles.syncRow}>
+                  <TouchableOpacity
+                    style={[styles.syncBtn, { borderColor: C.border, backgroundColor: C.surface, opacity: syncing ? 0.5 : 1 }]}
+                    onPress={handleUploadTemplates}
+                    activeOpacity={0.85}
+                    disabled={syncing}
+                  >
+                    <Ionicons name="cloud-upload-outline" size={17} color={C.primary} />
+                    <Text style={[styles.syncBtnText, { color: C.primary }]}>{t('syncUpload')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.syncBtn, { borderColor: C.border, backgroundColor: C.surface, opacity: syncing ? 0.5 : 1 }]}
+                    onPress={handleDownloadTemplates}
+                    activeOpacity={0.85}
+                    disabled={syncing}
+                  >
+                    <Ionicons name="cloud-download-outline" size={17} color={C.primary} />
+                    <Text style={[styles.syncBtnText, { color: C.primary }]}>{t('syncDownload')}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {!isWords && (
                 <TouchableOpacity
                   style={[styles.clearBtn, { borderColor: '#F3D3D3', backgroundColor: C.surface, opacity: totalSamples === 0 ? 0.5 : 1 }]}
@@ -517,6 +568,10 @@ const styles = StyleSheet.create({
   gestureChipText: { fontSize: 13, fontWeight: '800' },
   gestureChipTakes: { fontSize: 12, fontWeight: '700' },
   emptyText: { fontSize: 13, fontWeight: '600', lineHeight: 20, marginTop: 14 },
+
+  syncRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  syncBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 12, borderWidth: 1.5 },
+  syncBtnText: { fontSize: 14, fontWeight: '700' },
 
   clearBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, height: 52, borderRadius: 12, borderWidth: 1.5 },
   clearBtnText: { fontSize: 15, fontWeight: '700', color: '#EF4444' },

@@ -215,6 +215,13 @@ const en: typeof es = {
   gestureVocabulary: 'Available signs',
   gestureConfirmedTitle: 'Confirmed signs',
   resultPlaceholderGestures: 'Confirmed signs will appear here',
+  // Plantillas guardadas en el servidor
+  syncUpload: 'Upload to server',
+  syncDownload: 'Download from server',
+  syncUploaded: '{n} templates uploaded',
+  syncDownloaded: '{n} templates downloaded',
+  syncEmpty: 'No templates to sync',
+  syncFailed: 'Could not sync with the server',
   agentBackspace: 'Delete',
   agentSpace: 'Space',
 

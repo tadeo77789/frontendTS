@@ -214,6 +214,13 @@ const es = {
   gestureVocabulary: 'Señas disponibles',
   gestureConfirmedTitle: 'Señas confirmadas',
   resultPlaceholderGestures: 'Las señas confirmadas aparecerán aquí',
+  // Plantillas guardadas en el servidor
+  syncUpload: 'Subir al servidor',
+  syncDownload: 'Descargar del servidor',
+  syncUploaded: '{n} plantillas subidas',
+  syncDownloaded: '{n} plantillas descargadas',
+  syncEmpty: 'No hay plantillas para sincronizar',
+  syncFailed: 'No se pudo sincronizar con el servidor',
   agentBackspace: 'Borrar',
   agentSpace: 'Espacio',
 

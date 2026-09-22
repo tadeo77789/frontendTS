@@ -215,6 +215,13 @@ const pt: typeof es = {
   gestureVocabulary: 'Sinais disponíveis',
   gestureConfirmedTitle: 'Sinais confirmados',
   resultPlaceholderGestures: 'Os sinais confirmados aparecerão aqui',
+  // Plantillas guardadas en el servidor
+  syncUpload: 'Enviar ao servidor',
+  syncDownload: 'Baixar do servidor',
+  syncUploaded: '{n} modelos enviados',
+  syncDownloaded: '{n} modelos baixados',
+  syncEmpty: 'Não há modelos para sincronizar',
+  syncFailed: 'Não foi possível sincronizar com o servidor',
   agentBackspace: 'Apagar',
   agentSpace: 'Espaço',
 
