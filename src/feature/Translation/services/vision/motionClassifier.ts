@@ -153,7 +153,16 @@ const dtwDistance = (a: number[][], b: number[][]): number => {
   return cost[n][m] / ((n + m) / 2);
 };
 
-const MAX_GESTURE_DISTANCE = 1.1;
+/**
+ * Distancia DTW maxima para dar por buena una palabra.
+ *
+ * El 1.1 original servia para plantillas grabadas por la misma persona en la
+ * misma camara. Con plantillas de otras personas (dataset LSC-54) las
+ * distancias de una misma sena van de 1.8 a 4.7, asi que ese liston rechazaba
+ * todo. El 2.5 sale de medir el dataset con este mismo DTW
+ * (backend: npm run ia:measure-lsc54). Se ajustara con la medicion completa.
+ */
+const MAX_GESTURE_DISTANCE = 2.5;
 
 const matchWordGesture = async (samples: MotionSample[]): Promise<MotionResult | null> => {
   const templates = await gestureStore.getAll();
@@ -173,7 +182,11 @@ const matchWordGesture = async (samples: MotionSample[]): Promise<MotionResult |
 
   if (!bestLabel || bestDist > MAX_GESTURE_DISTANCE) return null;
 
-  const confidence = Math.min(0.95, Math.max(0.5, 1 - bestDist * 0.35));
+  // La confianza se mide contra el umbral, no en valor absoluto: una distancia
+  // igual al umbral da exactamente 0.7, que es el minimo que acepta el agente.
+  // Con la formula anterior (1 - d * 0.35) cualquier acierto del dataset
+  // quedaba por debajo de 0.7 y se descartaba igual.
+  const confidence = Math.min(0.95, Math.max(0.5, 1 - 0.3 * (bestDist / MAX_GESTURE_DISTANCE)));
   return { letter: bestLabel, confidence, isWord: true };
 };
 
