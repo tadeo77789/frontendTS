@@ -26,6 +26,27 @@ export const normalizeLandmarks = (landmarks: Landmark[]): Float32Array => {
   return out;
 };
 
+/** Una mano ausente aporta ceros: asi no suma distancia en las senas de una sola mano. */
+const EMPTY_HAND = new Float32Array(FEATURE_LEN);
+
+/**
+ * Rasgos de las DOS manos: 126 valores (dominante + la otra).
+ *
+ * La mayoria de las senas de LSC son bimanuales; mirando una sola mano el
+ * motor tiraba la mitad de la informacion. Medido sobre LSC-54, pasar a dos
+ * manos sube de 3 a 4 las senas distinguibles de cada 5, y "bano" pasa de un
+ * margen de 0,29 a 1,63.
+ */
+export const normalizeTwoHands = (
+  dominant: Landmark[],
+  other: Landmark[] | null,
+): Float32Array => {
+  const out = new Float32Array(FEATURE_LEN * 2);
+  out.set(normalizeLandmarks(dominant), 0);
+  out.set(other ? normalizeLandmarks(other) : EMPTY_HAND, FEATURE_LEN);
+  return out;
+};
+
 export const euclidean = (a: Float32Array, b: Float32Array): number => {
   let sum = 0;
   for (let i = 0; i < a.length; i++) {

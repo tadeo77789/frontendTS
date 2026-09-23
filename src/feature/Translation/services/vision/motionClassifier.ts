@@ -1,6 +1,6 @@
 
 import type { Landmark } from './classifier';
-import { normalizeLandmarks } from './normalize';
+import { normalizeTwoHands } from './normalize';
 import { gestureStore, SEQ_LEN, FRAME_DIM } from './motionTemplateStore';
 
 export interface MotionSample {
@@ -42,7 +42,16 @@ export const setGestureCaptureMode = (active: boolean): void => {
 const dist2D = (a: Landmark, b: Landmark): number =>
   Math.hypot(a.x - b.x, a.y - b.y);
 
-export const pushMotionSample = (landmarks: Landmark[], staticLetter: string): void => {
+/**
+ * `landmarks` es la mano que lleva la sena; `other` la segunda si se ve.
+ * Las medidas de movimiento (muneca, indice, menique) se siguen tomando de la
+ * principal: las heuristicas de RR, Z y J estan calibradas sobre ella.
+ */
+export const pushMotionSample = (
+  landmarks: Landmark[],
+  other: Landmark[] | null,
+  staticLetter: string,
+): void => {
   if (!landmarks || landmarks.length < 21) return;
   const now = Date.now();
   buffer.push({
@@ -52,7 +61,7 @@ export const pushMotionSample = (landmarks: Landmark[], staticLetter: string): v
     wrist: { x: landmarks[0].x, y: landmarks[0].y },
     indexTip: { x: landmarks[8].x, y: landmarks[8].y },
     pinkyTip: { x: landmarks[20].x, y: landmarks[20].y },
-    features: normalizeLandmarks(landmarks),
+    features: normalizeTwoHands(landmarks, other),
   });
   buffer = buffer.filter(s => now - s.t <= WINDOW_MS);
 };
@@ -156,13 +165,13 @@ const dtwDistance = (a: number[][], b: number[][]): number => {
 /**
  * Distancia DTW maxima para dar por buena una palabra.
  *
- * El 1.1 original servia para plantillas grabadas por la misma persona en la
- * misma camara. Con plantillas de otras personas (dataset LSC-54) las
- * distancias de una misma sena van de 1.8 a 4.7, asi que ese liston rechazaba
- * todo. El 2.5 sale de medir el dataset con este mismo DTW
- * (backend: npm run ia:measure-lsc54). Se ajustara con la medicion completa.
+ * Historia del numero: 1.1 servia para plantillas grabadas por la misma
+ * persona en la misma camara; con plantillas de otras personas (LSC-54) todo
+ * quedaba fuera y subio a 2.5. Al pasar a dos manos los rasgos son 126 en vez
+ * de 63, asi que las distancias crecen alrededor de 1,5x y el liston sube en
+ * la misma proporcion. Medido con backend: npm run ia:measure-lsc54.
  */
-const MAX_GESTURE_DISTANCE = 2.5;
+const MAX_GESTURE_DISTANCE = 4.0;
 
 export interface WordMatchDebug {
   label: string;

@@ -19,12 +19,35 @@ const MODEL_URL =
 
 interface MpLandmark { x: number; y: number; z: number }
 
+interface MpCategory { categoryName: string; score: number }
+
+interface MpDetectResult {
+  landmarks: MpLandmark[][];
+  /** Una entrada por mano: "Left" o "Right" segun MediaPipe. */
+  handednesses?: MpCategory[][];
+}
+
 interface MpHandLandmarker {
-  detect(image: HTMLImageElement | HTMLCanvasElement): {
-    landmarks: MpLandmark[][];
-  };
+  detect(image: HTMLImageElement | HTMLCanvasElement): MpDetectResult;
   close(): void;
 }
+
+/**
+ * Separa las manos detectadas en principal y secundaria.
+ *
+ * Tiene que ser siempre el mismo criterio: si una vez manda la izquierda y
+ * otra la derecha, las secuencias quedan espejadas y el DTW las toma por
+ * senas distintas. Se elige la que MediaPipe etiqueta como "Left", que es la
+ * mano que lleva la sena en LSC-54; si no hay etiquetas, la primera.
+ */
+const splitHands = (res: MpDetectResult): { primary: Landmark[]; other: Landmark[] | null } => {
+  const hands = res.landmarks as Landmark[][];
+  if (hands.length === 1) return { primary: hands[0], other: null };
+
+  const leftIdx = res.handednesses?.findIndex(h => h[0]?.categoryName === 'Left') ?? -1;
+  const idx = leftIdx >= 0 ? leftIdx : 0;
+  return { primary: hands[idx], other: hands[idx === 0 ? 1 : 0] ?? null };
+};
 
 interface MpModule {
   FilesetResolver: {
@@ -52,7 +75,8 @@ const getLandmarker = (): Promise<MpHandLandmarker> => {
     const vision = await mp.FilesetResolver.forVisionTasks(WASM_BASE);
     const lm = await mp.HandLandmarker.createFromOptions(vision, {
       baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
-      numHands: 1,
+      // Dos manos: la mayoria de las senas de LSC son bimanuales.
+      numHands: 2,
       runningMode: 'IMAGE',
       minHandDetectionConfidence: 0.5,
       minHandPresenceConfidence: 0.5,
@@ -127,8 +151,8 @@ const sampleMotionFrame = (): void => {
       pushMotionGap();
       return;
     }
-    const hand = res.landmarks[0] as Landmark[];
-    pushMotionSample(hand, classifyLetterLSC(hand).letter);
+    const { primary, other } = splitHands(res);
+    pushMotionSample(primary, other, classifyLetterLSC(primary).letter);
   } catch {
 
   } finally {
@@ -192,7 +216,7 @@ export const mediapipeProvider: SignVisionProvider = {
         };
       }
 
-      const hand = result.landmarks[0] as Landmark[];
+      const hand = splitHands(result).primary;
       const features = normalizeLandmarks(hand);
       const featuresArray = Array.from(features);
 
