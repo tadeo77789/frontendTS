@@ -7,6 +7,10 @@ import {
   clearMotionBuffer,
   setGestureCaptureMode,
 } from './motionClassifier';
+
+// Diagnostico: que plantilla quedo mas cerca en la ultima comparacion.
+export { getLastWordMatch } from './motionClassifier';
+export type { WordMatchDebug } from './motionClassifier';
 import type { SignVisionProvider } from './types';
 
 export const signVisionProvider: SignVisionProvider = mediapipeProvider;

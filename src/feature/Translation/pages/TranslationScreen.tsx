@@ -20,7 +20,8 @@ import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { useSignAgent } from '../../../feature/Translation/hooks/useSignAgent';
 import { useGestureAgent } from '../hooks/useGestureAgent';
-import { GESTURE_CATEGORIES, GESTURE_DICTIONARY } from '../services/vision';
+import { GESTURE_CATEGORIES, GESTURE_DICTIONARY, getGestureCounts, getLastWordMatch } from '../services/vision';
+import type { WordMatchDebug } from '../services/vision';
 import { translationsService } from '../services/translations.service';
 import { downloadMotionTemplates } from '../services/signTemplates.service';
 import { copyToClipboard } from '../../../shared/utils/clipboard';
@@ -76,6 +77,8 @@ export const TranslationScreen: React.FC = () => {
 
   const [isActive, setIsActive] = useState(false);
   const [engine, setEngine] = useState<Engine>('palabras');
+  const [templateCount, setTemplateCount] = useState(0);
+  const [wordMatch, setWordMatch] = useState<WordMatchDebug | null>(null);
   const usingGestures = engine === 'palabras';
 
   const persistSignTranscript = useCallback(async () => {
@@ -156,8 +159,23 @@ export const TranslationScreen: React.FC = () => {
   // Las plantillas de palabras viven en el servidor: se bajan al abrir la
   // pantalla. Si falla (sin red o sin backend), se sigue con las locales.
   useEffect(() => {
-    void downloadMotionTemplates('replace').catch(() => undefined);
+    void downloadMotionTemplates('replace')
+      .catch(() => undefined)
+      .then(() => getGestureCounts())
+      .then(counts => setTemplateCount(Object.values(counts).reduce((a, b) => a + b, 0)))
+      .catch(() => undefined);
   }, []);
+
+  /**
+   * Diagnostico del motor de plantillas: que palabra quedo mas cerca y a que
+   * distancia, aunque se haya rechazado. Sin esto, cuando no reconoce nada no
+   * hay forma de saber si estuvo cerca o lejisimos.
+   */
+  useEffect(() => {
+    if (!isActive || usingGestures || templateCount === 0) return;
+    const id = setInterval(() => setWordMatch(getLastWordMatch()), 400);
+    return () => clearInterval(id);
+  }, [isActive, usingGestures, templateCount]);
 
   const statusLabelKey: Record<SignAgentStatus, string> = {
     idle: 'tapStartCamera',
@@ -307,6 +325,23 @@ export const TranslationScreen: React.FC = () => {
                       {confidencePct > 0 && (
                         <Text style={styles.cameraStatusPct}>· {confidencePct}%</Text>
                       )}
+                    </View>
+                  )}
+
+                  {/* Diagnostico de plantillas: se ve que palabra quedo mas
+                      cerca aunque el motor la rechace por estar lejos. */}
+                  {isActive && !usingGestures && templateCount > 0 && (
+                    <View style={styles.matchBadge}>
+                      <Ionicons
+                        name={wordMatch?.accepted ? 'checkmark-circle' : 'help-circle-outline'}
+                        size={12}
+                        color={wordMatch?.accepted ? '#10B981' : '#FBBF24'}
+                      />
+                      <Text style={styles.matchText}>
+                        {wordMatch
+                          ? `${wordMatch.label} · ${wordMatch.distance.toFixed(2)}${wordMatch.accepted ? '' : ' (lejos)'}`
+                          : `${templateCount} plantillas · sin comparar aún`}
+                      </Text>
                     </View>
                   )}
                 </View>
@@ -472,6 +507,12 @@ const styles = StyleSheet.create({
   },
   cameraStatusText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   cameraStatusPct: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '700' },
+
+  matchBadge: {
+    position: 'absolute', top: 14, left: 14, flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)', paddingVertical: 5, paddingHorizontal: 10, borderRadius: 999,
+  },
+  matchText: { color: '#fff', fontSize: 12, fontWeight: '600' },
 
   corner: { position: 'absolute', width: 26, height: 26, borderColor: '#8B5CF6' },
   cornerTL: { top: 16, left: 16, borderTopWidth: 2, borderLeftWidth: 2, borderTopLeftRadius: 5 },

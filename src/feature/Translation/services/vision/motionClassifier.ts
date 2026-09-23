@@ -164,6 +164,20 @@ const dtwDistance = (a: number[][], b: number[][]): number => {
  */
 const MAX_GESTURE_DISTANCE = 2.5;
 
+export interface WordMatchDebug {
+  label: string;
+  distance: number;
+  accepted: boolean;
+  at: number;
+}
+
+/** Ultima comparacion contra las plantillas, para poder diagnosticar fallos. */
+let lastWordMatch: WordMatchDebug | null = null;
+
+/** Devuelve la ultima comparacion si es reciente (los ultimos `maxAgeMs`). */
+export const getLastWordMatch = (maxAgeMs = 3000): WordMatchDebug | null =>
+  lastWordMatch && Date.now() - lastWordMatch.at <= maxAgeMs ? lastWordMatch : null;
+
 const matchWordGesture = async (samples: MotionSample[]): Promise<MotionResult | null> => {
   const templates = await gestureStore.getAll();
   if (templates.length === 0) return null;
@@ -179,6 +193,12 @@ const matchWordGesture = async (samples: MotionSample[]): Promise<MotionResult |
       bestLabel = tpl.label;
     }
   }
+
+  // Se guarda siempre, aceptada o no: sin esto, cuando el motor no reconoce
+  // nada no hay forma de saber si estuvo cerca o lejisimos.
+  lastWordMatch = bestLabel
+    ? { label: bestLabel, distance: bestDist, accepted: bestDist <= MAX_GESTURE_DISTANCE, at: Date.now() }
+    : null;
 
   if (!bestLabel || bestDist > MAX_GESTURE_DISTANCE) return null;
 
