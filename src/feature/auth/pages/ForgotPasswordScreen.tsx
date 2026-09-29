@@ -95,9 +95,10 @@ export function ForgotPasswordScreen() {
           backgroundColor: P.page,
         },
       ]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={[
           styles.scroll,
           isPhone && styles.scrollPhone,
@@ -282,6 +283,10 @@ export function ForgotPasswordScreen() {
 
 const styles = StyleSheet.create({
   root: {
+    flex: 1,
+  },
+
+  scrollView: {
     flex: 1,
   },
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
@@ -48,8 +47,8 @@ export const VerifyCodeScreen: React.FC = () => {
   };
 
   return (
-    <KeyboardAvoidingView style={[styles.root, { backgroundColor: P.page }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={[styles.scroll, isPhone && styles.scrollPhone]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+    <KeyboardAvoidingView style={[styles.root, { backgroundColor: P.page }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <ScrollView style={styles.scrollView} contentContainerStyle={[styles.scroll, isPhone && styles.scrollPhone]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <AuthStepCard
           P={P}
           step={2}
@@ -97,10 +96,11 @@ export const VerifyCodeScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  scrollView: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24, paddingTop: 88 },
   // En movil el boton de volver va en linea dentro de la tarjeta, asi que ya no
   // hace falta reservar espacio arriba.
-  scrollPhone: { padding: 16, paddingTop: 16, justifyContent: 'flex-start' },
+  scrollPhone: { padding: 16, paddingTop: 16, justifyContent: 'flex-start'},
   otpRow: { flexDirection: 'row', gap: 9, marginBottom: 18 },
   // minWidth: 0 es imprescindible en web: react-native-web no resetea min-width en
   // TextInput (si lo hace en View), asi que el input conserva su ancho intrinseco

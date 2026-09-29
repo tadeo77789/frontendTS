@@ -230,9 +230,15 @@ export const AuthStepCard: React.FC<Props> = ({
             </>
           )}
 
-          <View style={isPhone ? styles.cardCenter : undefined}>
-            {card}
-          </View>
+          {isPhone ? (
+            <View style={styles.cardCenterWrap}>
+              <View style={styles.spacerTop} />
+              {card}
+              <View style={styles.spacerBottom} />
+            </View>
+          ) : (
+            card
+          )}
         </>
       )}
     </View>
@@ -250,9 +256,16 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
 
-  cardCenter: {
-    flexGrow: 1,
-    justifyContent: 'center',
+  cardCenterWrap: {
+    flex: 1,
+  },
+
+  spacerTop: {
+    flex: 1,
+  },
+
+  spacerBottom: {
+    flex: 1.6,
   },
 
   /* Botón normal de las pantallas de auth */
