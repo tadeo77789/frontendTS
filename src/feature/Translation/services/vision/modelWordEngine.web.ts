@@ -96,6 +96,9 @@ let lastPrediction: Prediction | null = null;
 export const getLastPrediction = (maxAgeMs = 2000): Prediction | null =>
   lastPrediction && Date.now() - lastPrediction.at <= maxAgeMs ? lastPrediction : null;
 
+/** Solo se avisa una vez: classify() corre 15 veces por segundo. */
+let mismatchAvisado = false;
+
 let timer: ReturnType<typeof setInterval> | null = null;
 let buffer: Float32Array[] = [];
 let lastVideoTime = -1;
@@ -222,10 +225,25 @@ const classify = async (): Promise<GestureRecognition | null> => {
     salida.dispose();
     perf.inferenceMs = smooth(perf.inferenceMs, performance.now() - inicio);
 
+    // Si el modelo y la lista de palabras no vienen del mismo entrenamiento,
+    // cada salida queda con el nombre de otra sena y la app se equivoca sin
+    // dar ningun sintoma. Se avisa una vez y se calla, que es preferible a
+    // traducir mal con toda confianza.
+    if (probas.length !== glosses.length) {
+      if (!mismatchAvisado) {
+        mismatchAvisado = true;
+        console.error(
+          `El modelo tiene ${probas.length} salidas y glosas.json trae ${glosses.length} palabras. ` +
+            'Los dos archivos de /models/lsc/ tienen que salir de la misma exportacion.',
+        );
+      }
+      return null;
+    }
+
     let mejor = 0;
     for (let i = 1; i < probas.length; i++) if (probas[i] > probas[mejor]) mejor = i;
     const score = probas[mejor];
-    const word = glosses[mejor] ?? `clase ${mejor}`;
+    const word = glosses[mejor];
 
     lastPrediction = { word, score, accepted: score >= MIN_CONFIDENCE, at: Date.now() };
     if (score < MIN_CONFIDENCE) return null;
@@ -265,11 +283,21 @@ export const modelWordEngine: GestureEngine & { vocabulary: () => string[] } = {
   vocabulary: () => glosses,
 };
 
-/** Permite saber si hay modelo servido antes de ofrecer este motor. */
+/**
+ * Permite saber si hay modelo servido antes de ofrecer este motor.
+ *
+ * Se pide glosas.json y no model.json por dos razones. Una, que es el archivo
+ * pequeno (unos cientos de bytes) y hace falta de todos modos. Dos, que un
+ * servidor de SPA responde el index.html con codigo 200 a cualquier ruta que
+ * no existe, asi que "respondio bien" no prueba nada: lo que prueba que el
+ * modelo esta es que el contenido sea de verdad la lista de palabras.
+ */
 export const isModelAvailable = async (): Promise<boolean> => {
   try {
-    const res = await fetch(WORD_MODEL_URL, { method: 'HEAD' });
-    return res.ok;
+    const res = await fetch(WORD_MODEL_URL.replace(/model\.json$/, 'glosas.json'));
+    if (!res.ok) return false;
+    const glosas: unknown = await res.json();
+    return Array.isArray(glosas) && glosas.length > 0;
   } catch {
     return false;
   }
