@@ -20,7 +20,7 @@ import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { useSignAgent } from '../../../feature/Translation/hooks/useSignAgent';
 import { useGestureAgent } from '../hooks/useGestureAgent';
-import { GESTURE_CATEGORIES, GESTURE_DICTIONARY, getGestureCounts, getLastWordMatch } from '../services/vision';
+import { getGestureCounts, getLastWordMatch, wordEnginePerf, wordPrediction, wordVocabulary } from '../services/vision';
 import type { WordMatchDebug } from '../services/vision';
 import { translationsService } from '../services/translations.service';
 import { downloadMotionTemplates } from '../services/signTemplates.service';
@@ -78,6 +78,11 @@ export const TranslationScreen: React.FC = () => {
   const [isActive, setIsActive] = useState(false);
   const [engine, setEngine] = useState<Engine>('palabras');
   const [templateCount, setTemplateCount] = useState(0);
+  // El vocabulario depende del motor que se haya activado: las glosas del
+  // modelo propio, o los 7 gestos de Google si no hay modelo servido.
+  const [vocabulary, setVocabulary] = useState(wordVocabulary());
+  const [perf, setPerf] = useState<{ landmarksMs: number; inferenceMs: number; fps: number } | null>(null);
+  const [dudosa, setDudosa] = useState<{ word: string; score: number } | null>(null);
   const [wordMatch, setWordMatch] = useState<WordMatchDebug | null>(null);
   const usingGestures = engine === 'palabras';
 
@@ -114,6 +119,9 @@ export const TranslationScreen: React.FC = () => {
         // Cada sena confirmada se guarda sola; aqui solo se limpia el panel.
         gestureReset();
         gestureStart();
+        // El motor decide cual usar al arrancar, asi que el vocabulario se
+        // refresca despues, no antes.
+        setTimeout(() => setVocabulary(wordVocabulary()), 1500);
       } else {
         agentReset();
         agentStart();
@@ -176,6 +184,22 @@ export const TranslationScreen: React.FC = () => {
     const id = setInterval(() => setWordMatch(getLastWordMatch()), 400);
     return () => clearInterval(id);
   }, [isActive, usingGestures, templateCount]);
+
+  /**
+   * Rendimiento del motor de palabras. Se vigila porque el formato pide 15
+   * muestras por segundo: si el telefono no las alcanza, el modelo recibe una
+   * sena mas corta de la que aprendio.
+   */
+  useEffect(() => {
+    if (!isActive || !usingGestures) return;
+    const id = setInterval(() => {
+      setPerf(wordEnginePerf());
+      const p = wordPrediction();
+      // Solo interesa la dudosa: la aceptada ya se ve como palabra confirmada.
+      setDudosa(p && !p.accepted ? { word: p.word, score: p.score } : null);
+    }, 500);
+    return () => clearInterval(id);
+  }, [isActive, usingGestures]);
 
   const statusLabelKey: Record<SignAgentStatus, string> = {
     idle: 'tapStartCamera',
@@ -290,6 +314,15 @@ export const TranslationScreen: React.FC = () => {
                   <View style={[styles.corner, styles.cornerBL]} />
                   <View style={[styles.corner, styles.cornerBR]} />
 
+                  {usingGestures && isActive && !gesture.liveWord && dudosa && (
+                    <View style={styles.unsureBadge}>
+                      <Ionicons name="help-circle-outline" size={14} color="#FBBF24" />
+                      <Text style={styles.unsureText}>
+                        {`no seguro · ${dudosa.word} ${Math.round(dudosa.score * 100)}%`}
+                      </Text>
+                    </View>
+                  )}
+
                   {usingGestures && isActive && !!gesture.liveWord && (
                     <View style={styles.gestureOverlay} pointerEvents="none">
                       <Text style={styles.gestureWord}>{gesture.liveWord}</Text>
@@ -328,6 +361,21 @@ export const TranslationScreen: React.FC = () => {
                     </View>
                   )}
 
+                  {/* Rendimiento del modelo: si los fps caen por debajo de
+                      15, la ventana que ve el modelo se acorta. */}
+                  {isActive && usingGestures && perf && perf.fps > 0 && (
+                    <View style={styles.matchBadge}>
+                      <Ionicons
+                        name={perf.fps >= 12 ? 'speedometer-outline' : 'warning-outline'}
+                        size={12}
+                        color={perf.fps >= 12 ? '#10B981' : '#FBBF24'}
+                      />
+                      <Text style={styles.matchText}>
+                        {`${perf.fps.toFixed(0)} fps · puntos ${perf.landmarksMs.toFixed(0)} ms · modelo ${perf.inferenceMs.toFixed(0)} ms`}
+                      </Text>
+                    </View>
+                  )}
+
                   {/* Diagnostico de plantillas: se ve que palabra quedo mas
                       cerca aunque el motor la rechace por estar lejos. */}
                   {isActive && !usingGestures && templateCount > 0 && (
@@ -350,10 +398,12 @@ export const TranslationScreen: React.FC = () => {
                   <View style={styles.vocabBlock}>
                     <Text style={[styles.vocabTitle, { color: C.textSecondary }]}>{t('gestureVocabulary')}</Text>
                     <View style={styles.vocabRow}>
-                      {GESTURE_CATEGORIES.map(category => (
-                        <View key={category} style={[styles.vocabChip, { backgroundColor: C.primaryBg }]}>
-                          <Text style={[styles.vocabWord, { color: C.primary }]}>{GESTURE_DICTIONARY[category].word}</Text>
-                          <Text style={[styles.vocabHint, { color: C.textHint }]}>{GESTURE_DICTIONARY[category].hint}</Text>
+                      {vocabulary.map(item => (
+                        <View key={item.word} style={[styles.vocabChip, { backgroundColor: C.primaryBg }]}>
+                          <Text style={[styles.vocabWord, { color: C.primary }]}>{item.word}</Text>
+                          {!!item.hint && (
+                            <Text style={[styles.vocabHint, { color: C.textHint }]}>{item.hint}</Text>
+                          )}
                         </View>
                       ))}
                     </View>
@@ -513,6 +563,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)', paddingVertical: 5, paddingHorizontal: 10, borderRadius: 999,
   },
   matchText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+
+  unsureBadge: {
+    position: 'absolute', bottom: 14, right: 14, flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)', paddingVertical: 6, paddingHorizontal: 11, borderRadius: 999,
+  },
+  unsureText: { color: '#FBBF24', fontSize: 12, fontWeight: '700' },
 
   corner: { position: 'absolute', width: 26, height: 26, borderColor: '#8B5CF6' },
   cornerTL: { top: 16, left: 16, borderTopWidth: 2, borderLeftWidth: 2, borderTopLeftRadius: 5 },

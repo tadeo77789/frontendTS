@@ -55,5 +55,12 @@ export const MEDIAPIPE_VISION_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tas
 // versionar el binario en el repo. Para trabajar sin internet, descargarlo a
 // `src/web/models/gesture_recognizer.task` y cambiar esta constante por
 // '/models/gesture_recognizer.task'.
+/**
+ * Modelo propio de LSC (TensorFlow.js), entrenado con LSC-54 + LSC50.
+ * Se sirve desde `src/web/models/lsc/` junto a `glosas.json`. Si el archivo no
+ * esta, la pantalla cae al modelo generico de 7 gestos de Google.
+ */
+export const WORD_MODEL_URL = '/models/lsc/model.json';
+
 export const GESTURE_MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task';

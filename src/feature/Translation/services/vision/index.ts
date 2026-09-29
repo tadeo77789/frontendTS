@@ -73,8 +73,9 @@ export { mockProvider } from './mockProvider';
 export { mediapipeProvider } from './mediapipeProvider';
 export type { SignVisionProvider, VisionFrame, SignDetectionResult } from './types';
 
-// Modo "palabras": GestureRecognizer pre-entrenado (7 senas -> palabra).
-export { gestureEngine } from './gestureProvider';
+// Modo "palabras": usa el modelo propio de LSC si esta servido, y si no el
+// GestureRecognizer pre-entrenado de Google (7 senas).
+export { gestureEngine, wordVocabulary, activeEngineName, wordEnginePerf, wordPrediction } from './wordEngine';
 export type { GestureEngine, GestureRecognition } from './gestureProvider';
 export {
   GESTURE_DICTIONARY,
