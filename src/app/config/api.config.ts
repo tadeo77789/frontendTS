@@ -36,28 +36,29 @@ export const API_BASE_URL = __DEV__
 export const API_TIMEOUT = 10_000;
 
 export const ENDPOINTS = {
-
   login: '/auth/login',
   register: '/auth/register',
-  logout: '/auth/logout',
   forgotPassword: '/auth/forgot-password',
   verifyCode: '/auth/verify-code',
   resetPassword: '/auth/reset-password',
+
+  me: '/users/me',
 
   translate: '/translations',
   history: '/translations/history',
   deleteTranslation: (id: number) => `/translations/${id}`,
 
-  lexicon: '/lexicon',
-  lexiconSearch: '/lexicon/search',
+  iamMyAccess: '/iam/me/access',
+  iamRoles: '/iam/roles',
+  iamUserRoles: (userId: number) => `/iam/users/${userId}/roles`,
+  iamUserRole: (userId: number, roleName: string) =>
+    `/iam/users/${userId}/roles/${encodeURIComponent(roleName)}`,
+  iamRole: (roleId: number) => `/iam/roles/${roleId}`,
 
   signTemplates: '/sign-templates',
 
-  stats: '/stats',
-
-  profile: '/users/profile',
-  updateProfile: '/users/profile',
-  deleteAccount: '/users/delete',
+  analyticsEvents: '/analytics/events',
+  analyticsSectionReport: '/analytics/reports/sections',
 };
 
 export const TFJS_MODEL_URL = '';

@@ -1,11 +1,22 @@
-
-
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { User, AuthState, LoginPayload, RegisterPayload } from '../../shared/types';
-import { authService, type BackendUser } from '../../feature/auth/services/auth.service';
+import {
+  api,
+  tokenStorage,
+  userStorage,
+  normalizeApiError,
+  setUnauthorizedHandler,
+  resetUnauthorizedGuard,
+} from '../../shared/services/api.client';
+import { ENDPOINTS } from '../config/api.config';
+import { useTranslation } from '../config/i18n';
+import { showAlert } from '../../shared/utils/dialogs';
 
-const LEGACY_FAKE_TOKENS = ['mock-token-123', 'sim-token'];
+interface BackendUser {
+  user_id: number;
+  name: string;
+  email: string;
+}
 
 const mapBackendUser = (u: BackendUser, extras?: Partial<User>): User => ({
   id_usuario: u.user_id,
@@ -25,71 +36,105 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    token: null,
-    isLoading: true,
-    isAuthenticated: false,
-  });
+const EMPTY_STATE: AuthState = { user: null, token: null, isLoading: false, isAuthenticated: false };
 
-  useEffect(() => {
-    const loadStoredAuth = async () => {
-      try {
-        const [token, userStr] = await Promise.all([
-          AsyncStorage.getItem('@auth_token'),
-          AsyncStorage.getItem('@auth_user'),
-        ]);
-        // Sesiones guardadas por las versiones simuladas: el backend las
-        // rechaza con 401, asi que se descartan en vez de arrastrarlas.
-        if (token && LEGACY_FAKE_TOKENS.includes(token)) {
-          await AsyncStorage.multiRemove(['@auth_token', '@auth_user']);
-          setState(prev => ({ ...prev, isLoading: false }));
-        } else if (token && userStr) {
-          setState({
-            user: JSON.parse(userStr),
-            token,
-            isLoading: false,
-            isAuthenticated: true,
-          });
-        } else {
-          setState(prev => ({ ...prev, isLoading: false }));
-        }
-      } catch {
-        setState(prev => ({ ...prev, isLoading: false }));
-      }
-    };
-    loadStoredAuth();
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { t } = useTranslation();
+  const [state, setState] = useState<AuthState>({ ...EMPTY_STATE, isLoading: true });
+  const tRef = useRef(t);
+  tRef.current = t;
+
+  const clearSession = useCallback(async () => {
+    await Promise.all([tokenStorage.clear(), userStorage.clear()]).catch(() => undefined);
+    setState(EMPTY_STATE);
   }, []);
 
   const persistSession = useCallback(async (user: User, token: string) => {
-    await AsyncStorage.setItem('@auth_token', token);
-    await AsyncStorage.setItem('@auth_user', JSON.stringify(user));
+    await tokenStorage.set(token);
+    await userStorage.set(user);
+    resetUnauthorizedGuard();
     setState({ user, token, isLoading: false, isAuthenticated: true });
   }, []);
 
+  // 401 con token: sesión caducada o inválida -> cerrar sesión local y avisar una vez.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      clearSession().then(() => showAlert({ message: tRef.current('sessionExpired'), icon: 'warning' }));
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [clearSession]);
+
+  // Rehidratación: valida el token guardado con GET /users/me.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await tokenStorage.get();
+        if (!token) {
+          // Restos de la sesión simulada anterior (@auth_user sin token).
+          if (!cancelled) await clearSession();
+          return;
+        }
+        try {
+          const { data } = await api.get(ENDPOINTS.me);
+          const stored = await userStorage.get();
+          let extras: Partial<User> | undefined;
+          try {
+            extras = stored ? (JSON.parse(stored) as Partial<User>) : undefined;
+          } catch {
+            await userStorage.clear().catch(() => undefined);
+          }
+          const user = mapBackendUser(data.data as BackendUser, extras);
+          await userStorage.set(user);
+          if (!cancelled) setState({ user, token, isLoading: false, isAuthenticated: true });
+        } catch (err) {
+          if (cancelled) return;
+          // Solo 401 y 404 de /me (usuario inexistente) invalidan la sesión; red, 5xx y 400 la conservan.
+          const { code, status } = normalizeApiError(err);
+          if (code === 'UNAUTHORIZED' || code === 'NOT_FOUND') return await clearSession();
+          const keep = code === 'NETWORK' || code === 'SERVER' || status === 400;
+          let user: User | null = null;
+          if (keep) {
+            try {
+              const raw = await userStorage.get();
+              user = raw ? (JSON.parse(raw) as User) : null;
+            } catch {
+              user = null;
+            }
+          }
+          if (user) setState({ user, token, isLoading: false, isAuthenticated: true });
+          else await clearSession();
+        }
+      } catch {
+        if (!cancelled) setState(EMPTY_STATE);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [clearSession]);
+
   const login = useCallback(async (payload: LoginPayload) => {
-    const { token, user } = await authService.login(payload.email, payload.password);
-    await persistSession(mapBackendUser(user), token);
+    const { data } = await api.post(ENDPOINTS.login, { email: payload.email, password: payload.password });
+    await persistSession(mapBackendUser(data.data.user as BackendUser), data.data.token as string);
   }, [persistSession]);
 
   const register = useCallback(async (payload: RegisterPayload) => {
-    await authService.register(payload.nombre, payload.email, payload.password);
-
-    // El endpoint de registro no devuelve token; se inicia sesion enseguida
-    // para que el usuario quede con un JWT valido sin volver a escribir nada.
-    const { token, user } = await authService.login(payload.email, payload.password);
-    await persistSession(
-      mapBackendUser(user, { edad: payload.edad, termino_acept: payload.termino_acept }),
-      token,
-    );
+    await api.post(ENDPOINTS.register, { name: payload.nombre, email: payload.email, password: payload.password });
+    // TODO(HU-IAM-002): quitar login automático cuando exista verificación de correo en backend
+    try {
+      const { data } = await api.post(ENDPOINTS.login, { email: payload.email, password: payload.password });
+      await persistSession(
+        mapBackendUser(data.data.user as BackendUser, { edad: payload.edad, termino_acept: payload.termino_acept }),
+        data.data.token as string,
+      );
+    } catch {
+      // La cuenta ya existe: el llamador debe distinguirlo de un fallo de registro.
+      throw Object.assign(new Error('REGISTERED_LOGIN_FAILED'), { code: 'REGISTERED_LOGIN_FAILED' as const });
+    }
   }, [persistSession]);
 
   const logout = useCallback(async () => {
-    await AsyncStorage.removeItem('@auth_token');
-    await AsyncStorage.removeItem('@auth_user');
-    setState({ user: null, token: null, isLoading: false, isAuthenticated: false });
-  }, []);
+    await clearSession();
+  }, [clearSession]);
 
   const value = useMemo<AuthContextType>(
     () => ({ ...state, login, register, logout }),

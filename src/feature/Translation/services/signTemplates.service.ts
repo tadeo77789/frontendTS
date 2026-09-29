@@ -5,7 +5,7 @@
  * cada persona. Con esto se bajan del servidor al abrir la traduccion y se
  * pueden subir las grabadas en la app.
  */
-import { api } from './api.service';
+import { api } from '../../../shared/services/api.client';
 import { ENDPOINTS } from '../../../app/config/api.config';
 import { exportGesturesJson, importGesturesJson } from './vision';
 

@@ -21,7 +21,7 @@ import {
 
 import { useAuth } from '../../../app/providers/AuthContext';
 import { useColors } from '../../../app/providers/ThemeContext';
-import { isValidEmail } from '../../../shared/utils/email';
+import { isValidEmail, normalizeEmail } from '../../../shared/utils/email';
 
 export function ForgotPasswordScreen() {
   const navigation = useNavigation<any>();
@@ -65,16 +65,18 @@ export function ForgotPasswordScreen() {
       return;
     }
 
-    if (!email.trim()) {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail) {
       setEmailError('Ingresa tu correo electrónico.');
       return;
     }
 
-    if (!isValidEmail(email.trim())) {
+    if (!isValidEmail(normalizedEmail)) {
       setEmailError('Ingresa un correo electrónico válido.');
       return;
     }
 
+    setEmail(normalizedEmail);
     setEmailError('');
     setLoading(true);
 

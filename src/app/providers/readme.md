@@ -23,7 +23,7 @@ Provee el hook `useAuth()` con:
 | `register(payload)` | función | Crea una cuenta nueva |
 | `logout()` | función | Cierra sesión y limpia el almacenamiento |
 
-El token se persiste en `AsyncStorage` para mantener la sesión entre reinicios de la app.
+Login y registro usan el backend real (registro seguido de login automático). Al arrancar, si hay token guardado se valida con `GET /users/me`; un 401 limpia la sesión. Un 401 posterior dispara `setUnauthorizedHandler` (logout local + aviso `sessionExpired`). No hay endpoint de logout: es local. El token se guarda en `expo-secure-store` (nativo) o en el almacenamiento del navegador (web), vía `shared/services/api.client.ts`.
 
 ## Detalle de `ThemeContext.tsx`
 
