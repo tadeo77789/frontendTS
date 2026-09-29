@@ -101,6 +101,25 @@ let buffer: Float32Array[] = [];
 let lastVideoTime = -1;
 let busy = false;
 
+/**
+ * Carga el modelo aceptando los dos formatos de TensorFlow.js.
+ *
+ * El conversor produce un "graph model" cuando se parte de un SavedModel, que
+ * es el camino que funciona con Keras 3, y un "layers model" cuando se parte
+ * de un .keras. Se prueba primero el de grafo, que ademas corre mas rapido.
+ */
+const loadModel = async (tf: unknown): Promise<{ predict: (x: unknown) => unknown }> => {
+  const api = tf as {
+    loadGraphModel: (u: string) => Promise<{ predict: (x: unknown) => unknown }>;
+    loadLayersModel: (u: string) => Promise<{ predict: (x: unknown) => unknown }>;
+  };
+  try {
+    return await api.loadGraphModel(WORD_MODEL_URL);
+  } catch {
+    return api.loadLayersModel(WORD_MODEL_URL);
+  }
+};
+
 /** tfjs se carga aparte: pesa y solo hace falta si existe un modelo propio. */
 const loadTf = async () => (await import('@tensorflow/tfjs')).default ?? (await import('@tensorflow/tfjs'));
 
@@ -124,7 +143,7 @@ const init = async (): Promise<void> => {
 
   // El modelo y sus glosas se sirven juntos desde /models/lsc/.
   const [cargado, listaGlosas] = await Promise.all([
-    (tf as { loadLayersModel: (u: string) => Promise<{ predict: (x: unknown) => unknown }> }).loadLayersModel(WORD_MODEL_URL),
+    loadModel(tf),
     fetch(WORD_MODEL_URL.replace(/model\.json$/, 'glosas.json')).then(r => r.json() as Promise<string[]>),
   ]);
   model = cargado;
