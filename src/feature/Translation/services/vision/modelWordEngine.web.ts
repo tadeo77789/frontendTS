@@ -167,6 +167,18 @@ let segment: Float32Array[] = [];
 let idleRun = 0;
 let capturing = false;
 
+/**
+ * Bitacora del motor en la consola del navegador.
+ *
+ * Cada sena que se cierra deja una linea diciendo cuanto duro, que salio y,
+ * si no se mostro, por que. Sin esto, "no sale nada" es indistinguible de
+ * "no detecta el movimiento", "la sena sale muy corta" o "el modelo duda", y
+ * son problemas con arreglos distintos.
+ */
+const traza = (mensaje: string): void => {
+  if (__DEV__) console.log(`[lsc] ${mensaje}`);
+};
+
 /** Cuanto se movio la muneca que mas se movio, entre dos frames. */
 const wristSpeed = (a: Float32Array, b: Float32Array): number => {
   const derecha = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -220,7 +232,12 @@ const feed = (frame: Float32Array): Float32Array[] | null => {
   const sobra = Math.max(0, idleRun - MARGIN_FRAMES);
   const sena = segment.slice(0, segment.length - sobra);
   resetSegment();
-  return sena.length >= MIN_SIGN_FRAMES ? sena : null;
+
+  if (sena.length < MIN_SIGN_FRAMES) {
+    traza(`tramo de ${sena.length} frames descartado: menos de ${MIN_SIGN_FRAMES}`);
+    return null;
+  }
+  return sena;
 };
 
 /** True mientras hay una sena en curso, para avisarlo en pantalla. */
@@ -331,9 +348,14 @@ const sampleFrame = (): Float32Array | null => {
 const classify = async (sena: Float32Array[]): Promise<GestureRecognition | null> => {
   if (!model) return null;
 
+  const duracion = ((sena.length / 15)).toFixed(1);
   let conMano = 0;
   for (const frame of sena) if (frame[126] > 0.5 || frame[127] > 0.5) conMano++;
-  if (conMano < sena.length * MIN_HAND_RATIO) return null;
+  const ratio = conMano / sena.length;
+  if (ratio < MIN_HAND_RATIO) {
+    traza(`sena de ${sena.length} frames (~${duracion}s) descartada: manos visibles solo el ${(ratio * 100).toFixed(0)}%`);
+    return null;
+  }
 
   // Toda la sena a 30 frames, dure lo que dure: es como se entreno.
   const sequence = resampleWindow(sena);
@@ -381,8 +403,18 @@ const classify = async (sena: Float32Array[]): Promise<GestureRecognition | null
     const aceptada = score >= MIN_CONFIDENCE && margen >= MIN_MARGIN;
 
     lastPrediction = { word, score, accepted: aceptada, at: Date.now() };
-    if (!aceptada) return null;
 
+    const motivo = score < MIN_CONFIDENCE
+      ? `confianza ${(score * 100).toFixed(0)}% < ${MIN_CONFIDENCE * 100}%`
+      : margen < MIN_MARGIN
+        ? `le saca solo ${(margen * 100).toFixed(0)} puntos a ${glosses[segunda]}`
+        : 'aceptada';
+    traza(
+      `sena de ${sena.length} frames (~${duracion}s) -> ${word} ${(score * 100).toFixed(0)}% ` +
+        `(2a: ${glosses[segunda]} ${(probas[segunda] * 100).toFixed(0)}%) · ${motivo}`,
+    );
+
+    if (!aceptada) return null;
     return { categoryName: word, word, score };
   } finally {
     (tensor as { dispose: () => void }).dispose();
