@@ -29,6 +29,11 @@ export interface GestureEngine {
    */
   start: (onResult: (result: GestureRecognition | null) => void) => Promise<void>;
   stop: () => void;
+  /**
+   * Descarta lo acumulado y vuelve a empezar, sin apagar la camara.
+   * Opcional: los motores sin memoria entre frames no lo necesitan.
+   */
+  reset?: () => void;
 }
 
 export const gestureEngine: GestureEngine = {

@@ -39,6 +39,18 @@ const MIN_CONFIDENCE = 0.75;
 /** Frames minimos con hombros visibles antes de intentar clasificar. */
 const MIN_FRAMES = 12;
 
+/**
+ * Fraccion de la ventana que debe tener al menos una mano a la vista.
+ *
+ * Sin esto el motor clasifica el vacio. Un frame sin manos igual se guarda
+ * (los hombros se ven, las 126 coordenadas quedan en cero y las banderas de
+ * presencia en 0), y el modelo solo vio clips CON manos durante el
+ * entrenamiento: ante todo ceros no se abstiene, devuelve la clase que mas se
+ * le parezca y con confianza alta. El sintoma era abrir la camara, no hacer
+ * nada, y ver una palabra repitiendose sola.
+ */
+const MIN_HAND_RATIO = 0.6;
+
 interface MpLandmark { x: number; y: number; z: number }
 
 interface MpDetector {
@@ -169,16 +181,18 @@ const findActiveVideo = (): HTMLVideoElement | null =>
     v => v.readyState >= 2 && v.videoWidth > 0 && !v.paused,
   ) ?? null;
 
-const sampleFrame = (): void => {
-  if (busy || !hands || !pose) return;
+/** Devuelve true si este frame aporto datos nuevos a la ventana. */
+const sampleFrame = (): boolean => {
+  if (busy || !hands || !pose) return false;
   const video = findActiveVideo();
-  if (!video) return;
+  if (!video) return false;
 
   // detectForVideo exige marcas de tiempo crecientes: si el frame no avanzo,
   // se omite en vez de reprocesar el mismo instante.
-  if (video.currentTime === lastVideoTime) return;
+  if (video.currentTime === lastVideoTime) return false;
   lastVideoTime = video.currentTime;
 
+  let agregado = false;
   busy = true;
   try {
     const now = performance.now();
@@ -198,12 +212,14 @@ const sampleFrame = (): void => {
     if (features) {
       buffer.push(features);
       if (buffer.length > SEQ_LEN * 2) buffer.shift();
+      agregado = true;
     }
   } catch {
     // Un frame fallido no debe cortar el bucle.
   } finally {
     busy = false;
   }
+  return agregado;
 };
 
 const classify = async (): Promise<GestureRecognition | null> => {
@@ -211,6 +227,14 @@ const classify = async (): Promise<GestureRecognition | null> => {
 
   const sequence = resampleWindow(buffer);
   if (!sequence) return null;
+
+  // Las banderas 126 y 127 dicen si se vio la mano derecha y la izquierda.
+  let conMano = 0;
+  for (const frame of sequence) if (frame[126] > 0.5 || frame[127] > 0.5) conMano++;
+  if (conMano < sequence.length * MIN_HAND_RATIO) {
+    lastPrediction = null;
+    return null;
+  }
 
   const tf = await loadTf();
   const tensor = (tf as { tensor: (d: Float32Array, s: number[]) => unknown }).tensor(
@@ -264,10 +288,23 @@ export const modelWordEngine: GestureEngine & { vocabulary: () => string[] } = {
 
     if (timer == null) {
       timer = setInterval(() => {
-        sampleFrame();
+        // Sin frame nuevo no se vuelve a clasificar: repetir la inferencia
+        // sobre la misma ventana gasta CPU y, sobre todo, reemite la misma
+        // palabra una y otra vez como si fuera una sena sostenida.
+        if (!sampleFrame()) return;
         void classify().then(onResult).catch(() => onResult(null));
       }, SAMPLE_INTERVAL_MS);
     }
+  },
+
+  /**
+   * Vacia la ventana. Lo llama el agente al confirmar una sena: si los frames
+   * de la sena recien confirmada siguen ahi, el modelo los vuelve a leer y la
+   * palabra se queda pegada hasta que salgan solos de la ventana.
+   */
+  reset() {
+    buffer = [];
+    lastPrediction = null;
   },
 
   stop() {

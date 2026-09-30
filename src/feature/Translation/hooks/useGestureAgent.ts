@@ -132,6 +132,10 @@ export const useGestureAgent = (
 
       lastEmittedRef.current = { word: recognition.word, at: now };
       clearCandidate();
+      // La ventana del motor todavia contiene la sena recien confirmada: si no
+      // se vacia, la vuelve a reconocer en cada frame y la palabra se repite
+      // sola hasta que esos frames salgan por antiguedad.
+      gestureEngine.reset?.();
       setConfirmed(prev => [...prev, entry]);
       void persistGesture(entry);
     },

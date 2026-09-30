@@ -52,4 +52,8 @@ export const gestureEngine: GestureEngine = {
   stop() {
     active?.stop();
   },
+
+  reset() {
+    active?.reset?.();
+  },
 };
