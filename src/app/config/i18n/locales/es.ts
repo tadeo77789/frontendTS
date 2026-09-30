@@ -208,6 +208,8 @@ const es = {
   gestureSearching: 'Muestra una seña a la cámara',
   gestureHolding: 'Mantén la seña',
   gestureSigning: 'Señando…',
+  gestureAnalyzing: 'Analizando…',
+  gestureNotRecognized: 'No se pudo reconocer',
   gestureModelError: 'No se pudo cargar el modelo de gestos',
   gestureUnsupported: 'El reconocimiento de gestos solo está disponible en la versión web',
   gestureSaving: 'Guardando...',

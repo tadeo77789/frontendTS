@@ -20,7 +20,7 @@ import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { useSignAgent } from '../../../feature/Translation/hooks/useSignAgent';
 import { useGestureAgent } from '../hooks/useGestureAgent';
-import { getGestureCounts, getLastWordMatch, wordCapturing, wordEnginePerf, wordPrediction, wordVocabulary } from '../services/vision';
+import { getGestureCounts, getLastWordMatch, wordEnginePerf, wordPrediction, wordState, wordVocabulary } from '../services/vision';
 import type { WordMatchDebug } from '../services/vision';
 import { translationsService } from '../services/translations.service';
 import { downloadMotionTemplates } from '../services/signTemplates.service';
@@ -83,8 +83,8 @@ export const TranslationScreen: React.FC = () => {
   const [vocabulary, setVocabulary] = useState(wordVocabulary());
   const [perf, setPerf] = useState<{ landmarksMs: number; inferenceMs: number; fps: number } | null>(null);
   const [dudosa, setDudosa] = useState<{ word: string; score: number } | null>(null);
-  /** Hay una sena en curso: el motor esta grabandola y todavia no responde. */
-  const [senando, setSenando] = useState(false);
+  /** Punto del reconocimiento: quieto, grabando una sena, o clasificandola. */
+  const [estadoSena, setEstadoSena] = useState<'quieto' | 'senando' | 'analizando'>('quieto');
   const [wordMatch, setWordMatch] = useState<WordMatchDebug | null>(null);
   const usingGestures = engine === 'palabras';
 
@@ -196,7 +196,7 @@ export const TranslationScreen: React.FC = () => {
     if (!isActive || !usingGestures) return;
     const id = setInterval(() => {
       setPerf(wordEnginePerf());
-      setSenando(wordCapturing());
+      setEstadoSena(wordState());
       const p = wordPrediction();
       // Solo interesa la dudosa: la aceptada ya se ve como palabra confirmada.
       setDudosa(p && !p.accepted ? { word: p.word, score: p.score } : null);
@@ -221,7 +221,8 @@ export const TranslationScreen: React.FC = () => {
     if (gesture.status === 'error') return t('gestureModelError');
     // El motor del modelo no sostiene senas: las delimita y avisa mientras
     // dura una. El estado 'holding' solo lo produce el motor de 7 gestos.
-    if (senando) return t('gestureSigning');
+    if (estadoSena === 'senando') return t('gestureSigning');
+    if (estadoSena === 'analizando') return t('gestureAnalyzing');
     if (gesture.status === 'holding') return t('gestureHolding');
     return t('gestureSearching');
   };
@@ -326,7 +327,7 @@ export const TranslationScreen: React.FC = () => {
                     <View style={styles.unsureBadge}>
                       <Ionicons name="help-circle-outline" size={14} color="#FBBF24" />
                       <Text style={styles.unsureText}>
-                        {`no seguro · ${dudosa.word} ${Math.round(dudosa.score * 100)}%`}
+                        {`${t('gestureNotRecognized')} · ${dudosa.word} ${Math.round(dudosa.score * 100)}%`}
                       </Text>
                     </View>
                   )}

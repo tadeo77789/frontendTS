@@ -11,7 +11,8 @@
 import { gestureEngine as legacyEngine } from './gestureProvider';
 import type { GestureEngine, GestureRecognition } from './gestureProvider';
 import { GESTURE_CATEGORIES, GESTURE_DICTIONARY } from './gestureDictionary';
-import { enginePerf, getLastPrediction, isCapturing, isModelAvailable, modelWordEngine } from './modelWordEngine.web';
+import { enginePerf, engineState, getLastPrediction, isModelAvailable, modelWordEngine } from './modelWordEngine.web';
+import type { EngineState } from './modelWordEngine.web';
 import type { EnginePerf, Prediction } from './wordEngineTypes';
 
 let active: GestureEngine | null = null;
@@ -40,8 +41,9 @@ export const wordEnginePerf = (): EnginePerf | null =>
 export const wordPrediction = (): Prediction | null =>
   active === modelWordEngine ? getLastPrediction() : null;
 
-/** True mientras el motor esta viendo una sena en curso. */
-export const wordCapturing = (): boolean => active === modelWordEngine && isCapturing();
+/** En que punto del reconocimiento esta el motor, para decirlo en pantalla. */
+export const wordState = (): EngineState =>
+  active === modelWordEngine ? engineState() : 'quieto';
 
 export const gestureEngine: GestureEngine = {
   name: 'palabras',

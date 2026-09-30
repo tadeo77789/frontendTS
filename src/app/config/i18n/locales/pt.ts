@@ -209,6 +209,8 @@ const pt: typeof es = {
   gestureSearching: 'Mostre um sinal para a câmera',
   gestureHolding: 'Mantenha o sinal',
   gestureSigning: 'Sinalizando…',
+  gestureAnalyzing: 'Analisando…',
+  gestureNotRecognized: 'Nao reconhecido',
   gestureModelError: 'Não foi possível carregar o modelo de gestos',
   gestureUnsupported: 'O reconhecimento de gestos só está disponível na versão web',
   gestureSaving: 'Salvando...',

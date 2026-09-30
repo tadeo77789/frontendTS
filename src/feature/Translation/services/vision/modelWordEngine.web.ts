@@ -36,57 +36,61 @@ const HAND_MODEL_URL =
 const POSE_MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
 
-/** Confianza minima para mostrar una palabra; por debajo se calla. */
-const MIN_CONFIDENCE = 0.75;
-
 /**
- * Ventaja minima de la primera palabra sobre la segunda.
+ * Umbrales del reconocedor, en un solo sitio y ajustables en caliente.
  *
- * La capa final reparte 100% entre las 20 palabras y nunca puede decir "esto
- * no es ninguna". Cuando el modelo queda partido entre dos candidatas es que
- * no sabe, aunque la primera pase el 75%. Exigirle distancia a la segunda es
- * lo mas parecido a un "no se" que se puede sacar sin reentrenar.
- */
-const MIN_MARGIN = 0.25;
-
-/**
- * Fraccion de la sena que debe tener al menos una mano a la vista.
+ * Estan aqui y no como constantes sueltas porque ninguno se puede fijar desde
+ * el escritorio: dependen de la camara, la luz y de como sena cada persona.
+ * Se calibran probando, con `lscTune` desde la consola del navegador:
  *
- * Un frame sin manos igual es valido (los hombros se ven, las 126 coordenadas
- * quedan en cero y las banderas de presencia en 0), y el modelo solo vio
- * clips CON manos al entrenar: ante todo ceros no se abstiene, devuelve la
- * clase que mas se le parezca y con confianza alta.
- */
-const MIN_HAND_RATIO = 0.6;
-
-/**
- * Velocidad de muneca, en anchos de hombro por frame, bajo la cual se
- * considera que la persona esta quieta.
+ *   lscTune({ startSpeed: 0.01, minConfidence: 0.5 })
+ *   lscTune()            // muestra los valores actuales
  *
- * Es exactamente el mismo umbral con el que se recortaron los clips del
- * dataset (IDLE_SPEED en features_common.py). Tiene que serlo: si la app
- * recorta las senas por un criterio distinto al del entrenamiento, le muestra
- * al modelo tramos que nunca vio.
+ * Cuando den buen resultado, los valores se traen aqui como nuevos valores
+ * por defecto. Mientras tanto, estos son un punto de partida razonado, no
+ * medido.
  */
-const IDLE_SPEED = 0.02;
+export const tuning = {
+  /**
+   * Velocidad de muneca, en anchos de hombro por frame, que separa quieto de
+   * senando. Arranca en el mismo umbral con el que se recortaron los clips
+   * del dataset (IDLE_SPEED en features_common.py). Si el motor nunca detecta
+   * que empezaste, hay que bajarlo.
+   */
+  startSpeed: 0.02,
+  /** Frames de margen antes y despues del movimiento, como en el recorte. */
+  marginFrames: 2,
+  /**
+   * Frames quietos seguidos que dan una sena por terminada (~0,5 s a 15 fps).
+   * Muy corto parte en dos las senas de varios movimientos, como *buenos
+   * dias*. Muy largo hace esperar de mas antes de responder.
+   */
+  endIdleFrames: 8,
+  /** Menos que esto es un tic o un reacomodo de manos, no una sena. */
+  minFrames: 10,
+  /** Tope de seguridad: el clip mas largo del dataset dura 5,6 s. */
+  maxFrames: 85,
+  /** Confianza minima para mostrar una palabra; por debajo se calla. */
+  minConfidence: 0.75,
+  /**
+   * Ventaja minima de la primera palabra sobre la segunda.
+   *
+   * La capa final reparte 100% entre las 20 palabras y nunca puede decir
+   * "esto no es ninguna". Cuando el modelo queda partido entre dos candidatas
+   * es que no sabe, aunque la primera pase el umbral de confianza.
+   */
+  minMargin: 0.25,
+  /**
+   * Fraccion de la sena que debe tener al menos una mano a la vista.
+   *
+   * Un frame sin manos igual es valido (los hombros se ven, las coordenadas
+   * quedan en cero), y el modelo solo vio clips CON manos al entrenar: ante
+   * todo ceros no se abstiene, elige la clase que mas se le parezca.
+   */
+  minHandRatio: 0.6,
+};
 
-/** Frames de margen antes y despues del movimiento, como en el recorte. */
-const MARGIN_FRAMES = 2;
-
-/**
- * Frames quietos seguidos que dan una sena por terminada (~0,5 s a 15 fps).
- *
- * Es el parametro delicado. Muy corto parte en dos las senas de varios
- * movimientos, como *buenos dias*, que tiene cuatro y frena entre ellos. Muy
- * largo hace esperar de mas antes de responder.
- */
-const END_IDLE_FRAMES = 8;
-
-/** Menos que esto es un tic o un reacomodo de manos, no una sena. */
-const MIN_SIGN_FRAMES = 10;
-
-/** Tope de seguridad: el clip mas largo del dataset dura 5,6 s. */
-const MAX_SIGN_FRAMES = 85;
+export type Tuning = typeof tuning;
 
 interface MpLandmark { x: number; y: number; z: number }
 
@@ -168,6 +172,15 @@ let idleRun = 0;
 let capturing = false;
 
 /**
+ * En que punto del reconocimiento estamos, para poder decirlo en pantalla.
+ * 'analizando' dura lo que tarde la inferencia (unos milisegundos), pero
+ * evita que la app parezca colgada justo al terminar la sena.
+ */
+export type EngineState = 'quieto' | 'senando' | 'analizando';
+let state: EngineState = 'quieto';
+export const engineState = (): EngineState => state;
+
+/**
  * Bitacora del motor en la consola del navegador.
  *
  * Cada sena que se cierra deja una linea diciendo cuanto duro, que salio y,
@@ -192,6 +205,7 @@ const resetSegment = (): void => {
   segment = [];
   idleRun = 0;
   capturing = false;
+  state = 'quieto';
 };
 
 /**
@@ -212,29 +226,31 @@ const feed = (frame: Float32Array): Float32Array[] | null => {
 
   if (!capturing) {
     preRoll.push(frame);
-    if (preRoll.length > MARGIN_FRAMES + 1) preRoll.shift();
-    if (velocidad > IDLE_SPEED) {
+    if (preRoll.length > tuning.marginFrames + 1) preRoll.shift();
+    if (velocidad > tuning.startSpeed) {
       // La sena arranca unos frames antes del primer movimiento detectado,
       // igual que el recorte del dataset.
       capturing = true;
+      state = 'senando';
       segment = [...preRoll];
       idleRun = 0;
+      traza('empieza una sena');
     }
     return null;
   }
 
   segment.push(frame);
-  idleRun = velocidad > IDLE_SPEED ? 0 : idleRun + 1;
+  idleRun = velocidad > tuning.startSpeed ? 0 : idleRun + 1;
 
-  if (idleRun < END_IDLE_FRAMES && segment.length < MAX_SIGN_FRAMES) return null;
+  if (idleRun < tuning.endIdleFrames && segment.length < tuning.maxFrames) return null;
 
   // Se recorta la cola quieta al margen acordado; lo que sobra no es sena.
-  const sobra = Math.max(0, idleRun - MARGIN_FRAMES);
+  const sobra = Math.max(0, idleRun - tuning.marginFrames);
   const sena = segment.slice(0, segment.length - sobra);
   resetSegment();
 
-  if (sena.length < MIN_SIGN_FRAMES) {
-    traza(`tramo de ${sena.length} frames descartado: menos de ${MIN_SIGN_FRAMES}`);
+  if (sena.length < tuning.minFrames) {
+    traza(`tramo de ${sena.length} frames descartado: menos de ${tuning.minFrames}`);
     return null;
   }
   return sena;
@@ -347,12 +363,13 @@ const sampleFrame = (): Float32Array | null => {
 /** Clasifica una sena ya delimitada. Se llama una vez por sena, no por frame. */
 const classify = async (sena: Float32Array[]): Promise<GestureRecognition | null> => {
   if (!model) return null;
+  state = 'analizando';
 
   const duracion = ((sena.length / 15)).toFixed(1);
   let conMano = 0;
   for (const frame of sena) if (frame[126] > 0.5 || frame[127] > 0.5) conMano++;
   const ratio = conMano / sena.length;
-  if (ratio < MIN_HAND_RATIO) {
+  if (ratio < tuning.minHandRatio) {
     traza(`sena de ${sena.length} frames (~${duracion}s) descartada: manos visibles solo el ${(ratio * 100).toFixed(0)}%`);
     return null;
   }
@@ -400,13 +417,13 @@ const classify = async (sena: Float32Array[]): Promise<GestureRecognition | null
     const score = probas[mejor];
     const margen = score - probas[segunda];
     const word = glosses[mejor];
-    const aceptada = score >= MIN_CONFIDENCE && margen >= MIN_MARGIN;
+    const aceptada = score >= tuning.minConfidence && margen >= tuning.minMargin;
 
     lastPrediction = { word, score, accepted: aceptada, at: Date.now() };
 
-    const motivo = score < MIN_CONFIDENCE
-      ? `confianza ${(score * 100).toFixed(0)}% < ${MIN_CONFIDENCE * 100}%`
-      : margen < MIN_MARGIN
+    const motivo = score < tuning.minConfidence
+      ? `confianza ${(score * 100).toFixed(0)}% < ${tuning.minConfidence * 100}%`
+      : margen < tuning.minMargin
         ? `le saca solo ${(margen * 100).toFixed(0)} puntos a ${glosses[segunda]}`
         : 'aceptada';
     traza(
@@ -418,6 +435,7 @@ const classify = async (sena: Float32Array[]): Promise<GestureRecognition | null
     return { categoryName: word, word, score };
   } finally {
     (tensor as { dispose: () => void }).dispose();
+    state = 'quieto';
   }
 };
 
@@ -432,8 +450,17 @@ export const modelWordEngine: GestureEngine & { vocabulary: () => string[] } = {
     await ensureReady();
     resetSegment();
 
-    // Atajo para diagnosticar desde la consola del navegador sin recompilar.
-    (globalThis as unknown as { lscPeek?: () => string }).lscPeek = enginePeek;
+    // Atajos para diagnosticar y calibrar desde la consola del navegador,
+    // sin recompilar ni esperar a nadie.
+    const consola = globalThis as unknown as {
+      lscPeek?: () => string;
+      lscTune?: (cambios?: Partial<Tuning>) => Tuning;
+    };
+    consola.lscPeek = enginePeek;
+    consola.lscTune = (cambios?: Partial<Tuning>) => {
+      if (cambios) Object.assign(tuning, cambios);
+      return { ...tuning };
+    };
 
     if (timer == null) {
       timer = setInterval(() => {
