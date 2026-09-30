@@ -105,6 +105,9 @@ export const enginePerf = (): EnginePerf => ({ ...perf });
  */
 let lastPrediction: Prediction | null = null;
 
+/** Ultimo vector de probabilidades, solo para el diagnostico de abajo. */
+let lastProbas: Float32Array | null = null;
+
 export const getLastPrediction = (maxAgeMs = 2000): Prediction | null =>
   lastPrediction && Date.now() - lastPrediction.at <= maxAgeMs ? lastPrediction : null;
 
@@ -247,6 +250,7 @@ const classify = async (): Promise<GestureRecognition | null> => {
     const salida = model.predict(tensor) as { data: () => Promise<Float32Array>; dispose: () => void };
     const probas = await salida.data();
     salida.dispose();
+    lastProbas = probas;
     perf.inferenceMs = smooth(perf.inferenceMs, performance.now() - inicio);
 
     // Si el modelo y la lista de palabras no vienen del mismo entrenamiento,
@@ -286,6 +290,9 @@ export const modelWordEngine: GestureEngine & { vocabulary: () => string[] } = {
     await ensureReady();
     buffer = [];
 
+    // Atajo para diagnosticar desde la consola del navegador sin recompilar.
+    (globalThis as unknown as { lscPeek?: () => string }).lscPeek = enginePeek;
+
     if (timer == null) {
       timer = setInterval(() => {
         // Sin frame nuevo no se vuelve a clasificar: repetir la inferencia
@@ -318,6 +325,51 @@ export const modelWordEngine: GestureEngine & { vocabulary: () => string[] } = {
   },
 
   vocabulary: () => glosses,
+};
+
+/**
+ * Radiografia de lo que el modelo esta viendo AHORA MISMO.
+ *
+ * Existe para comparar la camara contra el dataset con el que se entreno. Si
+ * las cifras no se parecen, el modelo esta recibiendo algo que nunca vio, y
+ * ante una entrada que no reconoce no se abstiene: se refugia siempre en la
+ * misma palabra.
+ *
+ * Referencia medida sobre las 2306 muestras de LSC-54:
+ *   manos vistas 71%, x muñeca derecha -0.57, x muñeca izquierda +0.51
+ *
+ * Se llama desde la consola del navegador: lscPeek()
+ */
+export const enginePeek = (): string => {
+  if (buffer.length === 0) {
+    return 'ventana vacia: no llegan frames con los hombros a la vista';
+  }
+
+  const promedio = (indice: number, bandera: number): string => {
+    const vistos = buffer.filter(f => f[bandera] > 0.5);
+    if (vistos.length === 0) return 'sin datos';
+    return (vistos.reduce((s, f) => s + f[indice], 0) / vistos.length).toFixed(2);
+  };
+
+  const conMano = buffer.filter(f => f[126] > 0.5 || f[127] > 0.5).length;
+  const lineas = [
+    `frames en ventana: ${buffer.length}`,
+    `con alguna mano:   ${((conMano / buffer.length) * 100).toFixed(0)}%  (dataset: 71%)`,
+    `mano derecha x:    ${promedio(0, 126)}  y: ${promedio(1, 126)}  (dataset x: -0.57)`,
+    `mano izquierda x:  ${promedio(63, 127)}  y: ${promedio(64, 127)}  (dataset x: +0.51)`,
+    `fps: ${perf.fps.toFixed(1)}  puntos: ${perf.landmarksMs.toFixed(0)} ms  modelo: ${perf.inferenceMs.toFixed(0)} ms`,
+  ];
+
+  if (lastProbas) {
+    const orden = Array.from(lastProbas)
+      .map((p, i) => ({ p, palabra: glosses[i] ?? `clase ${i}` }))
+      .sort((a, b) => b.p - a.p)
+      .slice(0, 5)
+      .map(x => `${x.palabra} ${(x.p * 100).toFixed(1)}%`);
+    lineas.push(`ultima prediccion: ${orden.join(' | ')}`);
+  }
+
+  return lineas.join('\n');
 };
 
 /**
