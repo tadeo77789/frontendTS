@@ -11,16 +11,25 @@ export interface SaveTranslationInput {
   source?: 'mediapipe' | 'knn' | 'mock' | 'manual' | 'motion' | 'geometric';
 }
 
+/**
+ * Una traduccion tal como la devuelve el backend.
+ *
+ * En camelCase porque asi la expone la API: el dominio de translations usa
+ * esos nombres y el controlador serializa la entidad sin traducirlos. Antes
+ * este tipo estaba en snake_case, asi que todos los campos llegaban
+ * undefined; TypeScript no lo veia porque la respuesta entra como `any` y se
+ * afirma con `as`. El sintoma era el historial tumbando la app entera.
+ */
 export interface SavedTranslation {
-  translation_id: number;
-  user_id: number | null;
-  input_text: string;
-  output_text: string;
+  translationId: number;
+  userId: number | null;
+  inputText: string;
+  outputText: string;
   type: TipoTraduccion;
   confidence: number | null;
   source: string | null;
-  is_deleted: boolean;
-  created_at: string;
+  isDeleted: boolean;
+  createdAt: string;
 }
 
 export const translationsService = {

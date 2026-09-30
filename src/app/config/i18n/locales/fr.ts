@@ -201,6 +201,27 @@ const fr: typeof es = {
   agentConfidence: 'Confiance',
   agentTranscriptLabel: 'Texte reconnu',
   agentClear: 'Effacer',
+
+  // Modo palabras (MediaPipe Gesture Recognizer)
+  engineWords: 'Mots',
+  engineAlphabet: 'Alphabet',
+  gestureLoadingModel: 'Chargement du modèle de gestes...',
+  gestureSearching: 'Montrez un signe à la caméra',
+  gestureHolding: 'Maintenez le signe',
+  gestureModelError: 'Impossible de charger le modèle de gestes',
+  gestureUnsupported: 'La reconnaissance de gestes est disponible uniquement sur la version web',
+  gestureSaving: 'Enregistrement...',
+  gestureSaved: 'Enregistré',
+  gestureVocabulary: 'Signes disponibles',
+  gestureConfirmedTitle: 'Signes confirmés',
+  resultPlaceholderGestures: 'Les signes confirmés apparaîtront ici',
+  // Plantillas guardadas en el servidor
+  syncUpload: 'Envoyer au serveur',
+  syncDownload: 'Télécharger du serveur',
+  syncUploaded: '{n} modèles envoyés',
+  syncDownloaded: '{n} modèles téléchargés',
+  syncEmpty: 'Aucun modèle à synchroniser',
+  syncFailed: 'Synchronisation avec le serveur impossible',
   agentBackspace: 'Supprimer',
   agentSpace: 'Espace',
 

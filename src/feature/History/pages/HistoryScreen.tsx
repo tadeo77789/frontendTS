@@ -24,15 +24,17 @@ import { showAlert, showConfirm } from '../../../shared/utils/dialogs';
 type HistoryItem = Traduccion & { hora: string };
 
 const mapSavedTranslation = (row: SavedTranslation): HistoryItem => {
-  const date = new Date(row.created_at);
+  const date = new Date(row.createdAt);
   return {
-    id_traduccion: row.translation_id,
-    texto_entrada: row.input_text,
-    texto_traducido: row.output_text,
+    id_traduccion: row.translationId,
+    // Los textos se dejan siempre como cadena: una fila incompleta no puede
+    // tumbar la pantalla, que es lo que pasaba al filtrar con toLowerCase().
+    texto_entrada: row.inputText ?? '',
+    texto_traducido: row.outputText ?? '',
     tipo: row.type,
     fecha_traduccion: date.toLocaleDateString(),
     hora: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    is_deleted: row.is_deleted,
+    is_deleted: row.isDeleted,
   };
 };
 
@@ -57,7 +59,7 @@ export const HistoryScreen: React.FC = () => {
   const [query, setQuery] = useState<string>('');
 
   const filtered = items.filter((p) =>
-    p.texto_entrada.toLowerCase().includes(query.toLowerCase())
+    (p.texto_entrada ?? '').toLowerCase().includes(query.toLowerCase())
   );
 
   useFocusEffect(

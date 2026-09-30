@@ -7,6 +7,10 @@ import {
   clearMotionBuffer,
   setGestureCaptureMode,
 } from './motionClassifier';
+
+// Diagnostico: que plantilla quedo mas cerca en la ultima comparacion.
+export { getLastWordMatch } from './motionClassifier';
+export type { WordMatchDebug } from './motionClassifier';
 import type { SignVisionProvider } from './types';
 
 export const signVisionProvider: SignVisionProvider = mediapipeProvider;
@@ -68,3 +72,15 @@ export const importGesturesJson = (
 export { mockProvider } from './mockProvider';
 export { mediapipeProvider } from './mediapipeProvider';
 export type { SignVisionProvider, VisionFrame, SignDetectionResult } from './types';
+
+// Modo "palabras": usa el modelo propio de LSC si esta servido, y si no el
+// GestureRecognizer pre-entrenado de Google (7 senas).
+export { gestureEngine, wordVocabulary, activeEngineName, wordEnginePerf, wordPrediction } from './wordEngine';
+export type { GestureEngine, GestureRecognition } from './gestureProvider';
+export {
+  GESTURE_DICTIONARY,
+  GESTURE_CATEGORIES,
+  lookupGestureWord,
+  lookupGestureHint,
+} from './gestureDictionary';
+export type { GestureEntry } from './gestureDictionary';

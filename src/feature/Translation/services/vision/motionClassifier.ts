@@ -1,6 +1,6 @@
 
 import type { Landmark } from './classifier';
-import { normalizeLandmarks } from './normalize';
+import { normalizeTwoHands } from './normalize';
 import { gestureStore, SEQ_LEN, FRAME_DIM } from './motionTemplateStore';
 
 export interface MotionSample {
@@ -42,7 +42,16 @@ export const setGestureCaptureMode = (active: boolean): void => {
 const dist2D = (a: Landmark, b: Landmark): number =>
   Math.hypot(a.x - b.x, a.y - b.y);
 
-export const pushMotionSample = (landmarks: Landmark[], staticLetter: string): void => {
+/**
+ * `landmarks` es la mano que lleva la sena; `other` la segunda si se ve.
+ * Las medidas de movimiento (muneca, indice, menique) se siguen tomando de la
+ * principal: las heuristicas de RR, Z y J estan calibradas sobre ella.
+ */
+export const pushMotionSample = (
+  landmarks: Landmark[],
+  other: Landmark[] | null,
+  staticLetter: string,
+): void => {
   if (!landmarks || landmarks.length < 21) return;
   const now = Date.now();
   buffer.push({
@@ -52,7 +61,7 @@ export const pushMotionSample = (landmarks: Landmark[], staticLetter: string): v
     wrist: { x: landmarks[0].x, y: landmarks[0].y },
     indexTip: { x: landmarks[8].x, y: landmarks[8].y },
     pinkyTip: { x: landmarks[20].x, y: landmarks[20].y },
-    features: normalizeLandmarks(landmarks),
+    features: normalizeTwoHands(landmarks, other),
   });
   buffer = buffer.filter(s => now - s.t <= WINDOW_MS);
 };
@@ -153,7 +162,30 @@ const dtwDistance = (a: number[][], b: number[][]): number => {
   return cost[n][m] / ((n + m) / 2);
 };
 
-const MAX_GESTURE_DISTANCE = 1.1;
+/**
+ * Distancia DTW maxima para dar por buena una palabra.
+ *
+ * Historia del numero: 1.1 servia para plantillas grabadas por la misma
+ * persona en la misma camara; con plantillas de otras personas (LSC-54) todo
+ * quedaba fuera y subio a 2.5. Al pasar a dos manos los rasgos son 126 en vez
+ * de 63, asi que las distancias crecen alrededor de 1,5x y el liston sube en
+ * la misma proporcion. Medido con backend: npm run ia:measure-lsc54.
+ */
+const MAX_GESTURE_DISTANCE = 4.0;
+
+export interface WordMatchDebug {
+  label: string;
+  distance: number;
+  accepted: boolean;
+  at: number;
+}
+
+/** Ultima comparacion contra las plantillas, para poder diagnosticar fallos. */
+let lastWordMatch: WordMatchDebug | null = null;
+
+/** Devuelve la ultima comparacion si es reciente (los ultimos `maxAgeMs`). */
+export const getLastWordMatch = (maxAgeMs = 3000): WordMatchDebug | null =>
+  lastWordMatch && Date.now() - lastWordMatch.at <= maxAgeMs ? lastWordMatch : null;
 
 const matchWordGesture = async (samples: MotionSample[]): Promise<MotionResult | null> => {
   const templates = await gestureStore.getAll();
@@ -171,9 +203,19 @@ const matchWordGesture = async (samples: MotionSample[]): Promise<MotionResult |
     }
   }
 
+  // Se guarda siempre, aceptada o no: sin esto, cuando el motor no reconoce
+  // nada no hay forma de saber si estuvo cerca o lejisimos.
+  lastWordMatch = bestLabel
+    ? { label: bestLabel, distance: bestDist, accepted: bestDist <= MAX_GESTURE_DISTANCE, at: Date.now() }
+    : null;
+
   if (!bestLabel || bestDist > MAX_GESTURE_DISTANCE) return null;
 
-  const confidence = Math.min(0.95, Math.max(0.5, 1 - bestDist * 0.35));
+  // La confianza se mide contra el umbral, no en valor absoluto: una distancia
+  // igual al umbral da exactamente 0.7, que es el minimo que acepta el agente.
+  // Con la formula anterior (1 - d * 0.35) cualquier acierto del dataset
+  // quedaba por debajo de 0.7 y se descartaba igual.
+  const confidence = Math.min(0.95, Math.max(0.5, 1 - 0.3 * (bestDist / MAX_GESTURE_DISTANCE)));
   return { letter: bestLabel, confidence, isWord: true };
 };
 

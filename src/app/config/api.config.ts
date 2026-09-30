@@ -28,6 +28,8 @@ export const ENDPOINTS = {
   lexicon: '/lexicon',
   lexiconSearch: '/lexicon/search',
 
+  signTemplates: '/sign-templates',
+
   stats: '/stats',
 
   profile: '/users/profile',
@@ -37,3 +39,28 @@ export const ENDPOINTS = {
 
 export const TFJS_MODEL_URL = '';
 export const TFJS_LABELS_URL = '';
+
+// --- MediaPipe Gesture Recognizer (modo "palabras", solo web) ---
+
+// Runtime de MediaPipe Tasks Vision. Se carga por CDN para no tener que servir
+// los .wasm desde node_modules.
+//
+// OJO: la version DEBE coincidir con la de `@mediapipe/tasks-vision` en
+// package.json. Ese paquete esta instalado solo para aportar los tipos
+// (`import type`), y si las versiones se separan los tipos dejarian de
+// describir el codigo que realmente se ejecuta.
+export const MEDIAPIPE_VISION_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+
+// Modelo pre-entrenado (~8 MB). Se sirve desde el CDN de Google para no
+// versionar el binario en el repo. Para trabajar sin internet, descargarlo a
+// `src/web/models/gesture_recognizer.task` y cambiar esta constante por
+// '/models/gesture_recognizer.task'.
+/**
+ * Modelo propio de LSC (TensorFlow.js), entrenado con LSC-54 + LSC50.
+ * Se sirve desde `src/web/models/lsc/` junto a `glosas.json`. Si el archivo no
+ * esta, la pantalla cae al modelo generico de 7 gestos de Google.
+ */
+export const WORD_MODEL_URL = '/models/lsc/model.json';
+
+export const GESTURE_MODEL_URL =
+  'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task';

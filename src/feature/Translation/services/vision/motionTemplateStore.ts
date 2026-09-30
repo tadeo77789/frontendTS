@@ -1,11 +1,14 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const STORAGE_KEY = '@traduce_senas/gesture_templates_v1';
+// v2: las plantillas pasaron de 63 a 126 valores (dos manos). Las viejas
+// no se pueden comparar con las nuevas, asi que se guardan aparte.
+const STORAGE_KEY = '@traduce_senas/gesture_templates_v2';
 
 export const SEQ_LEN = 16;
 
-export const FRAME_DIM = 63;
+/** 126 = 2 manos x 21 puntos x (x, y, z). */
+export const FRAME_DIM = 126;
 
 export interface GestureTemplate {
 
