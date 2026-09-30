@@ -88,6 +88,24 @@ export const tuning = {
    * todo ceros no se abstiene, elige la clase que mas se le parezca.
    */
   minHandRatio: 0.6,
+  /**
+   * Palabras que el modelo usa como respuesta por defecto y que por tanto no
+   * significan nada cuando salen.
+   *
+   * Un clasificador de 20 salidas con softmax no tiene forma de abstenerse:
+   * ante algo que no reconoce reparte 100% entre sus clases, y una se lleva
+   * casi todo. Medido con scripts/probe-model.js sobre este modelo:
+   *
+   *     todo ceros (sin manos)   por favor 100.0%
+   *     ruido gaussiano          por favor 100.0%
+   *     200 entradas al azar     por favor 198 de 200
+   *
+   * Con 100% de confianza atraviesa cualquier umbral, asi que filtrarla por
+   * confianza es imposible: hay que silenciarla. Se pierde la palabra *por
+   * favor*, que a cambio nunca era informativa. El arreglo de verdad es
+   * reentrenar con una clase "nada"; entonces esta lista queda vacia.
+   */
+  suppressed: ['por favor'] as string[],
 };
 
 export type Tuning = typeof tuning;
@@ -417,11 +435,14 @@ const classify = async (sena: Float32Array[]): Promise<GestureRecognition | null
     const score = probas[mejor];
     const margen = score - probas[segunda];
     const word = glosses[mejor];
-    const aceptada = score >= tuning.minConfidence && margen >= tuning.minMargin;
+    const refugio = tuning.suppressed.includes(word);
+    const aceptada = !refugio && score >= tuning.minConfidence && margen >= tuning.minMargin;
 
     lastPrediction = { word, score, accepted: aceptada, at: Date.now() };
 
-    const motivo = score < tuning.minConfidence
+    const motivo = refugio
+      ? `"${word}" es la respuesta por defecto del modelo: no reconocio nada`
+      : score < tuning.minConfidence
       ? `confianza ${(score * 100).toFixed(0)}% < ${tuning.minConfidence * 100}%`
       : margen < tuning.minMargin
         ? `le saca solo ${(margen * 100).toFixed(0)} puntos a ${glosses[segunda]}`
