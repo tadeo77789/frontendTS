@@ -20,7 +20,7 @@ import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { useSignAgent } from '../../../feature/Translation/hooks/useSignAgent';
 import { useGestureAgent } from '../hooks/useGestureAgent';
-import { getGestureCounts, getLastWordMatch, wordEnginePerf, wordPrediction, wordVocabulary } from '../services/vision';
+import { getGestureCounts, getLastWordMatch, wordCapturing, wordEnginePerf, wordPrediction, wordVocabulary } from '../services/vision';
 import type { WordMatchDebug } from '../services/vision';
 import { translationsService } from '../services/translations.service';
 import { downloadMotionTemplates } from '../services/signTemplates.service';
@@ -83,6 +83,8 @@ export const TranslationScreen: React.FC = () => {
   const [vocabulary, setVocabulary] = useState(wordVocabulary());
   const [perf, setPerf] = useState<{ landmarksMs: number; inferenceMs: number; fps: number } | null>(null);
   const [dudosa, setDudosa] = useState<{ word: string; score: number } | null>(null);
+  /** Hay una sena en curso: el motor esta grabandola y todavia no responde. */
+  const [senando, setSenando] = useState(false);
   const [wordMatch, setWordMatch] = useState<WordMatchDebug | null>(null);
   const usingGestures = engine === 'palabras';
 
@@ -194,10 +196,13 @@ export const TranslationScreen: React.FC = () => {
     if (!isActive || !usingGestures) return;
     const id = setInterval(() => {
       setPerf(wordEnginePerf());
+      setSenando(wordCapturing());
       const p = wordPrediction();
       // Solo interesa la dudosa: la aceptada ya se ve como palabra confirmada.
       setDudosa(p && !p.accepted ? { word: p.word, score: p.score } : null);
-    }, 500);
+      // Cada 200 ms y no cada 500: "senando" es un aviso en vivo y a medio
+      // segundo se siente retrasado respecto a la mano.
+    }, 200);
     return () => clearInterval(id);
   }, [isActive, usingGestures]);
 
@@ -214,6 +219,9 @@ export const TranslationScreen: React.FC = () => {
     if (!isActive) return t('tapStartCamera');
     if (gesture.status === 'loading') return t('gestureLoadingModel');
     if (gesture.status === 'error') return t('gestureModelError');
+    // El motor del modelo no sostiene senas: las delimita y avisa mientras
+    // dura una. El estado 'holding' solo lo produce el motor de 7 gestos.
+    if (senando) return t('gestureSigning');
     if (gesture.status === 'holding') return t('gestureHolding');
     return t('gestureSearching');
   };

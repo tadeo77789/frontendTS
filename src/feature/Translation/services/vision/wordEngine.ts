@@ -13,3 +13,4 @@ export const activeEngineName = (): string => 'no soportado';
 export const wordVocabulary = (): { word: string; hint: string }[] => [];
 export const wordEnginePerf = (): EnginePerf | null => null;
 export const wordPrediction = (): Prediction | null => null;
+export const wordCapturing = (): boolean => false;

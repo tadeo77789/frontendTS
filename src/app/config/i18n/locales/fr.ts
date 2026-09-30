@@ -208,6 +208,7 @@ const fr: typeof es = {
   gestureLoadingModel: 'Chargement du modèle de gestes...',
   gestureSearching: 'Montrez un signe à la caméra',
   gestureHolding: 'Maintenez le signe',
+  gestureSigning: 'Signe en cours…',
   gestureModelError: 'Impossible de charger le modèle de gestes',
   gestureUnsupported: 'La reconnaissance de gestes est disponible uniquement sur la version web',
   gestureSaving: 'Enregistrement...',

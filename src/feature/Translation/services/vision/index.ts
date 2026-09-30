@@ -75,7 +75,7 @@ export type { SignVisionProvider, VisionFrame, SignDetectionResult } from './typ
 
 // Modo "palabras": usa el modelo propio de LSC si esta servido, y si no el
 // GestureRecognizer pre-entrenado de Google (7 senas).
-export { gestureEngine, wordVocabulary, activeEngineName, wordEnginePerf, wordPrediction } from './wordEngine';
+export { gestureEngine, wordVocabulary, activeEngineName, wordEnginePerf, wordPrediction, wordCapturing } from './wordEngine';
 export type { GestureEngine, GestureRecognition } from './gestureProvider';
 export {
   GESTURE_DICTIONARY,

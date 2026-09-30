@@ -208,6 +208,7 @@ const en: typeof es = {
   gestureLoadingModel: 'Loading gesture model...',
   gestureSearching: 'Show a sign to the camera',
   gestureHolding: 'Hold the sign',
+  gestureSigning: 'Signing…',
   gestureModelError: 'Could not load the gesture model',
   gestureUnsupported: 'Gesture recognition is only available on the web version',
   gestureSaving: 'Saving...',

@@ -153,6 +153,17 @@ export const useGestureAgent = (
         return;
       }
 
+      // Un motor que delimita las senas entrega una sola vez cada una, ya
+      // terminada. Pedirle que la repita 10 frames seguidos no confirmaria
+      // nada: no van a llegar mas frames de esa sena.
+      if (gestureEngine.emitsCompleteSigns) {
+        const previa = lastEmittedRef.current;
+        if (previa && previa.word === result.word && now - previa.at < repeatCooldownMs) return;
+        candidateRef.current = result;
+        confirmGesture(result, now);
+        return;
+      }
+
       if (candidateRef.current?.word === result.word) {
         frameCountRef.current += 1;
         candidateRef.current = result;
