@@ -1,9 +1,12 @@
 
 import { useState, useCallback, useMemo } from 'react';
-import { showError } from '../../../shared/utils/dialogs';
+import { AccessibilityInfo } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { showError, showAlert } from '../../../shared/utils/dialogs';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { normalizeApiError } from '../../../shared/services/api.client';
+import { pendingAuthFlow } from '../services/pendingAuthFlow';
 import { checkEmail, isValidEmail, normalizeEmail, type EmailIssue } from '../../../shared/utils/email';
 
 interface LoginErrors {
@@ -14,6 +17,7 @@ interface LoginErrors {
 export function useLoginForm() {
   const { login } = useAuth();
   const { t } = useTranslation();
+  const navigation = useNavigation<any>();
   const [email, setEmailValue] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -60,12 +64,22 @@ export function useLoginForm() {
       await login({ email: normalizeEmail(email), password });
     } catch (error) {
       const { code } = normalizeApiError(error);
-      const msg = code === 'NETWORK' ? t('loginNetworkError') : code === 'SERVER' ? t('serverUnavailable') : t('loginErrorMsg');
+      if (code === 'EMAIL_NOT_VERIFIED') {
+        pendingAuthFlow.set({ mode: 'verify', email: normalizeEmail(email), password });
+        AccessibilityInfo.announceForAccessibility(t('loginConfirmEmail'));
+        void showAlert({ message: t('loginConfirmEmail'), icon: 'info' });
+        navigation.navigate('VerifyCode', { mode: 'verify' });
+        return;
+      }
+      const msg = code === 'NETWORK' ? t('loginNetworkError')
+        : code === 'SERVER' ? t('serverUnavailable')
+        : code === 'ACCOUNT_BLOCKED' ? t('loginAccountBlocked')
+        : t('loginErrorMsg');
       void showError(msg, t('error'));
     } finally {
       setLoading(false);
     }
-  }, [validate, login, email, password, t]);
+  }, [validate, login, email, password, t, navigation]);
 
   return { email, setEmail, handleEmailBlur, emailValid, password, setPassword, loading, errors, handleLogin };
 }

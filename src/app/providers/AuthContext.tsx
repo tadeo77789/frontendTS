@@ -10,6 +10,7 @@ import {
 } from '../../shared/services/api.client';
 import { ENDPOINTS } from '../config/api.config';
 import { useTranslation } from '../config/i18n';
+import { pendingAuthFlow } from '../../feature/auth/services/pendingAuthFlow';
 import { showAlert } from '../../shared/utils/dialogs';
 
 interface BackendUser {
@@ -28,9 +29,14 @@ const mapBackendUser = (u: BackendUser, extras?: Partial<User>): User => ({
   termino_acept: extras?.termino_acept ?? true,
 });
 
+export interface RegisterResult {
+  email: string;
+  verificationEmailSent: boolean;
+}
+
 interface AuthContextType extends AuthState {
   login: (payload: LoginPayload) => Promise<void>;
-  register: (payload: RegisterPayload) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<RegisterResult>;
   logout: () => Promise<void>;
 }
 
@@ -117,22 +123,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await persistSession(mapBackendUser(data.data.user as BackendUser), data.data.token as string);
   }, [persistSession]);
 
-  const register = useCallback(async (payload: RegisterPayload) => {
-    await api.post(ENDPOINTS.register, { name: payload.nombre, email: payload.email, password: payload.password });
-    // TODO(HU-IAM-002): quitar login automático cuando exista verificación de correo en backend
-    try {
-      const { data } = await api.post(ENDPOINTS.login, { email: payload.email, password: payload.password });
-      await persistSession(
-        mapBackendUser(data.data.user as BackendUser, { edad: payload.edad, termino_acept: payload.termino_acept }),
-        data.data.token as string,
-      );
-    } catch {
-      // La cuenta ya existe: el llamador debe distinguirlo de un fallo de registro.
-      throw Object.assign(new Error('REGISTERED_LOGIN_FAILED'), { code: 'REGISTERED_LOGIN_FAILED' as const });
-    }
-  }, [persistSession]);
+  const register = useCallback(async (payload: RegisterPayload): Promise<RegisterResult> => {
+    const { data } = await api.post(ENDPOINTS.register, {
+      name: payload.nombre,
+      email: payload.email,
+      password: payload.password,
+    });
+    return { email: payload.email, verificationEmailSent: data?.data?.verification_email_sent === true };
+  }, []);
 
   const logout = useCallback(async () => {
+    pendingAuthFlow.clear();
     await clearSession();
   }, [clearSession]);
 

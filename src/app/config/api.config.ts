@@ -40,6 +40,8 @@ export const ENDPOINTS = {
   register: '/auth/register',
   forgotPassword: '/auth/forgot-password',
   verifyCode: '/auth/verify-code',
+  verifyEmail: '/auth/verify-email',
+  resendVerification: '/auth/resend-verification',
   resetPassword: '/auth/reset-password',
 
   me: '/users/me',

@@ -88,7 +88,8 @@ api.interceptors.response.use(
 
 export type ApiErrorCode =
   | 'VALIDATION_ERROR' | 'PERMISSION_ERROR' | 'NOT_FOUND' | 'ROLE_IN_USE' | 'LAST_ADMIN'
-  | 'ROLE_REQUIRED' | 'ROLE_PROTECTED' | 'UNAUTHORIZED' | 'NETWORK' | 'SERVER' | 'UNKNOWN';
+  | 'ROLE_REQUIRED' | 'ROLE_PROTECTED' | 'INVALID_CODE' | 'EMAIL_NOT_VERIFIED' | 'ACCOUNT_BLOCKED'
+  | 'INVALID_CREDENTIALS' | 'EMAIL_ALREADY_EXISTS' | 'UNAUTHORIZED' | 'NETWORK' | 'SERVER' | 'UNKNOWN';
 
 export interface NormalizedApiError {
   status?: number;
@@ -97,6 +98,7 @@ export interface NormalizedApiError {
 
 const KNOWN_CODES: ApiErrorCode[] = [
   'VALIDATION_ERROR', 'PERMISSION_ERROR', 'NOT_FOUND', 'ROLE_IN_USE', 'LAST_ADMIN', 'ROLE_REQUIRED', 'ROLE_PROTECTED',
+  'INVALID_CODE', 'EMAIL_NOT_VERIFIED', 'ACCOUNT_BLOCKED', 'INVALID_CREDENTIALS', 'EMAIL_ALREADY_EXISTS',
 ];
 
 /** Reduce un error de axios a {status, code}; nunca incluye cuerpos ni mensajes del servidor. */
@@ -107,6 +109,7 @@ export const normalizeApiError = (err: unknown): NormalizedApiError => {
   if (status === 401) return { status, code: 'UNAUTHORIZED' };
   if (status !== undefined && status >= 500) return { status, code: 'SERVER' };
   const body = e.response.data?.code;
+  if (body === 'INVALID_BODY') return { status, code: 'VALIDATION_ERROR' };
   const known = KNOWN_CODES.find((c) => c === body);
   if (known) return { status, code: known };
   if (status === 400) return { status, code: 'VALIDATION_ERROR' };

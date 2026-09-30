@@ -6,6 +6,7 @@ import { normalizeEmail, checkEmail } from '../../../shared/utils/email';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { normalizeApiError } from '../../../shared/services/api.client';
+import { pendingAuthFlow, RESEND_COOLDOWN_MS } from '../services/pendingAuthFlow';
 import { evaluatePassword } from '../../../shared/utils/passwordStrength';
 
 interface RegisterForm {
@@ -56,21 +57,28 @@ export function useRegisterForm() {
     if (!validate()) return;
     setLoading(true);
     try {
-      await register({
+      const { email, verificationEmailSent } = await register({
         nombre: form.nombre,
         edad: 0,
         email: normalizeEmail(form.correo),
         password: form.password,
         termino_acept: form.terminos,
       });
+      // Correo y contraseña quedan solo en memoria hasta confirmar el código.
+      pendingAuthFlow.set({
+        mode: 'verify',
+        email,
+        password: form.password,
+        resendAvailableAt: Date.now() + RESEND_COOLDOWN_MS,
+      });
+      if (!verificationEmailSent) void showAlert({ message: t('registerCodeNotSent'), icon: 'warning' });
+      navigation.navigate('VerifyCode', { mode: 'verify' });
     } catch (error) {
-      if ((error as { code?: string })?.code === 'REGISTERED_LOGIN_FAILED') {
-        void showAlert({ message: t('registerSuccessLoginFailed'), icon: 'success' });
-        navigation.navigate('Login');
-        return;
-      }
       const { code } = normalizeApiError(error);
-      const msg = code === 'NETWORK' ? t('loginNetworkError') : code === 'SERVER' ? t('serverUnavailable') : t('registerErrorMsg');
+      const msg = code === 'NETWORK' ? t('loginNetworkError')
+        : code === 'SERVER' ? t('serverUnavailable')
+        : code === 'EMAIL_ALREADY_EXISTS' ? t('registerEmailExists')
+        : t('registerErrorMsg');
       void showError(msg, t('error'));
     } finally {
       setLoading(false);
