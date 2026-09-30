@@ -15,8 +15,7 @@ import { WebTopBar } from '../../shared/components/common/WebTopBar';
 import { Colors } from '../../shared/constants/colors';
 import { useColors } from '../providers/ThemeContext';
 import { useTranslation } from '../config/i18n';
-import { useAuth } from '../providers/AuthContext';
-import { isAdmin } from '../../shared/utils/adminAccess';
+import { useAdminMode } from '../providers/AccessContext';
 
 export type MainTabParams = {
   Translation: undefined;
@@ -33,8 +32,7 @@ export const MainTabNavigator: React.FC = () => {
   const insets = useSafeAreaInsets();
   const C = useColors();
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const userIsAdmin = isAdmin(user);
+  const { adminMode, canStats, canAdmin } = useAdminMode();
 
   const isWide = Platform.OS === 'web' && width >= 1024;
   const hideLabels = width < 480;
@@ -89,10 +87,10 @@ export const MainTabNavigator: React.FC = () => {
       } as Record<string, string>)[route.name] || route.name,
     })}
   >
-    {userIsAdmin ? (
+    {adminMode ? (
       <>
-        <Tab.Screen name="Stats"   component={StatsScreen}         />
-        <Tab.Screen name="Admin"   component={AdminStackNavigator} />
+        {canStats && <Tab.Screen name="Stats" component={StatsScreen} />}
+        {canAdmin && <Tab.Screen name="Admin" component={AdminStackNavigator} />}
       </>
     ) : (
       <>

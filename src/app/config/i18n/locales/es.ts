@@ -114,6 +114,7 @@ const es = {
   loginErrorMsg: 'Correo o contraseña incorrectos',
   loginNetworkError: 'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.',
   sessionExpired: 'Tu sesión expiró. Inicia sesión de nuevo.',
+  accessLoadError: "No pudimos cargar tus permisos. Algunas opciones no estarán disponibles.",
   serverUnavailable: 'El servidor no está disponible en este momento. Inténtalo más tarde.',
   registerSuccessLoginFailed: 'Tu cuenta fue creada. Inicia sesión.',
   loginEmailPlaceholder: 'Correo electrónico',

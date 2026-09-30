@@ -115,6 +115,7 @@ const en: typeof es = {
   loginErrorMsg: 'Incorrect email or password',
   loginNetworkError: 'Could not reach the server. Check your connection and try again.',
   sessionExpired: 'Your session has expired. Please sign in again.',
+  accessLoadError: "We couldn't load your permissions. Some options will be unavailable.",
   serverUnavailable: 'The server is unavailable right now. Please try again later.',
   registerSuccessLoginFailed: 'Your account was created. Please sign in.',
   loginEmailPlaceholder: 'Email address',

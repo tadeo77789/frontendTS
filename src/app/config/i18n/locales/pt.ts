@@ -115,6 +115,7 @@ const pt: typeof es = {
   loginErrorMsg: 'E-mail ou senha incorretos',
   loginNetworkError: 'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.',
   sessionExpired: 'Sua sessão expirou. Faça login novamente.',
+  accessLoadError: "Não foi possível carregar suas permissões. Algumas opções ficarão indisponíveis.",
   serverUnavailable: 'O servidor está indisponível no momento. Tente novamente mais tarde.',
   registerSuccessLoginFailed: 'Sua conta foi criada. Faça login.',
   loginEmailPlaceholder: 'Endereço de e-mail',

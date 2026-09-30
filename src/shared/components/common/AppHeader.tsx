@@ -7,8 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { useColors } from '../../../app/providers/ThemeContext';
-import { useAuth } from '../../../app/providers/AuthContext';
-import { isAdmin } from '../../utils/adminAccess';
+import { useAdminMode } from '../../../app/providers/AccessContext';
 import { BorderRadius, Shadows, Spacing } from '../../../shared/constants/theme';
 
 interface AppHeaderProps {
@@ -27,9 +26,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const insets = useSafeAreaInsets();
   const C = useColors();
   const navigation = useNavigation<any>();
-  const { user } = useAuth();
   // La pantalla principal depende del rol: el admin arranca en estadisticas.
-  const homeRoute = isAdmin(user) ? 'Stats' : 'Translation';
+  const { homeRoute } = useAdminMode();
   const goHome = () => navigation.navigate(homeRoute);
   if (Platform.OS === 'web') return null;
 
