@@ -1,8 +1,11 @@
 
 import { useState, useCallback } from 'react';
-import { Alert } from 'react-native';
+import { showError, showAlert } from '../../../shared/utils/dialogs';
+import { useNavigation } from '@react-navigation/native';
+import { normalizeEmail, checkEmail } from '../../../shared/utils/email';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { useTranslation } from '../../../app/config/i18n';
+import { normalizeApiError } from '../../../shared/services/api.client';
 import { evaluatePassword } from '../../../shared/utils/passwordStrength';
 
 interface RegisterForm {
@@ -17,6 +20,7 @@ type RegisterErrors = Partial<Record<keyof RegisterForm, string>>;
 export function useRegisterForm() {
   const { register } = useAuth();
   const { t } = useTranslation();
+  const navigation = useNavigation<any>();
   const [form, setForm] = useState<RegisterForm>({
     nombre: '',
     correo: '',
@@ -33,8 +37,9 @@ export function useRegisterForm() {
   const validate = useCallback((): boolean => {
     const e: RegisterErrors = {};
     if (!form.nombre.trim()) e.nombre = t('registerNameRequired');
-    if (!form.correo) e.correo = t('registerEmailRequired');
-    else if (!/\S+@\S+\.\S+/.test(form.correo)) e.correo = t('registerEmailInvalid');
+    const emailIssue = checkEmail(form.correo);
+    if (emailIssue === 'required') e.correo = t('registerEmailRequired');
+    else if (emailIssue) e.correo = t('registerEmailInvalid');
     if (!form.password) {
       e.password = t('registerPasswordRequired');
     } else {
@@ -54,16 +59,23 @@ export function useRegisterForm() {
       await register({
         nombre: form.nombre,
         edad: 0,
-        email: form.correo,
+        email: normalizeEmail(form.correo),
         password: form.password,
         termino_acept: form.terminos,
       });
-    } catch {
-      Alert.alert(t('error'), t('registerErrorMsg'));
+    } catch (error) {
+      if ((error as { code?: string })?.code === 'REGISTERED_LOGIN_FAILED') {
+        void showAlert({ message: t('registerSuccessLoginFailed'), icon: 'success' });
+        navigation.navigate('Login');
+        return;
+      }
+      const { code } = normalizeApiError(error);
+      const msg = code === 'NETWORK' ? t('loginNetworkError') : code === 'SERVER' ? t('serverUnavailable') : t('registerErrorMsg');
+      void showError(msg, t('error'));
     } finally {
       setLoading(false);
     }
-  }, [validate, register, form, t]);
+  }, [validate, register, form, t, navigation]);
 
   return { form, setField, loading, errors, handleRegister };
 }

@@ -20,11 +20,11 @@ ENDPOINTS     // Objeto con todas las rutas de la API organizadas por módulo
 
 | Módulo | Endpoints |
 |---|---|
-| **Auth** | login, register, logout, forgot-password, verify-code, reset-password |
+| **Auth** | login, register, forgot-password, verify-code, reset-password |
+| **Usuario** | me |
 | **Traducciones** | translate, history, deleteTranslation |
-| **Léxico** | lexicon, lexiconSearch |
-| **Estadísticas** | stats |
-| **Perfil** | profile, updateProfile, deleteAccount |
+| **IAM** | iamMyAccess, iamRoles, iamUserRoles, iamUserRole, iamRole |
+| **Analytics** | analyticsEvents, analyticsSectionReport |
 
 ## Nota de entorno
 

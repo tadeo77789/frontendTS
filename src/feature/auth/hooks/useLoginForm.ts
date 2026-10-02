@@ -1,8 +1,9 @@
 
 import { useState, useCallback, useMemo } from 'react';
-import { Alert } from 'react-native';
+import { showError } from '../../../shared/utils/dialogs';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { useTranslation } from '../../../app/config/i18n';
+import { normalizeApiError } from '../../../shared/services/api.client';
 import { checkEmail, isValidEmail, normalizeEmail, type EmailIssue } from '../../../shared/utils/email';
 
 interface LoginErrors {
@@ -57,10 +58,10 @@ export function useLoginForm() {
     setLoading(true);
     try {
       await login({ email: normalizeEmail(email), password });
-    } catch (error: any) {
-      const hasResponse = !!error?.response;
-      if (__DEV__) console.warn('[login]', error?.response?.status, error?.message);
-      Alert.alert(t('error'), hasResponse ? t('loginErrorMsg') : t('loginNetworkError'));
+    } catch (error) {
+      const { code } = normalizeApiError(error);
+      const msg = code === 'NETWORK' ? t('loginNetworkError') : code === 'SERVER' ? t('serverUnavailable') : t('loginErrorMsg');
+      void showError(msg, t('error'));
     } finally {
       setLoading(false);
     }
