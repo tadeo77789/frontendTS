@@ -7,9 +7,12 @@
  * estuviera haciendo *apoyar* o *ayudar*, que en LSC se hacen asi.
  *
  * Aqui se corren HandLandmarker y PoseLandmarker sobre el <video> de la
- * camara, se arman los mismos 128 valores por frame que uso el entrenamiento
- * (ver featureBuilder.ts) y se clasifica la ventana de 2 s con el modelo de
- * TensorFlow.js.
+ * camara y se arman los mismos 128 valores por frame que uso el entrenamiento
+ * (ver featureBuilder.ts).
+ *
+ * El motor NO clasifica una ventana fija de tiempo. Detecta donde empieza y
+ * donde termina cada sena por el movimiento de las munecas, y clasifica una
+ * sola vez por sena completa. La razon esta abajo, en `feed`.
  */
 
 import type { Landmark } from './classifier';
@@ -33,11 +36,85 @@ const HAND_MODEL_URL =
 const POSE_MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
 
-/** Confianza minima para mostrar una palabra; por debajo se calla. */
-const MIN_CONFIDENCE = 0.75;
+/**
+ * Umbrales del reconocedor, en un solo sitio y ajustables en caliente.
+ *
+ * Estan aqui y no como constantes sueltas porque ninguno se puede fijar desde
+ * el escritorio: dependen de la camara, la luz y de como sena cada persona.
+ * Se calibran probando, con `lscTune` desde la consola del navegador:
+ *
+ *   lscTune({ startSpeed: 0.01, minConfidence: 0.5 })
+ *   lscTune()            // muestra los valores actuales
+ *
+ * Cuando den buen resultado, los valores se traen aqui como nuevos valores
+ * por defecto. Mientras tanto, estos son un punto de partida razonado, no
+ * medido.
+ */
+export const tuning = {
+  /**
+   * Velocidad de muneca, en anchos de hombro por frame, que separa quieto de
+   * senando. Arranca en el mismo umbral con el que se recortaron los clips
+   * del dataset (IDLE_SPEED en features_common.py). Si el motor nunca detecta
+   * que empezaste, hay que bajarlo.
+   */
+  startSpeed: 0.02,
+  /** Frames de margen antes y despues del movimiento, como en el recorte. */
+  marginFrames: 2,
+  /**
+   * Frames quietos seguidos que dan una sena por terminada (~0,5 s a 15 fps).
+   * Muy corto parte en dos las senas de varios movimientos, como *buenos
+   * dias*. Muy largo hace esperar de mas antes de responder.
+   */
+  endIdleFrames: 8,
+  /** Menos que esto es un tic o un reacomodo de manos, no una sena. */
+  minFrames: 10,
+  /** Tope de seguridad: el clip mas largo del dataset dura 5,6 s. */
+  maxFrames: 85,
+  /** Confianza minima para mostrar una palabra; por debajo se calla. */
+  minConfidence: 0.75,
+  /**
+   * Ventaja minima de la primera palabra sobre la segunda.
+   *
+   * La capa final reparte 100% entre las 20 palabras y nunca puede decir
+   * "esto no es ninguna". Cuando el modelo queda partido entre dos candidatas
+   * es que no sabe, aunque la primera pase el umbral de confianza.
+   */
+  minMargin: 0.25,
+  /**
+   * Fraccion de la sena que debe tener al menos una mano a la vista.
+   *
+   * Un frame sin manos igual es valido (los hombros se ven, las coordenadas
+   * quedan en cero), y el modelo solo vio clips CON manos al entrenar: ante
+   * todo ceros no se abstiene, elige la clase que mas se le parezca.
+   */
+  minHandRatio: 0.6,
+  /**
+   * Palabras que el modelo usa como respuesta por defecto y que por tanto no
+   * significan nada cuando salen.
+   *
+   * Un clasificador con softmax no tiene forma de abstenerse: ante algo que
+   * no reconoce reparte el 100% entre sus clases, y una se lleva casi todo.
+   * Medido con scripts/probe-model.js, y da la misma palabra en los dos
+   * modelos entrenados hasta ahora:
+   *
+   *                            modelo de 20      modelo de 54
+   *     todo ceros             por favor 100%    por favor 73%
+   *     ruido gaussiano        por favor 100%    por favor 76%
+   *     200 al azar            por favor 198     por favor 182
+   *
+   * En el de 54 el segundo en la fila es *dies*, y con las manos quietas y
+   * presentes el refugio pasa a ser *maso menos* (81%). Si alguna vez esas
+   * salen por todas partes, es lo mismo con otra palabra.
+   *
+   * Con 100% de confianza atraviesa cualquier umbral, asi que filtrarla por
+   * confianza es imposible: hay que silenciarla. Se pierde la palabra *por
+   * favor*, que a cambio nunca era informativa. El arreglo de verdad es
+   * reentrenar con una clase "nada"; entonces esta lista queda vacia.
+   */
+  suppressed: ['por favor'] as string[],
+};
 
-/** Frames minimos con hombros visibles antes de intentar clasificar. */
-const MIN_FRAMES = 12;
+export type Tuning = typeof tuning;
 
 interface MpLandmark { x: number; y: number; z: number }
 
@@ -93,16 +170,134 @@ export const enginePerf = (): EnginePerf => ({ ...perf });
  */
 let lastPrediction: Prediction | null = null;
 
+/** Ultimo vector de probabilidades, solo para el diagnostico de abajo. */
+let lastProbas: Float32Array | null = null;
+
 export const getLastPrediction = (maxAgeMs = 2000): Prediction | null =>
   lastPrediction && Date.now() - lastPrediction.at <= maxAgeMs ? lastPrediction : null;
 
-/** Solo se avisa una vez: classify() corre 15 veces por segundo. */
+/** Solo se avisa una vez: el bucle corre 15 veces por segundo. */
 let mismatchAvisado = false;
 
 let timer: ReturnType<typeof setInterval> | null = null;
-let buffer: Float32Array[] = [];
 let lastVideoTime = -1;
 let busy = false;
+
+// ------------------------------------------------------------ segmentacion
+
+/** Frame anterior, para medir cuanto se movieron las munecas. */
+let previo: Float32Array | null = null;
+/** Cola corta de frames quietos, para el margen antes del movimiento. */
+let preRoll: Float32Array[] = [];
+/** Frames de la sena en curso. */
+let segment: Float32Array[] = [];
+/** Frames quietos seguidos dentro de la sena en curso. */
+let idleRun = 0;
+let capturing = false;
+
+/**
+ * En que punto del reconocimiento estamos, para poder decirlo en pantalla.
+ * 'analizando' dura lo que tarde la inferencia (unos milisegundos), pero
+ * evita que la app parezca colgada justo al terminar la sena.
+ */
+export type EngineState = 'quieto' | 'senando' | 'analizando';
+let state: EngineState = 'quieto';
+export const engineState = (): EngineState => state;
+
+/**
+ * Bitacora del motor en la consola del navegador.
+ *
+ * Cada sena que se cierra deja una linea diciendo cuanto duro, que salio y,
+ * si no se mostro, por que. Sin esto, "no sale nada" es indistinguible de
+ * "no detecta el movimiento", "la sena sale muy corta" o "el modelo duda", y
+ * son problemas con arreglos distintos.
+ */
+const traza = (mensaje: string): void => {
+  if (__DEV__) console.log(`[lsc] ${mensaje}`);
+};
+
+/** Cuanto se movio la muneca que mas se movio, entre dos frames. */
+const wristSpeed = (a: Float32Array, b: Float32Array): number => {
+  const derecha = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const izquierda = Math.hypot(b[63] - a[63], b[64] - a[64]);
+  return Math.max(derecha, izquierda);
+};
+
+const resetSegment = (): void => {
+  previo = null;
+  preRoll = [];
+  segment = [];
+  idleRun = 0;
+  capturing = false;
+  state = 'quieto';
+};
+
+/**
+ * Acumula frames y devuelve la sena cuando termina; null mientras tanto.
+ *
+ * Antes se clasificaba una ventana fija de 2 s en cada frame, y eso estaba
+ * mal por dos motivos. Uno, que el modelo aprendio senas recortadas al tramo
+ * con movimiento y remuestreadas a 30 frames FUERA CUAL FUERA su duracion:
+ * una sena de 1,5 s y una de 4 s llegan las dos como 30 frames, asi que lo
+ * que aprendio es la forma del movimiento, no su ritmo. Mostrarle 2 segundos
+ * sueltos de una sena de 4 s no es mostrarle la sena. Dos, que al clasificar
+ * sin parar, cada recorte a medio hacer salia como alguna de las 20 palabras,
+ * que es lo que llenaba la pantalla de palabras sueltas mientras se senaba.
+ */
+const feed = (frame: Float32Array): Float32Array[] | null => {
+  const velocidad = previo ? wristSpeed(previo, frame) : 0;
+  previo = frame;
+
+  if (!capturing) {
+    preRoll.push(frame);
+    if (preRoll.length > tuning.marginFrames + 1) preRoll.shift();
+    if (velocidad > tuning.startSpeed) {
+      // La sena arranca unos frames antes del primer movimiento detectado,
+      // igual que el recorte del dataset.
+      capturing = true;
+      state = 'senando';
+      segment = [...preRoll];
+      idleRun = 0;
+      traza('empieza una sena');
+    }
+    return null;
+  }
+
+  segment.push(frame);
+  idleRun = velocidad > tuning.startSpeed ? 0 : idleRun + 1;
+
+  if (idleRun < tuning.endIdleFrames && segment.length < tuning.maxFrames) return null;
+
+  // Se recorta la cola quieta al margen acordado; lo que sobra no es sena.
+  const sobra = Math.max(0, idleRun - tuning.marginFrames);
+  const sena = segment.slice(0, segment.length - sobra);
+  resetSegment();
+
+  if (sena.length < tuning.minFrames) {
+    traza(`tramo de ${sena.length} frames descartado: menos de ${tuning.minFrames}`);
+    return null;
+  }
+  return sena;
+};
+
+/** True mientras hay una sena en curso, para avisarlo en pantalla. */
+export const isCapturing = (): boolean => capturing;
+
+/**
+ * Modo grabacion: en vez de clasificar, entrega la sena para guardarla.
+ *
+ * Lo usa la pantalla de entrenamiento. Pasa por el mismo segmentador y el
+ * mismo remuestreo que la clasificacion, asi que lo que se graba es byte por
+ * byte lo que el modelo vera despues. Si se grabara por otro camino, el
+ * reajuste enseñaria algo que en vivo no ocurre.
+ */
+let sampleSink: ((sena: Float32Array[]) => void) | null = null;
+
+export const setSampleSink = (fn: ((sena: Float32Array[]) => void) | null): void => {
+  sampleSink = fn;
+};
+
+// ------------------------------------------------------------ modelo
 
 /**
  * Carga el modelo aceptando los dos formatos de TensorFlow.js.
@@ -169,14 +364,15 @@ const findActiveVideo = (): HTMLVideoElement | null =>
     v => v.readyState >= 2 && v.videoWidth > 0 && !v.paused,
   ) ?? null;
 
-const sampleFrame = (): void => {
-  if (busy || !hands || !pose) return;
+/** Devuelve los 128 valores de este frame, o null si no hubo frame util. */
+const sampleFrame = (): Float32Array | null => {
+  if (busy || !hands || !pose) return null;
   const video = findActiveVideo();
-  if (!video) return;
+  if (!video) return null;
 
   // detectForVideo exige marcas de tiempo crecientes: si el frame no avanzo,
   // se omite en vez de reprocesar el mismo instante.
-  if (video.currentTime === lastVideoTime) return;
+  if (video.currentTime === lastVideoTime) return null;
   lastVideoTime = video.currentTime;
 
   busy = true;
@@ -189,27 +385,35 @@ const sampleFrame = (): void => {
     lastSampleAt = now;
     perf.frames++;
 
-    const features = buildFrameFeatures({
+    // Sin hombros no hay marco de referencia: ese frame no sirve.
+    return buildFrameFeatures({
       hands: (handRes.landmarks ?? []) as Landmark[][],
       pose: (poseRes.landmarks?.[0] ?? null) as Landmark[] | null,
     });
-
-    // Sin hombros no hay marco de referencia: ese frame no sirve.
-    if (features) {
-      buffer.push(features);
-      if (buffer.length > SEQ_LEN * 2) buffer.shift();
-    }
   } catch {
     // Un frame fallido no debe cortar el bucle.
+    return null;
   } finally {
     busy = false;
   }
 };
 
-const classify = async (): Promise<GestureRecognition | null> => {
-  if (!model || buffer.length < MIN_FRAMES) return null;
+/** Clasifica una sena ya delimitada. Se llama una vez por sena, no por frame. */
+const classify = async (sena: Float32Array[]): Promise<GestureRecognition | null> => {
+  if (!model) return null;
+  state = 'analizando';
 
-  const sequence = resampleWindow(buffer);
+  const duracion = ((sena.length / 15)).toFixed(1);
+  let conMano = 0;
+  for (const frame of sena) if (frame[126] > 0.5 || frame[127] > 0.5) conMano++;
+  const ratio = conMano / sena.length;
+  if (ratio < tuning.minHandRatio) {
+    traza(`sena de ${sena.length} frames (~${duracion}s) descartada: manos visibles solo el ${(ratio * 100).toFixed(0)}%`);
+    return null;
+  }
+
+  // Toda la sena a 30 frames, dure lo que dure: es como se entreno.
+  const sequence = resampleWindow(sena);
   if (!sequence) return null;
 
   const tf = await loadTf();
@@ -223,6 +427,7 @@ const classify = async (): Promise<GestureRecognition | null> => {
     const salida = model.predict(tensor) as { data: () => Promise<Float32Array>; dispose: () => void };
     const probas = await salida.data();
     salida.dispose();
+    lastProbas = probas;
     perf.inferenceMs = smooth(perf.inferenceMs, performance.now() - inicio);
 
     // Si el modelo y la lista de palabras no vienen del mismo entrenamiento,
@@ -242,30 +447,80 @@ const classify = async (): Promise<GestureRecognition | null> => {
 
     let mejor = 0;
     for (let i = 1; i < probas.length; i++) if (probas[i] > probas[mejor]) mejor = i;
+    let segunda = mejor === 0 ? 1 : 0;
+    for (let i = 0; i < probas.length; i++) {
+      if (i !== mejor && probas[i] > probas[segunda]) segunda = i;
+    }
+
     const score = probas[mejor];
+    const margen = score - probas[segunda];
     const word = glosses[mejor];
+    const refugio = tuning.suppressed.includes(word);
+    const aceptada = !refugio && score >= tuning.minConfidence && margen >= tuning.minMargin;
 
-    lastPrediction = { word, score, accepted: score >= MIN_CONFIDENCE, at: Date.now() };
-    if (score < MIN_CONFIDENCE) return null;
+    lastPrediction = { word, score, accepted: aceptada, at: Date.now() };
 
+    const motivo = refugio
+      ? `"${word}" es la respuesta por defecto del modelo: no reconocio nada`
+      : score < tuning.minConfidence
+      ? `confianza ${(score * 100).toFixed(0)}% < ${tuning.minConfidence * 100}%`
+      : margen < tuning.minMargin
+        ? `le saca solo ${(margen * 100).toFixed(0)} puntos a ${glosses[segunda]}`
+        : 'aceptada';
+    traza(
+      `sena de ${sena.length} frames (~${duracion}s) -> ${word} ${(score * 100).toFixed(0)}% ` +
+        `(2a: ${glosses[segunda]} ${(probas[segunda] * 100).toFixed(0)}%) · ${motivo}`,
+    );
+
+    if (!aceptada) return null;
     return { categoryName: word, word, score };
   } finally {
     (tensor as { dispose: () => void }).dispose();
+    state = 'quieto';
   }
 };
 
 export const modelWordEngine: GestureEngine & { vocabulary: () => string[] } = {
   name: 'modelo-lsc',
   isSupported: true,
+  // Cada resultado ya es una sena completa: el agente no tiene que verla
+  // repetida varios frames para darla por buena.
+  emitsCompleteSigns: true,
 
   async start(onResult: (result: GestureRecognition | null) => void) {
     await ensureReady();
-    buffer = [];
+    resetSegment();
+
+    // Atajos para diagnosticar y calibrar desde la consola del navegador,
+    // sin recompilar ni esperar a nadie.
+    const consola = globalThis as unknown as {
+      lscPeek?: () => string;
+      lscTune?: (cambios?: Partial<Tuning>) => Tuning;
+    };
+    consola.lscPeek = enginePeek;
+    consola.lscTune = (cambios?: Partial<Tuning>) => {
+      if (cambios) Object.assign(tuning, cambios);
+      return { ...tuning };
+    };
 
     if (timer == null) {
       timer = setInterval(() => {
-        sampleFrame();
-        void classify().then(onResult).catch(() => onResult(null));
+        const frame = sampleFrame();
+        if (!frame) return;
+
+        const sena = feed(frame);
+        if (!sena) return;
+
+        if (sampleSink) {
+          // Se guarda ya remuestreada a 30 frames: es la forma exacta que
+          // consume el modelo, y asi el reajuste no depende de repetir el
+          // remuestreo igual en otro sitio.
+          const sequence = resampleWindow(sena);
+          if (sequence) sampleSink(sequence);
+          return;
+        }
+
+        void classify(sena).then(onResult).catch(() => onResult(null));
       }, SAMPLE_INTERVAL_MS);
     }
   },
@@ -275,12 +530,64 @@ export const modelWordEngine: GestureEngine & { vocabulary: () => string[] } = {
       clearInterval(timer);
       timer = null;
     }
-    buffer = [];
+    resetSegment();
     lastVideoTime = -1;
     lastSampleAt = 0;
   },
 
+  /** Descarta la sena en curso sin apagar la camara. */
+  reset() {
+    resetSegment();
+    lastPrediction = null;
+  },
+
   vocabulary: () => glosses,
+};
+
+/**
+ * Radiografia de lo que el motor esta viendo AHORA MISMO.
+ *
+ * Existe para comparar la camara contra el dataset con el que se entreno. Si
+ * las cifras no se parecen, el modelo esta recibiendo algo que nunca vio, y
+ * ante una entrada que no reconoce no se abstiene: se refugia siempre en la
+ * misma palabra.
+ *
+ * Referencia medida sobre las 2306 muestras de LSC-54:
+ *   manos vistas 71%, x muneca derecha -0.57, x muneca izquierda +0.51
+ *
+ * Se llama desde la consola del navegador: lscPeek()
+ */
+export const enginePeek = (): string => {
+  const frames = segment.length ? segment : preRoll;
+  if (frames.length === 0) {
+    return 'sin frames: la camara no entrega imagenes con los hombros a la vista';
+  }
+
+  const promedio = (indice: number, bandera: number): string => {
+    const vistos = frames.filter(f => f[bandera] > 0.5);
+    if (vistos.length === 0) return 'sin datos';
+    return (vistos.reduce((s, f) => s + f[indice], 0) / vistos.length).toFixed(2);
+  };
+
+  const conMano = frames.filter(f => f[126] > 0.5 || f[127] > 0.5).length;
+  const lineas = [
+    `senando ahora:     ${capturing ? `si, ${segment.length} frames` : 'no'}`,
+    `con alguna mano:   ${((conMano / frames.length) * 100).toFixed(0)}%  (dataset: 71%)`,
+    `mano derecha x:    ${promedio(0, 126)}  y: ${promedio(1, 126)}  (dataset x: -0.57)`,
+    `mano izquierda x:  ${promedio(63, 127)}  y: ${promedio(64, 127)}  (dataset x: +0.51)`,
+    `fps: ${perf.fps.toFixed(1)}  puntos: ${perf.landmarksMs.toFixed(0)} ms  modelo: ${perf.inferenceMs.toFixed(0)} ms`,
+  ];
+
+  if (lastProbas) {
+    const orden = Array.from(lastProbas)
+      .map((p, i) => ({ p, palabra: glosses[i] ?? `clase ${i}` }))
+      .sort((a, b) => b.p - a.p)
+      .slice(0, 5)
+      .map(x => `${x.palabra} ${(x.p * 100).toFixed(1)}%`);
+    lineas.push(`ultima sena clasificada: ${orden.join(' | ')}`);
+  }
+
+  return lineas.join('\n');
 };
 
 /**

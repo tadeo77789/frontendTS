@@ -132,6 +132,10 @@ export const useGestureAgent = (
 
       lastEmittedRef.current = { word: recognition.word, at: now };
       clearCandidate();
+      // La ventana del motor todavia contiene la sena recien confirmada: si no
+      // se vacia, la vuelve a reconocer en cada frame y la palabra se repite
+      // sola hasta que esos frames salgan por antiguedad.
+      gestureEngine.reset?.();
       setConfirmed(prev => [...prev, entry]);
       void persistGesture(entry);
     },
@@ -146,6 +150,17 @@ export const useGestureAgent = (
 
       if (!result || result.score < minScore) {
         clearCandidate();
+        return;
+      }
+
+      // Un motor que delimita las senas entrega una sola vez cada una, ya
+      // terminada. Pedirle que la repita 10 frames seguidos no confirmaria
+      // nada: no van a llegar mas frames de esa sena.
+      if (gestureEngine.emitsCompleteSigns) {
+        const previa = lastEmittedRef.current;
+        if (previa && previa.word === result.word && now - previa.at < repeatCooldownMs) return;
+        candidateRef.current = result;
+        confirmGesture(result, now);
         return;
       }
 

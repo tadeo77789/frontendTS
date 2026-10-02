@@ -75,7 +75,7 @@ export type { SignVisionProvider, VisionFrame, SignDetectionResult } from './typ
 
 // Modo "palabras": usa el modelo propio de LSC si esta servido, y si no el
 // GestureRecognizer pre-entrenado de Google (7 senas).
-export { gestureEngine, wordVocabulary, activeEngineName, wordEnginePerf, wordPrediction } from './wordEngine';
+export { gestureEngine, wordVocabulary, activeEngineName, wordEnginePerf, wordPrediction, wordState, setSampleSink } from './wordEngine';
 export type { GestureEngine, GestureRecognition } from './gestureProvider';
 export {
   GESTURE_DICTIONARY,
@@ -84,3 +84,12 @@ export {
   lookupGestureHint,
 } from './gestureDictionary';
 export type { GestureEntry } from './gestureDictionary';
+
+// Muestras propias para reajustar el modelo (pantalla de entrenamiento).
+export {
+  guardarMuestra,
+  contarPorGlosa,
+  borrarGlosa as borrarMuestrasDe,
+  borrarTodo as borrarTodasLasMuestras,
+  descargar as descargarMuestras,
+} from './sampleStore';

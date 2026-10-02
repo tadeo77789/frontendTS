@@ -29,6 +29,17 @@ export interface GestureEngine {
    */
   start: (onResult: (result: GestureRecognition | null) => void) => Promise<void>;
   stop: () => void;
+  /**
+   * Descarta lo acumulado y vuelve a empezar, sin apagar la camara.
+   * Opcional: los motores sin memoria entre frames no lo necesitan.
+   */
+  reset?: () => void;
+  /**
+   * true cuando cada resultado ya es una sena entera, delimitada por el propio
+   * motor. El agente entonces no la sostiene varios frames para confirmarla:
+   * no habria mas frames que esperar, la sena ya termino.
+   */
+  readonly emitsCompleteSigns?: boolean;
 }
 
 export const gestureEngine: GestureEngine = {
