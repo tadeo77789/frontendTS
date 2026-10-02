@@ -115,6 +115,7 @@ const fr: typeof es = {
   loginErrorMsg: 'E-mail ou mot de passe incorrect',
   loginNetworkError: 'Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.',
   sessionExpired: 'Votre session a expiré. Veuillez vous reconnecter.',
+  accessLoadError: "Impossible de charger vos autorisations. Certaines options seront indisponibles.",
   serverUnavailable: 'Le serveur est indisponible pour le moment. Réessayez plus tard.',
   registerSuccessLoginFailed: 'Votre compte a été créé. Veuillez vous connecter.',
   loginEmailPlaceholder: 'Adresse e-mail',

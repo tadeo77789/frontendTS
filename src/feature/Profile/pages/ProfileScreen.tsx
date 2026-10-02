@@ -20,7 +20,8 @@ import { useAuth } from '../../../app/providers/AuthContext';
 import { useTheme, useColors, type ColorAccent } from '../../../app/providers/ThemeContext';
 import { useLanguage, type LanguageCode } from '../../../app/providers/LanguageContext';
 import { useTranslation } from '../../../app/config/i18n';
-import { isAdmin } from '../../../shared/utils/adminAccess';
+import { useAccess } from '../../../app/providers/AccessContext';
+import { PERMISSIONS } from '../../../shared/types/iam';
 import { userDisplayName } from '../../../shared/utils/userDisplayName';
 import { AchievementsCard } from '../components/AchievementsCard';
 import { countUnlocked } from '../data/achievements';
@@ -42,9 +43,9 @@ export const ProfileScreen: React.FC = () => {
   const { language, setLanguage } = useLanguage();
   const { t } = useTranslation();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  // Las notificaciones son una herramienta de administracion: el resto de
-  // cuentas no ve el interruptor.
-  const showNotifications = isAdmin(user);
+  // Las notificaciones son una herramienta de administracion: solo con permiso.
+  const { hasPermission } = useAccess();
+  const showNotifications = hasPermission(PERMISSIONS.NOTIFICATIONS_MANAGE);
 
   const unlockedAchievements = countUnlocked();
 

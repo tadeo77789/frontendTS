@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/app/providers/AuthContext';
+import { AccessProvider } from './src/app/providers/AccessContext';
 import { ThemeProvider, useTheme } from './src/app/providers/ThemeContext';
 import { LanguageProvider } from './src/app/providers/LanguageContext';
 import { AppNavigator } from './src/app/routes/AppNavigator';
@@ -26,7 +27,9 @@ export default function App() {
         <LanguageProvider>
           <ThemeProvider>
             <AuthProvider>
-              <AppContent />
+              <AccessProvider>
+                <AppContent />
+              </AccessProvider>
             </AuthProvider>
           </ThemeProvider>
         </LanguageProvider>

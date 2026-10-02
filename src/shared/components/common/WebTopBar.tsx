@@ -9,7 +9,7 @@ import { useColors, useTheme } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { useLanguage, LANGUAGE_NAMES, type LanguageCode } from '../../../app/providers/LanguageContext';
 import { useAuth } from '../../../app/providers/AuthContext';
-import { isAdmin } from '../../../shared/utils/adminAccess';
+import { useAdminMode } from '../../../app/providers/AccessContext';
 import { userDisplayName } from '../../../shared/utils/userDisplayName';
 import { HoverShadowSoft } from '../../../shared/constants/hoverStyles';
 
@@ -26,12 +26,12 @@ export const WebTopBar: React.FC<BottomTabHeaderProps> = ({ navigation, route })
   const [langOpen, setLangOpen] = useState(false);
 
   const userName = userDisplayName(user);
-  const admin = isAdmin(user);
+  const { adminMode: admin, canStats, canAdmin, homeRoute } = useAdminMode();
 
   const TAB_ITEMS: { name: string; label: string; icon: string }[] = admin
     ? [
-        { name: 'Stats', label: t('tabStats'), icon: 'bar-chart' },
-        { name: 'Admin', label: t('tabAdmin'), icon: 'shield' },
+        ...(canStats ? [{ name: 'Stats', label: t('tabStats'), icon: 'bar-chart' }] : []),
+        ...(canAdmin ? [{ name: 'Admin', label: t('tabAdmin'), icon: 'shield' }] : []),
       ]
     : [
         { name: 'Translation', label: t('tabTranslation'), icon: 'language' },
@@ -39,7 +39,6 @@ export const WebTopBar: React.FC<BottomTabHeaderProps> = ({ navigation, route })
         { name: 'History',     label: t('tabHistory'),     icon: 'time' },
       ];
 
-  const homeRoute = admin ? 'Stats' : 'Translation';
   const goTo = (name: string) => navigation.navigate(name);
 
   return (
