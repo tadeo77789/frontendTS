@@ -11,7 +11,7 @@ export type MainStackParams = {
   MainTabs: undefined;
   ForgotPassword: { fromProfile?: boolean } | undefined;
   ChangePassword: undefined;
-  VerifyCode: { fromProfile?: boolean } | undefined;
+  VerifyCode: { mode?: 'verify' | 'reset'; fromProfile?: boolean } | undefined;
   NewPassword: { fromProfile?: boolean } | undefined;
 };
 
