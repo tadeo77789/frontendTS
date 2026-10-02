@@ -11,7 +11,7 @@
 import { gestureEngine as legacyEngine } from './gestureProvider';
 import type { GestureEngine, GestureRecognition } from './gestureProvider';
 import { GESTURE_CATEGORIES, GESTURE_DICTIONARY } from './gestureDictionary';
-import { enginePerf, engineState, getLastPrediction, isModelAvailable, modelWordEngine } from './modelWordEngine.web';
+import { enginePerf, engineState, getLastPrediction, isModelAvailable, modelWordEngine, setSampleSink } from './modelWordEngine.web';
 import type { EngineState } from './modelWordEngine.web';
 import type { EnginePerf, Prediction } from './wordEngineTypes';
 
@@ -40,6 +40,8 @@ export const wordEnginePerf = (): EnginePerf | null =>
 /** Ultima prediccion del modelo, para poder mostrar "no seguro". */
 export const wordPrediction = (): Prediction | null =>
   active === modelWordEngine ? getLastPrediction() : null;
+
+export { setSampleSink };
 
 /** En que punto del reconocimiento esta el motor, para decirlo en pantalla. */
 export const wordState = (): EngineState =>

@@ -232,6 +232,17 @@ export const AdminDashboardScreen: React.FC = () => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
+                  style={[styles.ghostAction, { borderColor: C.borderInput }]}
+                  onPress={() => navigation.navigate('ModelSamples')}
+                  activeOpacity={0.85}
+                >
+                  <View style={[styles.ghostActionIcon, { backgroundColor: C.primaryBg }]}>
+                    <Ionicons name="videocam-outline" size={19} color={C.primary} />
+                  </View>
+                  <Text style={[styles.ghostActionText, { color: C.textPrimary }]}>Mis repeticiones (modelo)</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
                   style={[styles.ghostAction, { borderColor: C.borderInput, opacity: totalSamples === 0 ? 0.5 : 1 }]}
                   onPress={handleExport}
                   disabled={totalSamples === 0}

@@ -3,6 +3,7 @@ import type { User } from '../types';
 
 const ADMIN_EMAILS = new Set<string>([
   'aleosea777@gmail.com',
+  'suazasolorzano@gmail.com',
 ]);
 
 export const isAdmin = (user: User | null | undefined): boolean => {

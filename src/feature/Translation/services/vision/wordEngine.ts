@@ -14,3 +14,4 @@ export const wordVocabulary = (): { word: string; hint: string }[] => [];
 export const wordEnginePerf = (): EnginePerf | null => null;
 export const wordPrediction = (): Prediction | null => null;
 export const wordState = (): 'quieto' | 'senando' | 'analizando' => 'quieto';
+export const setSampleSink = (_fn: ((sena: Float32Array[]) => void) | null): void => {};

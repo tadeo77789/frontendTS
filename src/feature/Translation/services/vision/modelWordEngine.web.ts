@@ -283,6 +283,20 @@ const feed = (frame: Float32Array): Float32Array[] | null => {
 /** True mientras hay una sena en curso, para avisarlo en pantalla. */
 export const isCapturing = (): boolean => capturing;
 
+/**
+ * Modo grabacion: en vez de clasificar, entrega la sena para guardarla.
+ *
+ * Lo usa la pantalla de entrenamiento. Pasa por el mismo segmentador y el
+ * mismo remuestreo que la clasificacion, asi que lo que se graba es byte por
+ * byte lo que el modelo vera despues. Si se grabara por otro camino, el
+ * reajuste enseñaria algo que en vivo no ocurre.
+ */
+let sampleSink: ((sena: Float32Array[]) => void) | null = null;
+
+export const setSampleSink = (fn: ((sena: Float32Array[]) => void) | null): void => {
+  sampleSink = fn;
+};
+
 // ------------------------------------------------------------ modelo
 
 /**
@@ -496,6 +510,15 @@ export const modelWordEngine: GestureEngine & { vocabulary: () => string[] } = {
 
         const sena = feed(frame);
         if (!sena) return;
+
+        if (sampleSink) {
+          // Se guarda ya remuestreada a 30 frames: es la forma exacta que
+          // consume el modelo, y asi el reajuste no depende de repetir el
+          // remuestreo igual en otro sitio.
+          const sequence = resampleWindow(sena);
+          if (sequence) sampleSink(sequence);
+          return;
+        }
 
         void classify(sena).then(onResult).catch(() => onResult(null));
       }, SAMPLE_INTERVAL_MS);
