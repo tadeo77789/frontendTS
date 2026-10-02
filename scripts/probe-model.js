@@ -7,11 +7,16 @@
  * siempre hay una que se lleva todo. Esa clase no aporta informacion y, si no
  * se sabe cual es, inunda la app.
  *
- * Medido el 30/09/2026 sobre el modelo de 20 palabras:
+ * Medido el 30/09/2026 sobre el modelo de 20 palabras y el 02/10/2026 sobre
+ * el de 54. La clase refugio resulto ser la misma en ambos:
  *
- *     todo ceros (sin manos)   por favor 100.0%
- *     ruido gaussiano          por favor 100.0%
- *     200 entradas al azar     por favor 198 de 200
+ *                            modelo de 20      modelo de 54
+ *     todo ceros             por favor 100%    por favor 73%
+ *     ruido gaussiano        por favor 100%    por favor 76%
+ *     200 al azar            por favor 198     por favor 182
+ *
+ * En el de 54, con las manos quietas y presentes el refugio es otro:
+ * *maso menos*, con 81%.
  *
  * Por eso `por favor` esta en tuning.suppressed (modelWordEngine.web.ts).
  * Volver a correr esto despues de cada entrenamiento:

@@ -92,13 +92,19 @@ export const tuning = {
    * Palabras que el modelo usa como respuesta por defecto y que por tanto no
    * significan nada cuando salen.
    *
-   * Un clasificador de 20 salidas con softmax no tiene forma de abstenerse:
-   * ante algo que no reconoce reparte 100% entre sus clases, y una se lleva
-   * casi todo. Medido con scripts/probe-model.js sobre este modelo:
+   * Un clasificador con softmax no tiene forma de abstenerse: ante algo que
+   * no reconoce reparte el 100% entre sus clases, y una se lleva casi todo.
+   * Medido con scripts/probe-model.js, y da la misma palabra en los dos
+   * modelos entrenados hasta ahora:
    *
-   *     todo ceros (sin manos)   por favor 100.0%
-   *     ruido gaussiano          por favor 100.0%
-   *     200 entradas al azar     por favor 198 de 200
+   *                            modelo de 20      modelo de 54
+   *     todo ceros             por favor 100%    por favor 73%
+   *     ruido gaussiano        por favor 100%    por favor 76%
+   *     200 al azar            por favor 198     por favor 182
+   *
+   * En el de 54 el segundo en la fila es *dies*, y con las manos quietas y
+   * presentes el refugio pasa a ser *maso menos* (81%). Si alguna vez esas
+   * salen por todas partes, es lo mismo con otra palabra.
    *
    * Con 100% de confianza atraviesa cualquier umbral, asi que filtrarla por
    * confianza es imposible: hay que silenciarla. Se pierde la palabra *por
