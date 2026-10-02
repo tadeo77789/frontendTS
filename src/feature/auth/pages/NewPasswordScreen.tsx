@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
@@ -54,9 +53,10 @@ export const NewPasswordScreen: React.FC = () => {
   };
 
   return (
-    <KeyboardAvoidingView style={[styles.root, { backgroundColor: P.page }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={[styles.root, { backgroundColor: P.page }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         ref={scrollRef}
+        style={styles.scrollView}
         contentContainerStyle={[styles.scroll, isPhone && styles.scrollPhone]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -141,10 +141,11 @@ export const NewPasswordScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  scrollView: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24, paddingTop: 88 },
   // En movil el boton de volver va en linea dentro de la tarjeta, asi que ya no
   // hace falta reservar espacio arriba.
-  scrollPhone: { padding: 16, paddingTop: 16, justifyContent: 'flex-start' },
+  scrollPhone: { padding: 16, paddingTop: 16, justifyContent: 'flex-start'},
   label: { fontSize: 13, fontWeight: '800', marginBottom: 8 },
   field: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1.5, borderRadius: 12, height: 52, paddingHorizontal: 16, marginBottom: 14 },
   input: { flex: 1, fontSize: 15 },
