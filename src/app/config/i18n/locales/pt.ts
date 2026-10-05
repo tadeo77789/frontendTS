@@ -314,6 +314,8 @@ const pt: typeof es = {
 
   alphabetTitle: 'Alfabeto LSC',
   alphabetLetters: 'letras',
+  alphabetFallback: "Não foi possível carregar o alfabeto do servidor. Mostrando o modelo local.",
+  alphabetRetry: "Tentar novamente",
   alphabetTip: 'Toque uma letra para ver o sinal em 3D',
   alphabetTouchOutside: 'Toque fora para fechar',
   alphabetRepeat: 'Repetir',
