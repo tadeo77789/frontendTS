@@ -59,6 +59,8 @@ export const ENDPOINTS = {
 
   signTemplates: '/sign-templates',
 
+  lexiconAlphabet: '/lexicon/alphabet',
+
   analyticsEvents: '/analytics/events',
   analyticsSectionReport: '/analytics/reports/sections',
 };
