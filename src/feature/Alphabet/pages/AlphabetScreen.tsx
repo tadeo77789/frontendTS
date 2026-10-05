@@ -23,6 +23,7 @@ import { AppHeader } from '../../../shared/components/common/AppHeader';
 import { Colors } from '../../../shared/constants/colors';
 import { useColors, useTheme } from '../../../app/providers/ThemeContext';
 import { useTranslation, type TranslationKey } from '../../../app/config/i18n';
+import { useTrackSectionView } from '../../../shared/hooks/useTrackSectionView';
 import { fetchAlphabet, type AlphabetLetter } from '../services/lexicon.service';
 
 // Letra de la lista. `modelUrl` es null en el respaldo local: ahi se usa el modelo unico de assets.
@@ -64,6 +65,7 @@ export const AlphabetScreen: React.FC = () => {
   const C = useColors();
   const { isDark } = useTheme();
   const { t, language } = useTranslation();
+  useTrackSectionView('ALPHABET');
   const PALETTE = isDark ? DARK_ACCENTS : ACCENTS;
   const webViewRef    = useRef<WebView>(null);
   const iframeRef     = useRef<HTMLIFrameElement | null>(null);

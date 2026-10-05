@@ -49,6 +49,8 @@ export const ENDPOINTS = {
   translate: '/translations',
   history: '/translations/history',
   deleteTranslation: (id: number) => `/translations/${id}`,
+  translationsStats: '/translations/stats',
+  usersStats: '/users/stats',
 
   iamMyAccess: '/iam/me/access',
   iamRoles: '/iam/roles',

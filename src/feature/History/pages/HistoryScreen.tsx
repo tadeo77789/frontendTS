@@ -18,6 +18,7 @@ import { useColors, useTheme } from '../../../app/providers/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Traduccion } from '../../../shared/types';
 import { useTranslation } from '../../../app/config/i18n';
+import { useTrackSectionView } from '../../../shared/hooks/useTrackSectionView';
 import { translationsService, type SavedTranslation } from '../../../feature/Translation/services/translations.service';
 import { showAlert, showConfirm } from '../../../shared/utils/dialogs';
 
@@ -54,6 +55,7 @@ export const HistoryScreen: React.FC = () => {
   const C = useColors();
   const { isDark } = useTheme();
   const { t } = useTranslation();
+  useTrackSectionView('HISTORY');
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState<string>('');
