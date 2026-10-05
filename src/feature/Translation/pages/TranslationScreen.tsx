@@ -18,6 +18,7 @@ import { AppHeader } from '../../../shared/components/common/AppHeader';
 import { Colors } from '../../../shared/constants/colors';
 import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
+import { useTrackSectionView } from '../../../shared/hooks/useTrackSectionView';
 import { useSignAgent } from '../../../feature/Translation/hooks/useSignAgent';
 import { useGestureAgent } from '../hooks/useGestureAgent';
 import { getGestureCounts, getLastWordMatch, wordEnginePerf, wordPrediction, wordState, wordVocabulary } from '../services/vision';
@@ -49,6 +50,7 @@ export const TranslationScreen: React.FC = () => {
   const cameraHeight = isDesktop ? 340 : Math.min(width * 0.62, height * 0.5);
   const C = useColors();
   const { t, language } = useTranslation();
+  useTrackSectionView('TRANSLATION');
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const {
