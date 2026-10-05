@@ -543,6 +543,10 @@ const fr: typeof es = {
   forgotSentNeutral: "Si l'e-mail est enregistré, nous vous avons envoyé un code à 6 chiffres.",
   resetNoSession: "La récupération a expiré. Recommencez.",
   resetDone: "Mot de passe mis à jour, vous pouvez vous connecter",
+
+  recognitionUnavailableMobile: "La reconnaissance des signes n'est pas encore disponible sur mobile. Utilisez la version web pour traduire avec la caméra.",
+  gestureVocabularyGeneric: "Gestes de test",
+  gestureGenericNote: "Ce sont des gestes de test du reconnaisseur générique de Google, pas des signes LSC. Les mots LSC apparaissent lorsque notre propre modèle est disponible.",
 };
 
 export default fr;

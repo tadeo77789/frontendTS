@@ -20,7 +20,15 @@ let active: GestureEngine | null = null;
 export const activeEngineName = (): string => active?.name ?? 'sin iniciar';
 
 /** Palabras que el motor activo puede reconocer, para mostrarlas en pantalla. */
+/**
+ * true si el motor activo es el reconocedor genérico de Google (7 gestos de prueba,
+ * no señas LSC). Antes de arrancar la cámara no se sabe, y es false.
+ */
+export const isGenericGestureEngine = (): boolean => active !== null && active !== modelWordEngine;
+
 export const wordVocabulary = (): { word: string; hint: string }[] => {
+  // Sin motor elegido aún no se sabe qué vocabulario aplica: no mostrar uno inventado.
+  if (active === null) return [];
   if (active === modelWordEngine) {
     return modelWordEngine.vocabulary().map(word => ({ word, hint: '' }));
   }
