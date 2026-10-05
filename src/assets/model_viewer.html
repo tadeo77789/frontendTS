@@ -261,6 +261,18 @@ function loadModel(url) {
       const size   = box.getSize(new THREE.Vector3());
       model.position.sub(center);
       model.position.y += size.y * 0.5;
+      // Los modelos por letra del catálogo miden menos de 1 unidad; la cámara fija
+      // apunta al avatar grande (y = 5.2). Para modelos pequeños se encuadra el modelo.
+      if (size.y < 3) {
+        const fov  = cam.fov * Math.PI / 180;
+        const dist = Math.max(size.x, size.y, size.z) / (2 * Math.tan(fov / 2)) * 1.6;
+        controls.target.set(0, size.y * 0.55, 0);
+        cam.position.set(0, size.y * 0.65, dist);
+        cam.near = dist / 100;
+        cam.far  = dist * 100;
+        cam.updateProjectionMatrix();
+        controls.update();
+      }
 
       // Sombras y materiales PBR
       model.traverse(child => {
