@@ -1,7 +1,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CameraView } from 'expo-camera';
-import { signVisionProvider } from '../services/vision';
+import { signVisionProvider, isSimulatedRecognition } from '../services/vision';
 import type { SignDetectionResult, SignAgentStatus } from '../../../shared/types';
 
 export interface UseSignAgentOptions {
@@ -204,6 +204,8 @@ export const useSignAgent = (
   useEffect(() => () => signVisionProvider.dispose?.(), []);
 
   const start = useCallback(() => {
+    // Nunca arrancar con el simulador: inventaría letras.
+    if (isSimulatedRecognition) return;
     lastAppendedRef.current = '';
     clearPending();
     setStatus('starting');

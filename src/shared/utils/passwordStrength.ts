@@ -44,3 +44,15 @@ export function evaluatePassword(password: string): PasswordStrength {
 
   return { level, checks, meetsMinimum };
 }
+
+export const MAX_PASSWORD_BYTES = 72;
+
+/** Bytes UTF-8 de la contraseña (el servidor rechaza más de 72). */
+export function passwordByteLength(password: string): number {
+  let bytes = 0;
+  for (const ch of password) {
+    const cp = ch.codePointAt(0) ?? 0;
+    bytes += cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+  }
+  return bytes;
+}

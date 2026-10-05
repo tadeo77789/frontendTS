@@ -11,6 +11,7 @@ import {
 import { ENDPOINTS } from '../config/api.config';
 import { useTranslation } from '../config/i18n';
 import { pendingAuthFlow } from '../../feature/auth/services/pendingAuthFlow';
+import { passwordResetFlow } from '../../feature/auth/services/passwordResetFlow';
 import { showAlert } from '../../shared/utils/dialogs';
 
 interface BackendUser {
@@ -134,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(async () => {
     pendingAuthFlow.clear();
+    passwordResetFlow.clear();
     await clearSession();
   }, [clearSession]);
 

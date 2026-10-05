@@ -25,6 +25,7 @@ const devHost = (): string => {
   return Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
 };
 
+// TODO: confirmar el dominio real de produccion; 'api.traducsenas.com' no esta verificado.
 export const API_BASE_URL = __DEV__
   ? Platform.OS === 'web'
     ? 'http://localhost:3000/api'
@@ -45,6 +46,7 @@ export const ENDPOINTS = {
   resetPassword: '/auth/reset-password',
 
   me: '/users/me',
+  mePassword: '/users/me/password',
 
   translate: '/translations',
   history: '/translations/history',
