@@ -521,6 +521,28 @@ const pt: typeof es = {
   achSevenDaysDesc: 'Sete dias seguidos traduzindo. A constância aparece nas mãos.',
   achThirtyDaysName: 'Trinta dias',
   achThirtyDaysDesc: 'Trinta dias seguidos traduzindo sem faltar um.',
+
+  changePwTitle: "Alterar senha",
+  changePwSubtitle: "Digite sua senha atual e escolha uma nova.",
+  changePwCurrentLabel: "Senha atual",
+  changePwCurrentPlaceholder: "Sua senha atual",
+  changePwCurrentRequired: "Digite sua senha atual",
+  changePwSameAsCurrent: "A nova senha deve ser diferente da atual",
+  changePwBtn: "Alterar senha",
+  changePwInvalidPassword: "A senha atual está incorreta",
+  changePwDone: "Senha alterada, entre novamente",
+  passwordTooLong: "A senha é muito longa (máximo de 72 bytes)",
+  accountActionError: "Não foi possível concluir a ação. Tente novamente.",
+  deleteAccountWarning: "Sua conta e seus dados serão excluídos permanentemente. Digite sua senha para confirmar.",
+  deleteAccountPasswordRequired: "Digite sua senha para continuar",
+  deleteAccountInvalidPassword: "A senha está incorreta",
+  deleteAccountLastAdmin: "Você é o único administrador. Atribua o papel de administrador a outra pessoa antes de excluir sua conta.",
+  deleteAccountDone: "Sua conta e seus dados foram excluídos",
+  forgotEmailRequired: "Digite seu e-mail.",
+  forgotEmailInvalid: "Digite um e-mail válido.",
+  forgotSentNeutral: "Se o e-mail estiver cadastrado, enviamos um código de 6 dígitos.",
+  resetNoSession: "A recuperação expirou. Comece novamente.",
+  resetDone: "Senha atualizada, você já pode entrar",
 };
 
 export default pt;
