@@ -284,9 +284,9 @@ const pt: typeof es = {
 
   adminDashboardTitle: 'Painel de administração',
   adminDashboardSubtitle: 'Estado da IA e métricas do app',
-  adminAiState: 'Estado da IA',
-  adminAiActive: 'IA treinada ativa',
-  adminAiInactive: 'Não treinada — usando regras geométricas',
+  adminAiState: 'Amostras neste dispositivo',
+  adminAiActive: 'Amostras salvas neste dispositivo',
+  adminAiInactive: 'Nenhuma amostra salva neste dispositivo',
   adminCoverage: 'Cobertura',
   adminSamplesPerLetter: 'Amostras por letra',
   adminSystem: 'Sistema',
