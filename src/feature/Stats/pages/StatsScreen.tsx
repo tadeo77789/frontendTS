@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,16 @@ import {
   Modal,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { AppHeader } from '../../../shared/components/common/AppHeader';
 import { Colors } from '../../../shared/constants/colors';
 import { useColors, useTheme } from '../../../app/providers/ThemeContext';
-import { useTranslation } from '../../../app/config/i18n';
+import { useTranslation, type TranslationKey } from '../../../app/config/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { statsService, type AdminStats } from '../services/stats.service';
 
 const BAR_GAP = 4;
 const BAR_CHART_HEIGHT = 100;
@@ -232,25 +235,35 @@ const pie = StyleSheet.create({
   legendValue: { fontSize: 12, fontWeight: '700', width: 36, textAlign: 'right' },
 });
 
-const WEEKLY_DATA = [
-  { label: 'Lun', value: 30 },
-  { label: 'Mar', value: 45 },
-  { label: 'Mié', value: 38 },
-  { label: 'Jue', value: 52 },
-  { label: 'Vie', value: 60 },
-  { label: 'Sáb', value: 80 },
-  { label: 'Dom', value: 70 },
-];
+type Point = { label: string; value: number };
+type PieItem = { label: string; value: number; color: string };
 
-const MONTHLY_LINE = [10, 15, 20, 28, 35, 42, 50, 55, 62, 68, 74, 80];
-const MONTHLY_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+/** 'YYYY-MM-DD' o 'YYYY-MM' a Date local (sin saltos de zona horaria). */
+const parseDate = (iso: string): Date => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+};
 
-const VOLUME_DATA = [
-  { label: 'Sem 1', value: 20 },
-  { label: 'Sem 2', value: 28 },
-  { label: 'Sem 3', value: 35 },
-  { label: 'Sem 4', value: 45 },
-];
+const SECTION_KEYS: Record<string, TranslationKey> = {
+  HOME: 'sectionHome',
+  TRANSLATION: 'sectionTranslation',
+  ALPHABET: 'sectionAlphabet',
+  LEXICON: 'sectionLexicon',
+  HISTORY: 'sectionHistory',
+  PROFILE: 'sectionProfile',
+  SETTINGS: 'sectionSettings',
+  NOTIFICATIONS: 'sectionNotifications',
+  ACHIEVEMENTS: 'sectionAchievements',
+  ADMIN: 'sectionAdmin',
+};
+
+const SECTION_COLORS = ['#7C5AD6', '#2F8D9E', '#2F8F6F', '#4F63C8', '#C0862B', '#B5527A', '#6B7280', '#3F8FBF'];
+
+const ChartOrEmpty: React.FC<{ empty: boolean; text: string; children: React.ReactNode }> = ({ empty, text, children }) => {
+  const C = useColors();
+  if (!empty) return <>{children}</>;
+  return <Text style={{ color: C.textHint, fontSize: 13, paddingVertical: 24, textAlign: 'center' }}>{text}</Text>;
+};
 
 const CardinalityTable: React.FC<{
   rows: { label: string; value: string | number; color?: string }[];
@@ -340,43 +353,53 @@ type CardKey = 'weekly' | 'monthly' | 'volume' | 'section';
 interface DetailModalProps {
   cardKey: CardKey | null;
   onClose: () => void;
-  sectionPie: { label: string; value: number; color: string }[];
+  sectionPie: PieItem[];
+  weekly: Point[];
+  monthly: Point[];
+  volume: Point[];
+  emptyText: string;
   titles: Record<CardKey, string>;
   descriptions: Record<CardKey, string>;
 }
 
-const DetailModal: React.FC<DetailModalProps> = ({ cardKey, onClose, sectionPie, titles, descriptions }) => {
+const DetailModal: React.FC<DetailModalProps> = ({ cardKey, onClose, sectionPie, weekly, monthly, volume, emptyText, titles, descriptions }) => {
   const C = useColors();
   const { width } = useWindowDimensions();
   const sheetMaxWidth = Math.min(960, Math.max(320, width - 80));
 
   if (!cardKey) return null;
 
-  const weeklyRows = WEEKLY_DATA.map(d => ({ label: d.label, value: d.value, color: C.primary }));
-  const monthlyRows = MONTHLY_LINE.map((v, i) => ({ label: MONTHLY_LABELS[i], value: v, color: C.primary }));
-  const volumeRows = VOLUME_DATA.map(d => ({ label: d.label, value: d.value, color: '#2F8D9E' }));
+  const weeklyRows = weekly.map(d => ({ label: d.label, value: d.value, color: C.primary }));
+  const monthlyRows = monthly.map(d => ({ label: d.label, value: d.value, color: C.primary }));
+  const volumeRows = volume.map(d => ({ label: d.label, value: d.value, color: '#2F8D9E' }));
   const sectionRows = sectionPie.map(d => ({ label: d.label, value: `${d.value}%`, color: d.color }));
 
   const renderChart = () => {
+    const empty =
+      (cardKey === 'weekly' && weekly.length === 0) ||
+      (cardKey === 'monthly' && monthly.length === 0) ||
+      (cardKey === 'volume' && volume.length === 0) ||
+      (cardKey === 'section' && sectionPie.length === 0);
+    if (empty) return <Text style={[modal.desc, { color: C.textHint }]}>{emptyText}</Text>;
     switch (cardKey) {
       case 'weekly':
         return (
           <>
-            <BarChart data={WEEKLY_DATA} colors={[C.primaryLight, C.primary]} showAxes />
+            <BarChart data={weekly} colors={[C.primaryLight, C.primary]} showAxes />
             <CardinalityTable rows={weeklyRows} />
           </>
         );
       case 'monthly':
         return (
           <>
-            <LineChart data={MONTHLY_LINE} color={C.primary} labels={MONTHLY_LABELS} showAxes height={160} />
+            <LineChart data={monthly.map(d => d.value)} color={C.primary} labels={monthly.map(d => d.label)} showAxes height={160} />
             <CardinalityTable rows={monthlyRows} />
           </>
         );
       case 'volume':
         return (
           <>
-            <BarChart data={VOLUME_DATA} colors={['#5BB8C9', '#2F8D9E']} showAxes />
+            <BarChart data={volume} colors={['#5BB8C9', '#2F8D9E']} showAxes />
             <CardinalityTable rows={volumeRows} />
           </>
         );
@@ -444,29 +467,57 @@ export const StatsScreen: React.FC = () => {
   const isDesktop = width >= 1024;
   const C = useColors();
   const { isDark } = useTheme();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [openCard, setOpenCard] = useState<CardKey | null>(null);
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
-  const SECTION_PIE = [
-    { label: t('sectionTranslation'), value: 47, color: C.primary },
-    { label: t('sectionAlphabet'),    value: 29, color: '#2F8D9E' },
-    { label: t('sectionHistory'),     value: 24, color: '#2F8F6F' },
-  ];
+  const load = useCallback(async () => {
+    setFailed(false);
+    try {
+      setStats(await statsService.getAll());
+    } catch {
+      setFailed(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const weeklyRows = WEEKLY_DATA.map(d => ({ label: d.label, value: d.value, color: C.primary }));
-  const monthlyRows = MONTHLY_LINE.map((v, i) => ({ label: MONTHLY_LABELS[i], value: v, color: C.primary }));
-  const volumeRows = VOLUME_DATA.map(d => ({ label: d.label, value: d.value, color: '#2F8D9E' }));
-  const sectionRows = SECTION_PIE.map(d => ({ label: d.label, value: `${d.value}%`, color: d.color }));
+  // Se recarga cada vez que la pantalla recibe el foco.
+  useFocusEffect(useCallback(() => { void load(); }, [load]));
 
-  // Los cuatro degradados son una sola rampa violeta -> indigo -> cian -> verde:
-  // acompanan a los dos acentos de la app en vez del arcoiris de antes, y todos
-  // terminan lo bastante oscuros para que el texto blanco se lea.
-  const KPI_CARDS = [
-    { label: t('kpiTranslations'),  value: '1,248', icon: 'swap-horizontal-outline' as const, gradient: ['#A78BFA', '#7C5AD6'] as [string, string], glow: 'rgba(124,90,214,0.30)' },
-    { label: t('kpiActiveUsers'),   value: '342',   icon: 'people-outline' as const,          gradient: ['#7C93F0', '#4F63C8'] as [string, string], glow: 'rgba(79,99,200,0.28)' },
-    { label: t('kpiHoursLearned'),  value: '89h',   icon: 'school-outline' as const,          gradient: ['#5BB8C9', '#2F8D9E'] as [string, string], glow: 'rgba(47,141,158,0.28)' },
-    { label: t('kpiSignsLearned'),  value: '84',    icon: 'hand-left-outline' as const,       gradient: ['#63C2A0', '#2F8F6F'] as [string, string], glow: 'rgba(47,143,111,0.28)' },
-  ];
+  const retry = () => {
+    setLoading(true);
+    void load();
+  };
+
+  const fmt = (n: number) => new Intl.NumberFormat(language).format(n);
+  const fmtDate = (iso: string, opts: Intl.DateTimeFormatOptions) => parseDate(iso).toLocaleDateString(language, opts);
+  const nonZero = (pts: Point[]) => (pts.some(p => p.value > 0) ? pts : []);
+
+  const weekly: Point[] = nonZero((stats?.translations.daily ?? []).map(d => ({ label: fmtDate(d.date, { weekday: 'short' }), value: d.count })));
+  const monthly: Point[] = nonZero((stats?.translations.monthly ?? []).map(d => ({ label: fmtDate(d.month, { month: 'short' }), value: d.count })));
+  const volume: Point[] = nonZero((stats?.translations.weekly ?? []).map(d => ({ label: fmtDate(d.weekStart, { day: 'numeric', month: 'short' }), value: d.count })));
+
+  const sectionRows = (stats?.sections.sections ?? []).filter(r => r.visits > 0);
+  const totalVisits = sectionRows.reduce((sum, r) => sum + r.visits, 0);
+  const SECTION_PIE: PieItem[] = sectionRows
+    .slice()
+    .sort((a, b) => b.visits - a.visits)
+    .map((r, i) => ({
+      label: SECTION_KEYS[r.section] ? t(SECTION_KEYS[r.section]) : r.section,
+      value: Math.round((r.visits / totalVisits) * 100),
+      color: SECTION_COLORS[i % SECTION_COLORS.length],
+    }));
+
+  // Una sola rampa de color: violeta -> indigo -> cian -> verde.
+  const KPI_CARDS = stats ? [
+    { label: t('kpiTranslations'),     value: fmt(stats.translations.totalTranslations), icon: 'swap-horizontal-outline' as const, gradient: ['#A78BFA', '#7C5AD6'] as [string, string] },
+    { label: t('kpiActiveUsers'),      value: fmt(stats.translations.activeUsers30d),    icon: 'people-outline' as const,          gradient: ['#7C93F0', '#4F63C8'] as [string, string] },
+    { label: t('kpiRegisteredUsers'),  value: fmt(stats.users.totalUsers),               icon: 'person-add-outline' as const,      gradient: ['#5BB8C9', '#2F8D9E'] as [string, string] },
+    { label: t('kpiSectionVisits'),    value: fmt(totalVisits),                          icon: 'eye-outline' as const,             gradient: ['#63C2A0', '#2F8F6F'] as [string, string] },
+  ] : [];
 
   const titles: Record<CardKey, string> = {
     weekly:  t('statsWeeklyTitle'),
@@ -496,10 +547,28 @@ export const StatsScreen: React.FC = () => {
             </View>
             <Text style={[styles.title, { color: C.textPrimary }]}>Estadísticas</Text>
             <Text style={[styles.subtitle, { color: C.textSecondary }]}>
-              Resumen de uso de la plataforma y tu progreso aprendiendo lengua de señas.
+              Resumen de uso de la plataforma.
             </Text>
           </View>
 
+          {loading && !stats && (
+            <View style={styles.stateBox}>
+              <ActivityIndicator size="large" color={C.primary} />
+            </View>
+          )}
+
+          {failed && !stats && !loading && (
+            <View style={styles.stateBox}>
+              <Ionicons name="cloud-offline-outline" size={32} color={C.textHint} />
+              <Text style={[styles.stateText, { color: C.textSecondary }]}>{t('statsLoadError')}</Text>
+              <TouchableOpacity onPress={retry} style={[styles.retryBtn, { backgroundColor: C.primary }]}>
+                <Text style={styles.retryText}>{t('statsRetry')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {stats && (
+          <>
           <View style={[styles.kpiGrid, isTablet && styles.kpiGridDesktop]}>
             {KPI_CARDS.map((kpi, i) => (
               <LinearGradient
@@ -521,21 +590,23 @@ export const StatsScreen: React.FC = () => {
 
           <View style={[styles.cardsGrid, isTablet && styles.cardsGridTablet]}>
             <StatCard title={t('statsWeeklyTitle')} subtitle={t('statsWeeklyDesc')} icon="bar-chart-outline" onPress={() => setOpenCard('weekly')}>
-              <BarChart data={WEEKLY_DATA} colors={[C.primaryLight, C.primary]} />
+              <ChartOrEmpty empty={weekly.length === 0} text={t('statsEmpty')}><BarChart data={weekly} colors={[C.primaryLight, C.primary]} /></ChartOrEmpty>
             </StatCard>
 
             <StatCard title={t('statsMonthlyTitle')} subtitle={t('statsMonthlyDesc')} icon="trending-up-outline" onPress={() => setOpenCard('monthly')}>
-              <LineChart data={MONTHLY_LINE} color={C.primary} />
+              <ChartOrEmpty empty={monthly.length === 0} text={t('statsEmpty')}><LineChart data={monthly.map(d => d.value)} color={C.primary} /></ChartOrEmpty>
             </StatCard>
 
             <StatCard title={t('statsVolumeTitle')} subtitle={t('statsVolumeDesc')} icon="pulse-outline" onPress={() => setOpenCard('volume')}>
-              <BarChart data={VOLUME_DATA} colors={[C.primaryLight, C.primary]} />
+              <ChartOrEmpty empty={volume.length === 0} text={t('statsEmpty')}><BarChart data={volume} colors={[C.primaryLight, C.primary]} /></ChartOrEmpty>
             </StatCard>
 
             <StatCard title={t('statsSectionTitle')} subtitle={t('statsSectionDesc')} icon="pie-chart-outline" onPress={() => setOpenCard('section')}>
-              <PieChart data={SECTION_PIE} />
+              <ChartOrEmpty empty={SECTION_PIE.length === 0} text={t('statsEmpty')}><PieChart data={SECTION_PIE} /></ChartOrEmpty>
             </StatCard>
           </View>
+          </>
+          )}
 
         </View>
       </ScrollView>
@@ -544,6 +615,10 @@ export const StatsScreen: React.FC = () => {
         cardKey={openCard}
         onClose={() => setOpenCard(null)}
         sectionPie={SECTION_PIE}
+        weekly={weekly}
+        monthly={monthly}
+        volume={volume}
+        emptyText={t('statsEmpty')}
         titles={titles}
         descriptions={descriptions}
       />
@@ -567,6 +642,11 @@ const styles = StyleSheet.create({
   heroBadgeText: { fontSize: 13, fontWeight: '700' },
   title: { fontSize: 34, fontWeight: '800', letterSpacing: -0.6 },
   subtitle: { fontSize: 16, lineHeight: 24, maxWidth: 520 },
+
+  stateBox: { alignItems: 'center', gap: 12, paddingVertical: 48 },
+  stateText: { fontSize: 14, textAlign: 'center' },
+  retryBtn: { paddingVertical: 10, paddingHorizontal: 22, borderRadius: 999 },
+  retryText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   kpiGridDesktop: { flexWrap: 'nowrap' },
