@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, KeyboardAvoidingView, Platform, Alert, useWindowDimensions,
+  ScrollView, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,7 +14,8 @@ import { AuthStepCard, useAuthPalette } from '../components/AuthStepCard';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { normalizeApiError } from '../../../shared/services/api.client';
 import { showError, showAlert, showSuccess } from '../../../shared/utils/dialogs';
-import { verifyEmail, resendVerification } from '../services/auth.service';
+import { verifyEmail, resendVerification, forgotPassword, verifyResetCode } from '../services/auth.service';
+import { passwordResetFlow } from '../services/passwordResetFlow';
 import { pendingAuthFlow, RESEND_COOLDOWN_MS } from '../services/pendingAuthFlow';
 import { useResendCooldown } from '../hooks/useResendCooldown';
 
@@ -29,7 +30,7 @@ export const VerifyCodeScreen: React.FC = () => {
   const isVerify = params?.mode === 'verify';
   const { login } = useAuth();
   // Correo/contraseña solo desde el almacén en memoria (nunca por params).
-  const [flow, setFlow] = useState(() => (isVerify ? pendingAuthFlow.get() : null));
+  const [flow, setFlow] = useState<{ email: string; resendAvailableAt?: number } | null>(() => (isVerify ? pendingAuthFlow.get() : passwordResetFlow.get()));
   const { seconds, canResend } = useResendCooldown(flow?.resendAvailableAt);
   const [resending, setResending] = useState(false);
   const [code, setCode] = useState(Array(CODE_LENGTH).fill(''));
@@ -47,6 +48,9 @@ export const VerifyCodeScreen: React.FC = () => {
     if (isVerify && !flow) {
       navigation.navigate('Login');
       void showAlert({ message: t('verifyNoSession'), icon: 'info' });
+    } else if (!isVerify && !flow) {
+      navigation.navigate('ForgotPassword');
+      void showAlert({ message: t('resetNoSession'), icon: 'info' });
     }
     // solo al montar
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,7 +107,8 @@ export const VerifyCodeScreen: React.FC = () => {
     busy.current = true;
     setResending(true);
     try {
-      await resendVerification(flow.email);
+      if (isVerify) await resendVerification(flow.email);
+      else await forgotPassword(flow.email);
     } catch (error) {
       const { code: errCode } = normalizeApiError(error);
       if (errCode === 'NETWORK' || errCode === 'SERVER') {
@@ -116,14 +121,19 @@ export const VerifyCodeScreen: React.FC = () => {
       // Otros errores: mismo aviso generico (no se revela si el correo existe).
     }
     try {
-      pendingAuthFlow.update({ resendAvailableAt: Date.now() + RESEND_COOLDOWN_MS });
-      setFlow(pendingAuthFlow.get());
+      if (isVerify) {
+        pendingAuthFlow.update({ resendAvailableAt: Date.now() + RESEND_COOLDOWN_MS });
+        setFlow(pendingAuthFlow.get());
+      } else {
+        passwordResetFlow.update({ resendAvailableAt: Date.now() + RESEND_COOLDOWN_MS });
+        setFlow(passwordResetFlow.get());
+      }
       void showAlert({ message: t('verifyResendDone'), icon: 'info' });
     } finally {
       busy.current = false;
       setResending(false);
     }
-  }, [flow, canResend, resending, t]);
+  }, [flow, canResend, resending, isVerify, t]);
 
   const handleVerifyChange = (index: number, text: string) => {
     if (text === '') {
@@ -161,23 +171,42 @@ export const VerifyCodeScreen: React.FC = () => {
     inputs.current[Math.min(last + 1, CODE_LENGTH - 1)]?.focus();
   };
 
-  const handleChange = (text: string, index: number) => {
-    if (isVerify) { handleVerifyChange(index, text); return; }
-    const digit = text.replace(/\D/g, '').slice(-1);
-    const newCode = [...code];
-    newCode[index] = digit;
-    setCode(newCode);
-    if (digit && index < CODE_LENGTH - 1) inputs.current[index + 1]?.focus();
-  };
+  const handleChange = (text: string, index: number) => handleVerifyChange(index, text);
 
   const handleKeyPress = (key: string, index: number) => {
     if (key === 'Backspace' && !code[index] && index > 0) inputs.current[index - 1]?.focus();
   };
 
-  const handleConfirm = () => {
-    if (code.join('').length < CODE_LENGTH) { Alert.alert(t('error'), t('verifyErrorIncomplete')); return; }
+  const handleConfirm = async () => {
+    const value = code.join('');
+    if (value.length < CODE_LENGTH) { void showError(t('verifyErrorIncomplete'), t('error')); return; }
+    if (busy.current) return;
+    const current = passwordResetFlow.get();
+    if (!current) { navigation.navigate('ForgotPassword'); void showAlert({ message: t('resetNoSession'), icon: 'info' }); return; }
+    busy.current = true;
     setLoading(true);
-    setTimeout(() => { setLoading(false); navigation.navigate('NewPassword', { fromProfile }); }, 1000);
+    try {
+      await verifyResetCode(current.email, value);
+    } catch (error) {
+      busy.current = false;
+      setLoading(false);
+      const { code: errCode } = normalizeApiError(error);
+      if (errCode === 'INVALID_CODE' || errCode === 'VALIDATION_ERROR') {
+        setCode(Array(CODE_LENGTH).fill(''));
+        inputs.current[0]?.focus();
+      }
+      void showError(
+        errCode === 'NETWORK' ? t('loginNetworkError')
+          : errCode === 'SERVER' ? t('serverUnavailable')
+          : t('verifyInvalidCode'),
+        t('error'),
+      );
+      return;
+    }
+    passwordResetFlow.update({ code: value });
+    busy.current = false;
+    setLoading(false);
+    navigation.navigate('NewPassword');
   };
 
   const verifyResendBlock = (
@@ -209,7 +238,7 @@ export const VerifyCodeScreen: React.FC = () => {
           icon="shield-checkmark-outline"
           title={isVerify ? t('verifyEmailTitle') : t('verifyTitle')}
           subtitle={isVerify ? t('verifyEmailSubtitle', { email: flow?.email ?? '' }) : t('verifySubtitle')}
-          onBack={() => { if (isVerify) pendingAuthFlow.clear(); navigation.goBack(); }}
+          onBack={() => { if (isVerify) pendingAuthFlow.clear(); else passwordResetFlow.clear(); navigation.goBack(); }}
         >
           <View style={styles.otpRow}>
             {code.map((digit, i) => (
@@ -225,23 +254,16 @@ export const VerifyCodeScreen: React.FC = () => {
                 onChangeText={text => handleChange(text, i)}
                 onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
                 keyboardType="number-pad"
-                maxLength={isVerify ? 12 : 1}
-                {...(isVerify ? {
-                  accessibilityLabel: t('verifyDigitLabel', { n: i + 1 }),
-                  textContentType: 'oneTimeCode' as const,
-                  autoComplete: 'one-time-code' as const,
-                } : {})}
+                maxLength={12}
+                accessibilityLabel={t('verifyDigitLabel', { n: i + 1 })}
+                textContentType="oneTimeCode"
+                autoComplete="one-time-code"
                 textAlign="center"
               />
             ))}
           </View>
 
-          {isVerify ? verifyResendBlock : (
-          <Text style={[styles.resend, { color: P.faint }]}>
-            {t('verifyResend')}{' '}
-            <Text style={[styles.resendLink, { color: P.accent }]} onPress={() => {}}>{t('verifyResendLink')}</Text>
-          </Text>
-          )}
+          {verifyResendBlock}
 
           <TouchableOpacity activeOpacity={0.9} onPress={isVerify ? handleVerify : handleConfirm} disabled={loading} accessibilityRole="button" accessibilityState={{ disabled: loading, busy: loading }} style={[styles.btnWrap, loading && { opacity: 0.7 }]}>
             <LinearGradient colors={P.accentGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btn}>
