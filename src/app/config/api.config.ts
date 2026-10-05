@@ -50,6 +50,7 @@ export const ENDPOINTS = {
   history: '/translations/history',
   deleteTranslation: (id: number) => `/translations/${id}`,
   translationsStats: '/translations/stats',
+  myTranslationStats: '/translations/me/stats',
   usersStats: '/users/stats',
 
   iamMyAccess: '/iam/me/access',

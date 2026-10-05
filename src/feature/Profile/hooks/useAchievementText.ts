@@ -11,9 +11,7 @@ export const useAchievementText = () => {
     const { unlocked } = progressOf(achievement);
     if (achievement.target === 1) return unlocked ? t('achievementCompleted') : t('achievementPending');
     const reached = Math.min(achievement.value, achievement.target);
-    return achievement.unit === 'percent'
-      ? `${reached}% / ${achievement.target}%`
-      : `${reached}/${achievement.target}`;
+    return `${reached}/${achievement.target}`;
   };
 
   const levelText = (achievement: Achievement): string => {
