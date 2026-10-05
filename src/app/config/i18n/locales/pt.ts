@@ -204,6 +204,7 @@ const pt: typeof es = {
   resultPlaceholderText: 'Escreva um texto e toque em Traduzir',
   copy: 'Copiar',
   listen: 'Ouvir',
+  stopListening: 'Parar áudio',
   copied: 'Copiado',
   copiedToClipboard: 'Texto copiado para a área de transferência',
   copyFailed: 'Não foi possível copiar o texto',
