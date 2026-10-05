@@ -14,16 +14,16 @@ const PILLARS: { icon: keyof typeof Ionicons.glyphMap; title: string; desc: stri
 ];
 
 const TEAM: { name: string; role: string; icon: keyof typeof Ionicons.glyphMap; bio: string; tint: string; color: string }[] = [
-  { name: 'Nombre Apellido', role: 'Desarrollo', icon: 'code-slash', bio: 'Construye la app y el modelo de reconocimiento de señas.', tint: D.lilacSoft, color: D.violet },
-  { name: 'Nombre Apellido', role: 'Diseño', icon: 'color-palette', bio: 'Diseña la experiencia y la identidad visual del producto.', tint: D.greenBg, color: D.green },
-  { name: 'Nombre Apellido', role: 'Contenido LSC', icon: 'hand-left', bio: 'Cura las señas y valida que todo sea fiel a la LSC.', tint: D.amberBg, color: D.amber },
+  { name: 'Juan Mauricio Suaza Solórzano', role: 'Tech Lead y desarrollo', icon: 'code-slash', bio: 'Equipo de desarrollo de Traduce Señas.', tint: D.lilacSoft, color: D.violet },
+  { name: 'Luis Alejandro Duarte Aldana', role: 'Desarrollo', icon: 'code-slash', bio: 'Equipo de desarrollo de Traduce Señas.', tint: D.greenBg, color: D.green },
+  { name: 'Juan Camilo Fierro Esquivel', role: 'Desarrollo', icon: 'code-slash', bio: 'Equipo de desarrollo de Traduce Señas.', tint: D.amberBg, color: D.amber },
+  { name: 'Jesús Ariel González Bonilla', role: 'Instructor y Product Owner', icon: 'school', bio: 'Acompaña y orienta el proyecto.', tint: D.lilacSoft, color: D.violet },
 ];
 
 const STATS = [
   { value: '3', label: 'Integrantes' },
   { value: 'Neiva', label: 'Nuestra base' },
-  { value: '26', label: 'Letras LSC' },
-  { value: '100%', label: 'Pasión' },
+  { value: 'LSC', label: 'Lengua de Señas Colombiana' },
 ];
 
 export const NosotrosScreen: React.FC = () => {
