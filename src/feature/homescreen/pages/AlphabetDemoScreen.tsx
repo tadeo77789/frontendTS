@@ -18,7 +18,7 @@ const PALETTE = [
 ];
 
 const APARTADOS: { icon: keyof typeof Ionicons.glyphMap; title: string; desc: string }[] = [
-  { icon: 'text-outline', title: 'Alfabeto', desc: `Las ${CHARS.length} letras con video, configuración de mano y consejos.` },
+  { icon: 'text-outline', title: 'Alfabeto', desc: 'Cada letra con imagen y modelo 3D para ver la configuración de la mano.' },
   { icon: 'camera-outline', title: 'Traductor', desc: 'Traduce tus señas a texto y voz en tiempo real desde la cámara.' },
   { icon: 'bar-chart-outline', title: 'Estadísticas', desc: 'Sigue tu progreso, señas aprendidas y actividad.' },
   { icon: 'time-outline', title: 'Historial', desc: 'Consulta y reutiliza todas tus traducciones anteriores.' },
@@ -45,8 +45,8 @@ export const AlphabetDemoScreen: React.FC = () => {
               Alfabeto <Text style={{ color: D.purple }}>LSC</Text>
             </Text>
             <Text style={styles.heroSub}>
-              Las {CHARS.length} letras dactilológicas de la Lengua de Señas Colombiana. Inicia sesión para ver el video
-              de cada seña y practicar.
+              Las {CHARS.length} letras dactilológicas de la Lengua de Señas Colombiana. Inicia sesión para ver la imagen y el modelo 3D
+              de cada letra y practicar.
             </Text>
             <View style={[styles.heroActions, !isMid && { flexDirection: 'column', alignSelf: 'stretch' }]}>
               <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate('Register')} style={styles.primaryBtnWrap}>
@@ -113,7 +113,7 @@ export const AlphabetDemoScreen: React.FC = () => {
             </View>
             <Text style={styles.modalTitle}>Inicia sesión para practicar</Text>
             <Text style={styles.modalText}>
-              Con tu cuenta puedes ver el video de cada seña, repetirla y seguir tu progreso.
+              Con tu cuenta puedes ver la imagen y el modelo 3D de cada letra, repetirlos y seguir tu progreso.
             </Text>
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalGhost} onPress={() => { setOpen(false); navigation.navigate('Login'); }}>
