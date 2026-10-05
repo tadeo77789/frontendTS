@@ -60,8 +60,9 @@ export const fetchAlphabet = async (language: LanguageCode): Promise<AlphabetLet
   });
   const signs = res.data?.data;
   if (!Array.isArray(signs) || signs.length === 0) throw new Error('Empty alphabet');
+  // La Ñ no se muestra en la app (decisión del equipo), aunque el catálogo la tenga.
   return signs
-    .filter((s) => s.letter)
+    .filter((s) => s.letter && s.letter !== 'Ñ')
     .map((s) => ({
       letter: s.letter as string,
       // Sin miniatura propia se usa la del modelo; si falta, queda vacia.

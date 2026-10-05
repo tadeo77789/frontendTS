@@ -66,6 +66,7 @@ export const AlphabetScreen: React.FC = () => {
   const { t, language } = useTranslation();
   const PALETTE = isDark ? DARK_ACCENTS : ACCENTS;
   const webViewRef    = useRef<WebView>(null);
+  const iframeRef     = useRef<HTMLIFrameElement | null>(null);
   const backdropAnim  = useRef(new Animated.Value(0)).current;
 
   const [selected,   setSelected]   = useState<LetterItem | null>(null);
@@ -147,7 +148,8 @@ export const AlphabetScreen: React.FC = () => {
 
   const sendPlayAnimation = useCallback((animName: string) => {
     if (Platform.OS === 'web') {
-      webViewRef.current?.injectJavaScript(`playAnimation(${JSON.stringify(animName)}); true;`);
+      iframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({ type: 'PLAY_ANIMATION', animation: animName }), window.location.origin);
     } else {
       webViewRef.current?.postMessage(JSON.stringify({ type: 'PLAY_ANIMATION', animation: animName }));
     }
@@ -342,7 +344,17 @@ export const AlphabetScreen: React.FC = () => {
             >
               {/* Visor 3D */}
               <View style={[styles.viewerWrap, { height: VIEWER_H, backgroundColor: C.inputBg }]}>
-                {viewerUri ? (
+                {viewerUri && Platform.OS === 'web' ? (
+                  // react-native-webview no tiene version web: en el navegador el visor va en un iframe.
+                  React.createElement('iframe', {
+                    key: viewerUri,
+                    ref: iframeRef,
+                    src: viewerUri,
+                    title: 'Visor 3D',
+                    onLoad: onWebViewLoad,
+                    style: { border: 0, width: '100%', height: '100%' },
+                  })
+                ) : viewerUri ? (
                   <WebView
                     ref={webViewRef}
                     source={{ uri: viewerUri }}
