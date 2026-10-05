@@ -521,6 +521,28 @@ const en: typeof es = {
   achSevenDaysDesc: 'Seven days in a row translating. Consistency shows in your hands.',
   achThirtyDaysName: 'Thirty days',
   achThirtyDaysDesc: 'Thirty days in a row translating without missing one.',
+
+  changePwTitle: "Change password",
+  changePwSubtitle: "Enter your current password and choose a new one.",
+  changePwCurrentLabel: "Current password",
+  changePwCurrentPlaceholder: "Your current password",
+  changePwCurrentRequired: "Enter your current password",
+  changePwSameAsCurrent: "The new password must be different from the current one",
+  changePwBtn: "Change password",
+  changePwInvalidPassword: "The current password is incorrect",
+  changePwDone: "Password changed, please sign in again",
+  passwordTooLong: "The password is too long (72 bytes maximum)",
+  accountActionError: "The action could not be completed. Please try again.",
+  deleteAccountWarning: "Your account and data will be permanently deleted. Enter your password to confirm.",
+  deleteAccountPasswordRequired: "Enter your password to continue",
+  deleteAccountInvalidPassword: "The password is incorrect",
+  deleteAccountLastAdmin: "You are the only administrator. Assign the administrator role to someone else before deleting your account.",
+  deleteAccountDone: "Your account and data were deleted",
+  forgotEmailRequired: "Enter your email.",
+  forgotEmailInvalid: "Enter a valid email.",
+  forgotSentNeutral: "If the email is registered, we sent you a 6-digit code.",
+  resetNoSession: "The recovery session expired. Please start again.",
+  resetDone: "Password updated, you can now sign in",
 };
 
 export default en;

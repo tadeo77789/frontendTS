@@ -26,6 +26,9 @@ import { userDisplayName } from '../../../shared/utils/userDisplayName';
 import { AchievementsCard } from '../components/AchievementsCard';
 import { buildAchievements, countUnlocked } from '../data/achievements';
 import { useMyStats } from '../hooks/useMyStats';
+import { DeleteAccountModal } from '../components/DeleteAccountModal';
+import { APP_VERSION } from '../../../shared/utils/appVersion';
+import { showAlert } from '../../../shared/utils/dialogs';
 
 const LANG_CODES: LanguageCode[] = ['es', 'en', 'fr', 'pt'];
 
@@ -43,6 +46,7 @@ export const ProfileScreen: React.FC = () => {
   const C = useColors();
   const { language, setLanguage } = useLanguage();
   const { t } = useTranslation();
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   // Las notificaciones son una herramienta de administracion: solo con permiso.
   const { hasPermission } = useAccess();
@@ -55,7 +59,7 @@ export const ProfileScreen: React.FC = () => {
   const unlockedAchievements = stats ? String(countUnlocked(achievements)) : '—';
 
   const displayName = userDisplayName(user);
-  const displayEmail = user?.email ?? 'usuario@traducesenas.com';
+  const displayEmail = user?.email || '—';
 
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
@@ -68,15 +72,14 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
-  const handleDeleteAccount = () => {
-    if (Platform.OS === 'web') {
-      if (confirm(t('profileConfirmDelete'))) { alert(t('profileAccountDeleted')); }
-    } else {
-      Alert.alert(t('profileDeleteAccount'), t('profileConfirmDelete'), [
-        { text: t('cancel'), style: 'cancel' },
-        { text: t('delete'), style: 'destructive', onPress: () => Alert.alert(t('profileAccountDeleted')) },
-      ]);
-    }
+  const handleDeleteAccount = () => setDeleteOpen(true);
+
+  // Cuenta ya borrada en el servidor: limpiar sesión (token y estado) y volver a la portada con aviso.
+  const handleAccountDeleted = async () => {
+    setDeleteOpen(false);
+    resetTheme();
+    await logout();
+    void showAlert({ message: t('deleteAccountDone'), icon: 'success' });
   };
 
   const IconBox: React.FC<{ name: React.ComponentProps<typeof Ionicons>['name'] }> = ({ name }) => (
@@ -242,7 +245,7 @@ export const ProfileScreen: React.FC = () => {
             <Text style={[styles.cardLabel, { color: C.textHint }]}>{t('profileAbout')}</Text>
             <View style={[styles.aboutRow, styles.rowDivider, { borderBottomColor: C.border }]}>
               <Text style={[styles.prefLabel, { color: C.textPrimary }]}>{t('profileAppVersion')}</Text>
-              <Text style={[styles.rowValue, { color: C.textSecondary }]}>1.0.0</Text>
+              <Text style={[styles.rowValue, { color: C.textSecondary }]}>{APP_VERSION}</Text>
             </View>
             <View style={styles.aboutLinks}>
               <TouchableOpacity onPress={() => navigation.navigate('Terms')}>

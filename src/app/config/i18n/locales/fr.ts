@@ -521,6 +521,28 @@ const fr: typeof es = {
   achSevenDaysDesc: 'Sept jours d’affilée à traduire. La constance se voit dans les mains.',
   achThirtyDaysName: 'Trente jours',
   achThirtyDaysDesc: 'Trente jours d’affilée à traduire sans en manquer un.',
+
+  changePwTitle: "Changer le mot de passe",
+  changePwSubtitle: "Saisissez votre mot de passe actuel et choisissez-en un nouveau.",
+  changePwCurrentLabel: "Mot de passe actuel",
+  changePwCurrentPlaceholder: "Votre mot de passe actuel",
+  changePwCurrentRequired: "Saisissez votre mot de passe actuel",
+  changePwSameAsCurrent: "Le nouveau mot de passe doit être différent de l'actuel",
+  changePwBtn: "Changer le mot de passe",
+  changePwInvalidPassword: "Le mot de passe actuel est incorrect",
+  changePwDone: "Mot de passe modifié, reconnectez-vous",
+  passwordTooLong: "Le mot de passe est trop long (72 octets maximum)",
+  accountActionError: "L'action n'a pas pu être effectuée. Réessayez.",
+  deleteAccountWarning: "Votre compte et vos données seront supprimés définitivement. Saisissez votre mot de passe pour confirmer.",
+  deleteAccountPasswordRequired: "Saisissez votre mot de passe pour continuer",
+  deleteAccountInvalidPassword: "Le mot de passe est incorrect",
+  deleteAccountLastAdmin: "Vous êtes le seul administrateur. Attribuez le rôle d'administrateur à quelqu'un d'autre avant de supprimer votre compte.",
+  deleteAccountDone: "Votre compte et vos données ont été supprimés",
+  forgotEmailRequired: "Saisissez votre e-mail.",
+  forgotEmailInvalid: "Saisissez un e-mail valide.",
+  forgotSentNeutral: "Si l'e-mail est enregistré, nous vous avons envoyé un code à 6 chiffres.",
+  resetNoSession: "La récupération a expiré. Recommencez.",
+  resetDone: "Mot de passe mis à jour, vous pouvez vous connecter",
 };
 
 export default fr;

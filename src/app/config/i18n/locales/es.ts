@@ -520,6 +520,28 @@ const es = {
   achSevenDaysDesc: 'Siete días seguidos traduciendo. La constancia se nota en las manos.',
   achThirtyDaysName: 'Treinta días',
   achThirtyDaysDesc: 'Treinta días seguidos traduciendo sin faltar uno.',
+
+  changePwTitle: "Cambiar contraseña",
+  changePwSubtitle: "Escribe tu contraseña actual y elige una nueva.",
+  changePwCurrentLabel: "Contraseña actual",
+  changePwCurrentPlaceholder: "Tu contraseña actual",
+  changePwCurrentRequired: "Escribe tu contraseña actual",
+  changePwSameAsCurrent: "La nueva contraseña debe ser distinta de la actual",
+  changePwBtn: "Cambiar contraseña",
+  changePwInvalidPassword: "La contraseña actual no es correcta",
+  changePwDone: "Contraseña cambiada, inicia sesión de nuevo",
+  passwordTooLong: "La contraseña es demasiado larga (máximo 72 bytes)",
+  accountActionError: "No se pudo completar la acción. Inténtalo de nuevo.",
+  deleteAccountWarning: "Se borrará tu cuenta y tus datos de forma permanente. Escribe tu contraseña para confirmar.",
+  deleteAccountPasswordRequired: "Escribe tu contraseña para continuar",
+  deleteAccountInvalidPassword: "La contraseña no es correcta",
+  deleteAccountLastAdmin: "Eres el único administrador. Asigna el rol de administrador a otra persona antes de eliminar tu cuenta.",
+  deleteAccountDone: "Tu cuenta y tus datos fueron eliminados",
+  forgotEmailRequired: "Ingresa tu correo electrónico.",
+  forgotEmailInvalid: "Ingresa un correo electrónico válido.",
+  forgotSentNeutral: "Si el correo está registrado, te enviamos un código de 6 dígitos.",
+  resetNoSession: "La recuperación expiró. Empieza de nuevo.",
+  resetDone: "Contraseña actualizada, ya puedes iniciar sesión",
 };
 
 export default es;
