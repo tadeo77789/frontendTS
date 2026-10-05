@@ -542,6 +542,10 @@ const es = {
   forgotSentNeutral: "Si el correo está registrado, te enviamos un código de 6 dígitos.",
   resetNoSession: "La recuperación expiró. Empieza de nuevo.",
   resetDone: "Contraseña actualizada, ya puedes iniciar sesión",
+
+  recognitionUnavailableMobile: "En el móvil el reconocimiento de señas aún no está disponible. Usa la versión web para traducir con la cámara.",
+  gestureVocabularyGeneric: "Gestos de prueba",
+  gestureGenericNote: "Son gestos de prueba del reconocedor genérico de Google, no señas de la LSC. Las palabras de la LSC aparecen cuando el modelo propio está disponible.",
 };
 
 export default es;

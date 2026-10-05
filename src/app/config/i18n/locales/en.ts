@@ -543,6 +543,10 @@ const en: typeof es = {
   forgotSentNeutral: "If the email is registered, we sent you a 6-digit code.",
   resetNoSession: "The recovery session expired. Please start again.",
   resetDone: "Password updated, you can now sign in",
+
+  recognitionUnavailableMobile: "Sign recognition is not available on mobile yet. Use the web version to translate with the camera.",
+  gestureVocabularyGeneric: "Test gestures",
+  gestureGenericNote: "These are test gestures from Google's generic recognizer, not LSC signs. LSC words appear when our own model is available.",
 };
 
 export default en;
