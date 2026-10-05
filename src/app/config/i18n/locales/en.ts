@@ -314,6 +314,8 @@ const en: typeof es = {
 
   alphabetTitle: 'LSC Alphabet',
   alphabetLetters: 'letters',
+  alphabetFallback: "Could not load the alphabet from the server. Showing the local model.",
+  alphabetRetry: "Retry",
   alphabetTip: 'Tap a letter to see the 3D sign',
   alphabetTouchOutside: 'Tap outside to close',
   alphabetRepeat: 'Repeat',
