@@ -23,6 +23,7 @@ import {
   exportTrainingJson,
   importTrainingJson,
 } from '../../../feature/Translation/services/vision';
+import { APP_VERSION } from '../../../shared/utils/appVersion';
 import { useLanguage } from '../../../app/providers/LanguageContext';
 import { downloadTextFile, pickTextFile, isFileIOSupported } from '../../../shared/utils/fileIO';
 import { showSuccess, showError, showInfo, showChoice } from '../../../shared/utils/dialogs';
@@ -32,7 +33,7 @@ const ALPHABET_LSC = [
   'A', 'B', 'C', 'D', 'E', 'F', 'G',
   'H', 'I', 'J', 'K', 'L', 'M', 'N',
   'O', 'P', 'Q', 'R', 'S', 'T', 'U',
-  'V', 'W', 'X', 'Y', 'Z', '5',
+  'V', 'W', 'X', 'Y', 'Z',
 ];
 
 type Nav = NativeStackNavigationProp<AdminStackParams, 'Dashboard'>;
@@ -123,7 +124,7 @@ export const AdminDashboardScreen: React.FC = () => {
 
   const maxCount = Math.max(1, ...Object.values(sampleCounts));
 
-  const appVersion = '1.0.0';
+  const appVersion = APP_VERSION;
   const platformLabel = Platform.OS === 'web' ? 'Web' : Platform.OS === 'ios' ? 'iOS' : 'Android';
 
   const AI_KPIS = [
@@ -183,7 +184,7 @@ export const AdminDashboardScreen: React.FC = () => {
             <View style={styles.cardHead}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.cardTitle, { color: C.textPrimary }]}>{t('adminSamplesPerLetter')}</Text>
-                <Text style={[styles.cardSub, { color: C.textHint }]}>Alfabeto LSC · {ALPHABET_LSC.length} símbolos</Text>
+                <Text style={[styles.cardSub, { color: C.textHint }]}>Alfabeto LSC · {ALPHABET_LSC.length} letras</Text>
               </View>
               <View style={[styles.coveragePill, { backgroundColor: C.primaryBg }]}>
                 <Text style={[styles.coverageText, { color: C.primaryDark }]}>{t('adminCoverage')} {coverage}%</Text>
