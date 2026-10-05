@@ -157,12 +157,27 @@ export const TranslationScreen: React.FC = () => {
     }
   }, [t]);
 
-  const speak = useCallback((textToSpeak: string) => {
+  // El mismo boton lee el texto o, si ya esta sonando, lo detiene.
+  const [speaking, setSpeaking] = useState(false);
+
+  const toggleSpeech = useCallback((textToSpeak: string) => {
+    if (speaking) {
+      Speech.stop();
+      setSpeaking(false);
+      return;
+    }
     const value = textToSpeak.trim();
     if (!value) return;
     Speech.stop();
-    Speech.speak(value, { language: SPEECH_LANG[language] ?? 'es-ES' });
-  }, [language]);
+    setSpeaking(true);
+    const done = () => setSpeaking(false);
+    Speech.speak(value, {
+      language: SPEECH_LANG[language] ?? 'es-ES',
+      onDone: done,
+      onStopped: done,
+      onError: done,
+    });
+  }, [language, speaking]);
 
   useEffect(() => () => { agentStop(); Speech.stop(); }, [agentStop]);
 
@@ -484,8 +499,13 @@ export const TranslationScreen: React.FC = () => {
 
                 {!!signResult && (
                   <View style={styles.resultActions}>
-                    <TouchableOpacity style={[styles.iconAction, { borderColor: C.border }]} onPress={() => speak(signResult)}>
-                      <Ionicons name="volume-high-outline" size={19} color={C.primary} />
+                    <TouchableOpacity
+                      style={[styles.iconAction, { borderColor: C.border }]}
+                      onPress={() => toggleSpeech(signResult)}
+                      accessibilityRole="button"
+                      accessibilityLabel={speaking ? t('stopListening') : t('listen')}
+                    >
+                      <Ionicons name={speaking ? 'stop-circle-outline' : 'volume-high-outline'} size={19} color={C.primary} />
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.iconAction, { borderColor: C.border }]} onPress={() => handleCopy(signResult)}>
                       <Ionicons name="copy-outline" size={18} color={C.primary} />

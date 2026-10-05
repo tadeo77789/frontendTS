@@ -203,6 +203,7 @@ const es = {
   resultPlaceholderText: 'Escribe un texto y toca Traducir',
   copy: 'Copiar',
   listen: 'Escuchar',
+  stopListening: 'Detener audio',
   copied: 'Copiado',
   copiedToClipboard: 'Texto copiado al portapapeles',
   copyFailed: 'No se pudo copiar el texto',

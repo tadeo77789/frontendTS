@@ -204,6 +204,7 @@ const en: typeof es = {
   resultPlaceholderText: 'Write some text and tap Translate',
   copy: 'Copy',
   listen: 'Listen',
+  stopListening: 'Stop audio',
   copied: 'Copied',
   copiedToClipboard: 'Text copied to clipboard',
   copyFailed: 'The text could not be copied',
