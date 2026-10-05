@@ -313,7 +313,7 @@ const es = {
 
   alphabetTitle: 'Alfabeto LSC',
   alphabetLetters: 'letras',
-  alphabetFallback: "No se pudo cargar el alfabeto del servidor. Se muestra el modelo local.",
+  alphabetFallback: "No se pudo cargar el alfabeto del servidor. Solo se muestran las letras, sin imágenes.",
   alphabetRetry: "Reintentar",
   alphabetTip: 'Toca una letra para ver la seña en 3D',
   alphabetTouchOutside: 'Toca fuera para cerrar',

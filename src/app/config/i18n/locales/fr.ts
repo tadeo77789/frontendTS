@@ -314,7 +314,7 @@ const fr: typeof es = {
 
   alphabetTitle: 'Alphabet LSC',
   alphabetLetters: 'lettres',
-  alphabetFallback: "Impossible de charger l'alphabet depuis le serveur. Le modèle local est affiché.",
+  alphabetFallback: "Impossible de charger l'alphabet depuis le serveur. Seules les lettres sont affichées, sans images.",
   alphabetRetry: "Réessayer",
   alphabetTip: 'Touchez une lettre pour voir le signe en 3D',
   alphabetTouchOutside: 'Touchez en dehors pour fermer',

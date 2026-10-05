@@ -33,7 +33,8 @@ const LOCAL_ALPHABET: LetterItem[] = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   .split('')
   .map(letter => ({
     letter,
-    imageUrl: `https://www.lifeprint.com/asl101/images-handshapes/${letter.toLowerCase()}.gif`,
+    // Sin imagen: la miniatura solo se pide al catalogo (nunca de un alfabeto ajeno como ASL).
+    imageUrl: '',
     modelUrl: null,
     animated: false,
     description: null,
@@ -79,7 +80,7 @@ export const AlphabetScreen: React.FC = () => {
   const [viewerLoaded, setViewerLoaded] = useState(false);
 
   // Alfabeto: viene de la API (lexicon-service). Si falla, queda el local.
-  const [alphabet, setAlphabet] = useState<LetterItem[]>(LOCAL_ALPHABET);
+  const [alphabet, setAlphabet] = useState<LetterItem[]>([]);
   const [status,   setStatus]   = useState<'loading' | 'api' | 'fallback'>('loading');
   const [attempt,  setAttempt]  = useState(0);
 
