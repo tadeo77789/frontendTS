@@ -180,6 +180,10 @@ export const AlphabetScreen: React.FC = () => {
     );
   }, [handleSelect, ITEM_SIZE, BADGE, PALETTE, isDark, t]);
 
+  // Consejo de la API si trae descripcion; si no, el texto local (solo A-Z).
+  const tipFor = useCallback((letter: string): string =>
+    /^[A-Z]$/.test(letter) ? t(`alphabetTip${letter}` as TranslationKey) : '', [t]);
+
   const getItemLayout = useCallback((_: unknown, i: number) => ({
     length: ITEM_SIZE + GAP, offset: (ITEM_SIZE + GAP) * Math.floor(i / COLS), index: i,
   }), [ITEM_SIZE, GAP, COLS]);
@@ -206,6 +210,12 @@ export const AlphabetScreen: React.FC = () => {
         getItemLayout={getItemLayout}
         initialNumToRender={27}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={status === 'loading' ? (
+          <View style={styles.stateBox}>
+            <ActivityIndicator size="large" color={C.primary} />
+            <Text style={[styles.loadingText, { color: C.primary }]}>{t('loading')}</Text>
+          </View>
+        ) : null}
         ListHeaderComponent={
           <View style={[styles.hero, isPhone && styles.heroPhone]}>
             <View style={[styles.heroLeft, isPhone && styles.heroLeftPhone]}>
@@ -229,6 +239,15 @@ export const AlphabetScreen: React.FC = () => {
               </Text>
               <Text style={[styles.subtitle, isPhone && styles.subtitlePhone, { color: C.textSecondary }]}>{t('alphabetTip')}</Text>
             </View>
+            {status === 'fallback' && (
+              <View style={[styles.fallbackBox, { backgroundColor: C.surface, borderColor: C.borderInput }]}>
+                <Ionicons name="cloud-offline-outline" size={16} color={C.textSecondary} />
+                <Text style={[styles.fallbackText, { color: C.textSecondary }]}>{t('alphabetFallback')}</Text>
+                <TouchableOpacity onPress={() => setAttempt(n => n + 1)}>
+                  <Text style={[styles.fallbackText, { color: C.primary, fontWeight: '800' }]}>{t('alphabetRetry')}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <View style={[styles.countPill, isPhone && styles.countPillPhone, { backgroundColor: C.surface, borderColor: C.borderInput }]}>
               <Ionicons name="grid-outline" size={16} color={C.primaryDark} />
               <Text style={[styles.countText, { color: C.primaryDark }]}>{letters.length} {t('alphabetLetters')}</Text>
@@ -401,6 +420,10 @@ export const AlphabetScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.backgroundGray ?? '#F8F9FC' },
+
+  stateBox: { alignItems: 'center', gap: 10, paddingVertical: 60 },
+  fallbackBox: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, alignSelf: 'stretch' },
+  fallbackText: { fontSize: 13, flexShrink: 1 },
 
   gridContent: { paddingBottom: 40, maxWidth: 1240, width: '100%', alignSelf: 'center' },
 

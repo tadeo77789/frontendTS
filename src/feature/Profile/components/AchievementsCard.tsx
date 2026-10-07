@@ -4,9 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
 import {
-  ACHIEVEMENTS,
   CATEGORY_LABEL_KEYS,
   CATEGORY_ORDER,
+  countUnlocked,
   progressOf,
   type Achievement,
   type AchievementCategory,
@@ -27,10 +27,11 @@ const PREVIEW_COUNT = 2;
 const estimateGridWidth = (windowWidth: number) => Math.max(160, Math.min(windowWidth - 40, 880) - 52);
 
 interface AchievementsCardProps {
+  achievements: Achievement[];
   isWide: boolean;
 }
 
-export const AchievementsCard: React.FC<AchievementsCardProps> = ({ isWide }) => {
+export const AchievementsCard: React.FC<AchievementsCardProps> = ({ isWide, achievements }) => {
   const C = useColors();
   const { t } = useTranslation();
   const { progressText, levelText } = useAchievementText();
@@ -41,28 +42,25 @@ export const AchievementsCard: React.FC<AchievementsCardProps> = ({ isWide }) =>
   const [openId, setOpenId] = useState<string | null>(null);
   const [gridWidth, setGridWidth] = useState(0);
 
-  const unlockedCount = useMemo(
-    () => ACHIEVEMENTS.filter(achievement => progressOf(achievement).unlocked).length,
-    []
-  );
-  const totalPercent = Math.round((unlockedCount / ACHIEVEMENTS.length) * 100);
+  const unlockedCount = useMemo(() => countUnlocked(achievements), [achievements]);
+  const totalPercent = Math.round((unlockedCount / achievements.length) * 100);
 
   // Los dos logros mas avanzados de los que aun no estan desbloqueados.
   const inProgress = useMemo(
     () =>
-      ACHIEVEMENTS.map(achievement => ({ achievement, ...progressOf(achievement) }))
+      achievements.map(achievement => ({ achievement, ...progressOf(achievement) }))
         .filter(entry => !entry.unlocked && entry.percent > 0)
         .sort((a, b) => b.percent - a.percent)
         .slice(0, 2),
-    []
+    [achievements]
   );
 
-  const visible = filter === 'all' ? ACHIEVEMENTS : ACHIEVEMENTS.filter(a => a.category === filter);
+  const visible = filter === 'all' ? achievements : achievements.filter(a => a.category === filter);
   // La tarjeta abre con dos medallas para no alargar el perfil; el resto queda
   // detras del boton de ver mas.
   const shown = showAll ? visible : visible.slice(0, PREVIEW_COUNT);
   const hidden = visible.length - shown.length;
-  const open = ACHIEVEMENTS.find(a => a.id === openId) ?? null;
+  const open = achievements.find(a => a.id === openId) ?? null;
 
   const available = gridWidth || estimateGridWidth(width);
   const columns = Math.max(2, Math.floor((available + GRID_GAP) / (MIN_TILE + GRID_GAP)));
@@ -70,7 +68,7 @@ export const AchievementsCard: React.FC<AchievementsCardProps> = ({ isWide }) =>
 
   const filters: { key: Filter; label: string }[] = [
     { key: 'all', label: t('achievementsAll') },
-    ...CATEGORY_ORDER.map(category => ({ key: category as Filter, label: t(CATEGORY_LABEL_KEYS[category]) })),
+    ...CATEGORY_ORDER.filter(category => achievements.some(a => a.category === category)).map(category => ({ key: category as Filter, label: t(CATEGORY_LABEL_KEYS[category]) })),
   ];
 
   const renderInProgress = (achievement: Achievement, percent: number) => (
@@ -105,7 +103,7 @@ export const AchievementsCard: React.FC<AchievementsCardProps> = ({ isWide }) =>
       <View style={[styles.header, !isWide && styles.headerStacked]}>
         <Text style={[styles.cardLabel, { color: C.textHint }]}>{t('achievements')}</Text>
         <Text style={[styles.headerCount, { color: C.textSecondary }]}>
-          {t('achievementsProgress', { unlocked: unlockedCount, total: ACHIEVEMENTS.length })}
+          {t('achievementsProgress', { unlocked: unlockedCount, total: achievements.length })}
         </Text>
         <View style={[styles.headerMeter, isWide && styles.headerMeterWide]}>
           <AchievementProgressBar percent={totalPercent} track={C.inputBg} fill={C.primary} />

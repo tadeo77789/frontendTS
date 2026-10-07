@@ -1,61 +1,37 @@
-/**
- * Cliente HTTP del modulo de autenticacion.
- *
- * El backend responde `{ success, message, data }` y usa 400 para los errores
- * de negocio (credenciales invalidas, correo repetido), asi que aqui se
- * normaliza el mensaje para que los hooks de formulario lo muestren tal cual.
- */
-
-import { api } from '../../Translation/services/api.service';
+import { api } from '../../../shared/services/api.client';
 import { ENDPOINTS } from '../../../app/config/api.config';
 
-export interface BackendUser {
-  user_id: number;
-  name: string;
-  email: string;
-}
-
-export interface LoginData {
-  token: string;
-  user: BackendUser;
-}
-
-interface ApiEnvelope<T> {
-  success: boolean;
-  message: string;
-  data?: T;
-}
-
-const messageFrom = (error: unknown, fallback: string): string => {
-  const res = (error as { response?: { data?: { message?: string } } })?.response;
-  return res?.data?.message || fallback;
+/** Confirma el correo con el código de 6 dígitos. Lanza el error de axios (usar normalizeApiError). */
+export const verifyEmail = async (email: string, code: string, password: string): Promise<void> => {
+  await api.post(ENDPOINTS.verifyEmail, { email, code, password });
 };
 
-export const authService = {
-  async login(email: string, password: string): Promise<LoginData> {
-    try {
-      const { data } = await api.post<ApiEnvelope<LoginData>>(ENDPOINTS.login, {
-        email,
-        password,
-      });
-      if (!data?.data?.token) {
-        throw new Error(data?.message || 'Respuesta de login invalida');
-      }
-      return data.data;
-    } catch (error) {
-      throw new Error(messageFrom(error, 'No se pudo iniciar sesion'));
-    }
-  },
+/** Pide un código nuevo. El servidor responde siempre 200, no se lee su mensaje. */
+export const resendVerification = async (email: string): Promise<void> => {
+  await api.post(ENDPOINTS.resendVerification, { email });
+};
 
-  async register(name: string, email: string, password: string): Promise<void> {
-    try {
-      await api.post<ApiEnvelope<BackendUser>>(ENDPOINTS.register, {
-        name,
-        email,
-        password,
-      });
-    } catch (error) {
-      throw new Error(messageFrom(error, 'No se pudo crear la cuenta'));
-    }
-  },
+/** Pide el código de recuperación. El servidor responde igual exista o no la cuenta. */
+export const forgotPassword = async (email: string): Promise<void> => {
+  await api.post(ENDPOINTS.forgotPassword, { email });
+};
+
+/** Comprueba el código de recuperación (no lo consume). */
+export const verifyResetCode = async (email: string, code: string): Promise<void> => {
+  await api.post(ENDPOINTS.verifyCode, { email, code });
+};
+
+/** Cambia la contraseña con el código de recuperación. */
+export const resetPassword = async (email: string, code: string, newPassword: string): Promise<void> => {
+  await api.post(ENDPOINTS.resetPassword, { email, code, newPassword });
+};
+
+/** Cambia la contraseña de la cuenta con sesión iniciada. 403 INVALID_PASSWORD si la actual es incorrecta. */
+export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+  await api.post(ENDPOINTS.mePassword, { currentPassword, newPassword });
+};
+
+/** Elimina la cuenta y sus datos. 403 INVALID_PASSWORD, 409 LAST_ADMIN. */
+export const deleteAccount = async (password: string): Promise<void> => {
+  await api.delete(ENDPOINTS.me, { data: { password } });
 };

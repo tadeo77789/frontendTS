@@ -211,7 +211,9 @@ const spinner     = document.getElementById('spinner');
 
 function playAnimation(name) {
   if (!mixer) return;
-  const next = actions[name];
+  // Los .glb por letra de la API no usan los nombres Letra_X: si no hay una
+  // animacion con ese nombre se usa la primera que traiga el modelo.
+  const next = actions[name] || Object.values(actions)[0];
   if (!next) return;
 
   if (current && current !== next) {
@@ -233,7 +235,21 @@ function playAnimation(name) {
 // ── Load GLB ──────────────────────────────────────────────────────────
 const loader = new GLTFLoader();
 
+let currentModel = null;
+
 function loadModel(url) {
+  // Cambio de letra: se retira el modelo anterior antes de cargar el nuevo.
+  if (currentModel) {
+    scene.remove(currentModel);
+    currentModel = null;
+  }
+  if (mixer) { mixer.stopAllAction(); mixer = null; }
+  actions = {};
+  current = null;
+  label.classList.remove('visible');
+  spinner.classList.remove('hidden');
+  progressBar.style.opacity = '1';
+  progressBar.style.width = '0%';
   loader.load(
     url,
     (gltf) => {
@@ -245,6 +261,18 @@ function loadModel(url) {
       const size   = box.getSize(new THREE.Vector3());
       model.position.sub(center);
       model.position.y += size.y * 0.5;
+      // Los modelos por letra del catálogo miden menos de 1 unidad; la cámara fija
+      // apunta al avatar grande (y = 5.2). Para modelos pequeños se encuadra el modelo.
+      if (size.y < 3) {
+        const fov  = cam.fov * Math.PI / 180;
+        const dist = Math.max(size.x, size.y, size.z) / (2 * Math.tan(fov / 2)) * 1.6;
+        controls.target.set(0, size.y * 0.55, 0);
+        cam.position.set(0, size.y * 0.65, dist);
+        cam.near = dist / 100;
+        cam.far  = dist * 100;
+        cam.updateProjectionMatrix();
+        controls.update();
+      }
 
       // Sombras y materiales PBR
       model.traverse(child => {
@@ -273,6 +301,7 @@ function loadModel(url) {
       requestAnimationFrame(entryAnim);
 
       scene.add(model);
+      currentModel = model;
 
       // Ocultar spinner + barra completa
       progressBar.style.width = '100%';

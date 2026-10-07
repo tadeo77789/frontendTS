@@ -6,7 +6,6 @@ Contiene la integración con servicios del dispositivo y servicios externos de t
 
 | Archivo | Descripción |
 |---|---|
-| `api.service.ts` | Instancia global de Axios con interceptores de autenticación (agrega el token JWT a cada petición) |
 | `camera.service.ts` | Control de la cámara del dispositivo para capturar frames de señas en tiempo real |
 | `audio.service.ts` | Grabación de audio del micrófono para el modo voz→seña |
 | `notification.service.ts` | Registro de tokens FCM/APNs y manejo de notificaciones push (expo-notifications) |

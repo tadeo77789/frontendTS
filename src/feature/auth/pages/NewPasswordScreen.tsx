@@ -1,22 +1,23 @@
-
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   ScrollView, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { AuthStepCard, useAuthPalette } from '../components/AuthStepCard';
-import { evaluatePassword, MIN_PASSWORD_LENGTH } from '../../../shared/utils/passwordStrength';
+import { evaluatePassword, MAX_PASSWORD_BYTES, MIN_PASSWORD_LENGTH, passwordByteLength } from '../../../shared/utils/passwordStrength';
+import { normalizeApiError } from '../../../shared/services/api.client';
+import { showAlert, showError } from '../../../shared/utils/dialogs';
+import { resetPassword } from '../services/auth.service';
+import { passwordResetFlow } from '../services/passwordResetFlow';
 import { useScrollToInput } from '../../../shared/hooks/useScrollToInput';
 
 export const NewPasswordScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const route = useRoute();
-  const fromProfile = (route.params as any)?.fromProfile ?? false;
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -24,7 +25,7 @@ export const NewPasswordScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ password?: string; confirm?: string }>({});
   const themed = useColors();
-  const P = useAuthPalette(fromProfile, themed);
+  const P = useAuthPalette(false, themed);
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const isPhone = width < 480;
@@ -38,25 +39,53 @@ export const NewPasswordScreen: React.FC = () => {
     { key: 'pwCheckSpecial', label: t('pwCheckSpecial'), ok: checks.special },
   ];
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (loading) return;
     const e: { password?: string; confirm?: string } = {};
     if (!password || password.length < MIN_PASSWORD_LENGTH) e.password = t('newPasswordErrorShort');
+    else if (passwordByteLength(password) > MAX_PASSWORD_BYTES) e.password = t('passwordTooLong');
     else if (!meetsMinimum) e.password = t('registerPasswordWeak');
     if (!confirm || password !== confirm) e.confirm = t('newPasswordErrorMismatch');
     if (Object.keys(e).length > 0) { setErrors(e); return; }
     setErrors({});
+    const flow = passwordResetFlow.get();
+    if (!flow?.code) {
+      navigation.navigate('ForgotPassword');
+      void showAlert({ message: t('resetNoSession'), icon: 'info' });
+      return;
+    }
     setLoading(true);
-    setTimeout(() => {
+    try {
+      await resetPassword(flow.email, flow.code, password);
+    } catch (error) {
       setLoading(false);
-      if (fromProfile) navigation.popToTop();
-      else navigation.navigate('Login');
-    }, 1000);
+      const { code } = normalizeApiError(error);
+      if (code === 'INVALID_CODE') {
+        // Código caducado, usado o con demasiados intentos: pedir uno nuevo.
+        passwordResetFlow.clear();
+        navigation.navigate('ForgotPassword');
+        void showError(t('verifyInvalidCode'), t('error'));
+      } else if (code === 'VALIDATION_ERROR') {
+        setErrors({ password: t('registerPasswordWeak') });
+      } else {
+        void showError(
+          code === 'NETWORK' ? t('loginNetworkError') : code === 'SERVER' ? t('serverUnavailable') : t('accountActionError'),
+          t('error'),
+        );
+      }
+      return;
+    }
+    setLoading(false);
+    passwordResetFlow.clear();
+    navigation.navigate('Login');
+    void showAlert({ message: t('resetDone'), icon: 'success' });
   };
 
   return (
-    <KeyboardAvoidingView style={[styles.root, { backgroundColor: P.page }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={[styles.root, { backgroundColor: P.page }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         ref={scrollRef}
+        style={styles.scrollView}
         contentContainerStyle={[styles.scroll, isPhone && styles.scrollPhone]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -141,10 +170,11 @@ export const NewPasswordScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  scrollView: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24, paddingTop: 88 },
   // En movil el boton de volver va en linea dentro de la tarjeta, asi que ya no
   // hace falta reservar espacio arriba.
-  scrollPhone: { padding: 16, paddingTop: 16, justifyContent: 'flex-start' },
+  scrollPhone: { padding: 16, paddingTop: 16, justifyContent: 'flex-start'},
   label: { fontSize: 13, fontWeight: '800', marginBottom: 8 },
   field: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1.5, borderRadius: 12, height: 52, paddingHorizontal: 16, marginBottom: 14 },
   input: { flex: 1, fontSize: 15 },

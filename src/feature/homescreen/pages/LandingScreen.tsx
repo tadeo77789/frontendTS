@@ -19,7 +19,7 @@ const FEATURES: { icon: keyof typeof Ionicons.glyphMap; title: string; desc: str
   {
     icon: 'text-outline',
     title: 'Alfabeto',
-    desc: 'Aprende las 26 letras del alfabeto en lengua de señas colombiana.',
+    desc: 'Aprende el alfabeto de la lengua de señas colombiana con imágenes y modelo 3D.',
     cta: 'Ver alfabeto',
     route: 'AlfabetoDemo',
   },

@@ -7,6 +7,7 @@ Define todas las interfaces y tipos compartidos en la aplicación para garantiza
 | Archivo | Descripción |
 |---|---|
 | `index.ts` | Tipos principales del dominio: usuario, traducción, léxico, notificaciones |
+| `iam.ts` | Contrato IAM: `PERMISSIONS` (literales del backend), `Permission`, `MyAccess` |
 
 ## Tipos definidos en `index.ts`
 

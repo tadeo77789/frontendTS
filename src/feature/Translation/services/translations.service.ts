@@ -1,5 +1,5 @@
 
-import { api, getCurrentUserId } from './api.service';
+import { api, getCurrentUserId } from '../../../shared/services/api.client';
 import { ENDPOINTS } from '../../../app/config/api.config';
 import type { TipoTraduccion } from '../../../shared/types';
 

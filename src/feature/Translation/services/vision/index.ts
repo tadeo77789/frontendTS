@@ -15,6 +15,12 @@ import type { SignVisionProvider } from './types';
 
 export const signVisionProvider: SignVisionProvider = mediapipeProvider;
 
+/**
+ * true cuando el proveedor activo es el simulador (móvil sin modelo): inventa
+ * letras y palabras, así que no se debe mostrar ni guardar como traducción real.
+ */
+export const isSimulatedRecognition: boolean = signVisionProvider.name.includes('mock');
+
 export const recordSample = async (
   label: string,
   features: number[] | Float32Array,
@@ -75,7 +81,7 @@ export type { SignVisionProvider, VisionFrame, SignDetectionResult } from './typ
 
 // Modo "palabras": usa el modelo propio de LSC si esta servido, y si no el
 // GestureRecognizer pre-entrenado de Google (7 senas).
-export { gestureEngine, wordVocabulary, activeEngineName, wordEnginePerf, wordPrediction, wordState, setSampleSink } from './wordEngine';
+export { gestureEngine, wordVocabulary, isGenericGestureEngine, activeEngineName, wordEnginePerf, wordPrediction, wordState, setSampleSink } from './wordEngine';
 export type { GestureEngine, GestureRecognition } from './gestureProvider';
 export {
   GESTURE_DICTIONARY,

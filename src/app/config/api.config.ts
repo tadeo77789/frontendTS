@@ -25,6 +25,7 @@ const devHost = (): string => {
   return Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
 };
 
+// TODO: confirmar el dominio real de produccion; 'api.traducsenas.com' no esta verificado.
 export const API_BASE_URL = __DEV__
   ? Platform.OS === 'web'
     ? 'http://localhost:3000/api'
@@ -36,29 +37,37 @@ export const API_BASE_URL = __DEV__
 export const API_TIMEOUT = 10_000;
 
 export const ENDPOINTS = {
-
   login: '/auth/login',
   register: '/auth/register',
-  logout: '/auth/logout',
   forgotPassword: '/auth/forgot-password',
   verifyCode: '/auth/verify-code',
+  verifyEmail: '/auth/verify-email',
+  resendVerification: '/auth/resend-verification',
   resetPassword: '/auth/reset-password',
+
+  me: '/users/me',
+  mePassword: '/users/me/password',
 
   translate: '/translations',
   history: '/translations/history',
   deleteTranslation: (id: number) => `/translations/${id}`,
+  translationsStats: '/translations/stats',
+  myTranslationStats: '/translations/me/stats',
+  usersStats: '/users/stats',
 
-  lexicon: '/lexicon',
-  lexiconSearch: '/lexicon/search',
-  lexiconAlphabet: '/lexicon/alphabet',
+  iamMyAccess: '/iam/me/access',
+  iamRoles: '/iam/roles',
+  iamUserRoles: (userId: number) => `/iam/users/${userId}/roles`,
+  iamUserRole: (userId: number, roleName: string) =>
+    `/iam/users/${userId}/roles/${encodeURIComponent(roleName)}`,
+  iamRole: (roleId: number) => `/iam/roles/${roleId}`,
 
   signTemplates: '/sign-templates',
 
-  stats: '/stats',
+  lexiconAlphabet: '/lexicon/alphabet',
 
-  profile: '/users/profile',
-  updateProfile: '/users/profile',
-  deleteAccount: '/users/delete',
+  analyticsEvents: '/analytics/events',
+  analyticsSectionReport: '/analytics/reports/sections',
 };
 
 export const TFJS_MODEL_URL = '';

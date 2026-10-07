@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -12,26 +11,27 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 
 import {
   AuthStepCard,
   useAuthPalette,
 } from '../components/AuthStepCard';
 
-import { useAuth } from '../../../app/providers/AuthContext';
 import { useColors } from '../../../app/providers/ThemeContext';
-import { isValidEmail } from '../../../shared/utils/email';
+import { useTranslation } from '../../../app/config/i18n';
+import { isValidEmail, normalizeEmail } from '../../../shared/utils/email';
+import { normalizeApiError } from '../../../shared/services/api.client';
+import { showAlert, showError } from '../../../shared/utils/dialogs';
+import { forgotPassword } from '../services/auth.service';
+import { passwordResetFlow } from '../services/passwordResetFlow';
+import { RESEND_COOLDOWN_MS } from '../services/pendingAuthFlow';
 
 export function ForgotPasswordScreen() {
   const navigation = useNavigation<any>();
-  const route = useRoute<any>();
-
-  const { user } = useAuth();
   const themed = useColors();
-
-  const fromProfile = route.params?.fromProfile ?? false;
-  const P = useAuthPalette(fromProfile, themed);
+  const P = useAuthPalette(false, themed);
+  const { t } = useTranslation();
 
   const { width } = useWindowDimensions();
   const isPhone = width < 480;
@@ -40,68 +40,48 @@ export function ForgotPasswordScreen() {
   const [emailError, setEmailError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const profileEmail = user?.email ?? '';
-
-  const handleConfirm = () => {
-    if (fromProfile) {
-      if (!profileEmail.trim()) {
-        Alert.alert(
-          'Error',
-          'No se pudo obtener el correo asociado a tu cuenta.'
-        );
-        return;
-      }
-
-      setLoading(true);
-
-      setTimeout(() => {
-        setLoading(false);
-
-        navigation.navigate('VerifyCode', {
-          fromProfile: true,
-        });
-      }, 1000);
-
+  const handleConfirm = async () => {
+    if (loading) return;
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail) {
+      setEmailError(t('forgotEmailRequired'));
+      return;
+    }
+    if (!isValidEmail(normalizedEmail)) {
+      setEmailError(t('forgotEmailInvalid'));
       return;
     }
 
-    if (!email.trim()) {
-      setEmailError('Ingresa tu correo electrónico.');
-      return;
-    }
-
-    if (!isValidEmail(email.trim())) {
-      setEmailError('Ingresa un correo electrónico válido.');
-      return;
-    }
-
+    setEmail(normalizedEmail);
     setEmailError('');
     setLoading(true);
-
-    setTimeout(() => {
+    try {
+      await forgotPassword(normalizedEmail);
+    } catch (error) {
       setLoading(false);
-
-      navigation.navigate('VerifyCode', {
-        fromProfile: false,
-      });
-    }, 1000);
+      const { code } = normalizeApiError(error);
+      if (code === 'VALIDATION_ERROR') setEmailError(t('forgotEmailInvalid'));
+      else void showError(
+        code === 'NETWORK' ? t('loginNetworkError') : code === 'SERVER' ? t('serverUnavailable') : t('accountActionError'),
+        t('error'),
+      );
+      return;
+    }
+    setLoading(false);
+    // El servidor responde igual exista o no la cuenta: mensaje neutro y siguiente paso.
+    passwordResetFlow.set({ email: normalizedEmail, resendAvailableAt: Date.now() + RESEND_COOLDOWN_MS });
+    void showAlert({ message: t('forgotSentNeutral'), icon: 'info' });
+    navigation.navigate('VerifyCode', { mode: 'reset' });
   };
 
   return (
     <KeyboardAvoidingView
-      style={[
-        styles.root,
-        {
-          backgroundColor: P.page,
-        },
-      ]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={[styles.root, { backgroundColor: P.page }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          isPhone && styles.scrollPhone,
-        ]}
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scroll, isPhone && styles.scrollPhone]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -109,171 +89,48 @@ export function ForgotPasswordScreen() {
           P={P}
           step={1}
           icon="lock-closed-outline"
-          title={
-            fromProfile
-              ? 'Verifica tu identidad'
-              : '¿Olvidaste tu contraseña?'
-          }
-          subtitle={
-            fromProfile
-              ? 'Enviaremos un código de verificación al correo asociado a tu cuenta.'
-              : 'Ingresa tu correo electrónico para recibir un código de verificación.'
-          }
+          title={t('forgotTitle')}
+          subtitle={t('forgotSubtitle')}
           onBack={() => navigation.goBack()}
         >
-          {fromProfile ? (
-            <>
-              <View
-                style={[
-                  styles.profileEmailBox,
-                  {
-                    backgroundColor: P.field,
-                    borderColor: P.border,
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.profileIconBox,
-                    {
-                      backgroundColor: P.iconBg,
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="mail-outline"
-                    size={22}
-                    color={P.accent}
-                  />
-                </View>
+          <Text style={[styles.label, { color: P.label }]}>{t('forgotEmailLabel')}</Text>
 
-                <View style={styles.profileEmailContent}>
-                  <Text
-                    style={[
-                      styles.profileEmailLabel,
-                      {
-                        color: P.sub,
-                      },
-                    ]}
-                  >
-                    Correo asociado a tu cuenta
-                  </Text>
+          <View
+            style={[
+              styles.inputContainer,
+              { backgroundColor: P.field, borderColor: emailError ? '#D9534F' : P.border },
+            ]}
+          >
+            <Ionicons name="mail-outline" size={22} color={P.accent} style={styles.inputIcon} />
+            <TextInput
+              style={[
+                styles.input,
+                { color: P.ink },
+                Platform.OS === 'web' && ({ outlineStyle: 'none', outlineWidth: 0 } as any),
+              ]}
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (emailError) setEmailError('');
+              }}
+              placeholder={t('forgotEmailPlaceholder')}
+              placeholderTextColor={P.faint}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
 
-                  <Text
-                    style={[
-                      styles.profileEmailText,
-                      {
-                        color: P.ink,
-                      },
-                    ]}
-                    numberOfLines={1}
-                    ellipsizeMode="middle"
-                  >
-                    {profileEmail}
-                  </Text>
-                </View>
-              </View>
+          {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
 
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  {
-                    backgroundColor: P.accent,
-                  },
-                  loading && styles.buttonDisabled,
-                ]}
-                onPress={handleConfirm}
-                disabled={loading}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.buttonText}>
-                  {loading ? 'Enviando...' : 'Enviar código'}
-                </Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <Text
-                style={[
-                  styles.label,
-                  {
-                    color: P.label,
-                  },
-                ]}
-              >
-                Correo electrónico
-              </Text>
-
-              <View
-                style={[
-                  styles.inputContainer,
-                  {
-                    backgroundColor: P.field,
-                    borderColor: emailError
-                      ? '#D9534F'
-                      : P.border,
-                  },
-                ]}
-              >
-                <Ionicons
-                  name="mail-outline"
-                  size={22}
-                  color={P.accent}
-                  style={styles.inputIcon}
-                />
-
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      color: P.ink,
-                    },
-                    Platform.OS === 'web' &&
-                      ({
-                        outlineStyle: 'none',
-                        outlineWidth: 0,
-                      } as any),
-                  ]}
-                  value={email}
-                  onChangeText={(text) => {
-                    setEmail(text);
-
-                    if (emailError) {
-                      setEmailError('');
-                    }
-                  }}
-                  placeholder="Ingresa tu correo"
-                  placeholderTextColor={P.faint}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
-              {emailError ? (
-                <Text style={styles.errorText}>
-                  {emailError}
-                </Text>
-              ) : null}
-
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  {
-                    backgroundColor: P.accent,
-                  },
-                  loading && styles.buttonDisabled,
-                ]}
-                onPress={handleConfirm}
-                disabled={loading}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.buttonText}>
-                  {loading ? 'Enviando...' : 'Enviar código'}
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: P.accent }, loading && styles.buttonDisabled]}
+            onPress={handleConfirm}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.buttonText}>{loading ? t('forgotBtnLoading') : t('forgotBtn')}</Text>
+          </TouchableOpacity>
         </AuthStepCard>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -282,6 +139,10 @@ export function ForgotPasswordScreen() {
 
 const styles = StyleSheet.create({
   root: {
+    flex: 1,
+  },
+
+  scrollView: {
     flex: 1,
   },
 
