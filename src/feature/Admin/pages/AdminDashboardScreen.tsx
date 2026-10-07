@@ -95,8 +95,13 @@ export const AdminDashboardScreen: React.FC = () => {
 
           {/* KPIs IA */}
           <View style={[styles.kpiRow, isTablet && styles.kpiRowWide]}>
-            {AI_KPIS.map((k, i) => (
-              <View key={i} style={[styles.kpiCard, { backgroundColor: C.surface, borderColor: C.border }, isTablet && { flex: 1 }]}>
+            {AI_KPIS.map(k => (
+              <View
+                key={k.label}
+                accessible
+                accessibilityLabel={`${k.label}: ${k.value}`}
+                style={[styles.kpiCard, { backgroundColor: C.surface, borderColor: C.border }, isTablet && { flex: 1 }]}
+              >
                 <View style={styles.kpiHead}>
                   <View style={[styles.kpiIconBox, { backgroundColor: C.primaryBg }]}>
                     <Ionicons name={k.icon} size={22} color={C.primary} />
