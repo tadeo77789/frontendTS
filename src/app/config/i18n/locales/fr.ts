@@ -285,10 +285,8 @@ const fr: typeof es = {
 
   adminDashboardTitle: 'Panneau admin',
   adminDashboardSubtitle: 'État de l\'IA et métriques de l\'app',
-  adminAiState: 'Échantillons sur cet appareil',
   adminAiActive: 'Échantillons enregistrés sur cet appareil',
   adminAiInactive: 'Aucun échantillon enregistré sur cet appareil',
-  adminCoverage: 'Couverture',
   adminSamplesPerLetter: 'Échantillons par lettre',
   adminSystem: 'Système',
   adminAppVersion: 'Version de l\'app',
