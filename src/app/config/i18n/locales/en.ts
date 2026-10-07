@@ -285,8 +285,8 @@ const en: typeof es = {
 
   adminDashboardTitle: 'Admin panel',
   adminDashboardSubtitle: 'AI state and app metrics',
-  adminAiActive: 'Samples saved on this device',
-  adminAiInactive: 'No samples saved on this device',
+  adminAiActive: 'Word templates on this device',
+  adminAiInactive: 'No word templates on this device',
   adminSamplesPerLetter: 'Samples per letter',
   adminSystem: 'System',
   adminAppVersion: 'App version',
