@@ -20,13 +20,9 @@ import { useAuth } from '../../../app/providers/AuthContext';
 import {
   getSampleCounts,
   signVisionProvider,
-  exportTrainingJson,
-  importTrainingJson,
 } from '../../../feature/Translation/services/vision';
 import { APP_VERSION } from '../../../shared/utils/appVersion';
 import { useLanguage } from '../../../app/providers/LanguageContext';
-import { downloadTextFile, pickTextFile, isFileIOSupported } from '../../../shared/utils/fileIO';
-import { showSuccess, showError, showInfo, showChoice } from '../../../shared/utils/dialogs';
 import type { AdminStackParams } from '../../../app/routes/AdminStackNavigator';
 
 const ALPHABET_LSC = [
@@ -65,62 +61,6 @@ export const AdminDashboardScreen: React.FC = () => {
   const lettersTrained = ALPHABET_LSC.filter(l => (sampleCounts[l] ?? 0) > 0).length;
   const coverage = Math.round((lettersTrained / ALPHABET_LSC.length) * 100);
   const aiActive = totalSamples > 0;
-
-  const handleExport = useCallback(async () => {
-    if (!isFileIOSupported()) {
-      showInfo(t('adminFileIONotSupported'));
-      return;
-    }
-    try {
-      const json = await exportTrainingJson();
-      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      downloadTextFile(`traduce_senas_dataset_${ts}.json`, json);
-      showSuccess(t('adminExportSuccess'));
-    } catch {
-      showError(t('adminImportError'));
-    }
-  }, [t]);
-
-  const performImport = useCallback(async (mode: 'merge' | 'replace') => {
-    try {
-      const content = await pickTextFile();
-      if (!content) {
-        showInfo(t('adminImportEmpty'));
-        return;
-      }
-      const count = await importTrainingJson(content, mode);
-      await refresh();
-      showSuccess(t('adminImportSuccess').replace('{count}', String(count)));
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : t('adminImportError');
-      showError(msg, t('adminImportError'));
-    }
-  }, [refresh, t]);
-
-  const handleImport = useCallback(async () => {
-    if (!isFileIOSupported()) {
-      showInfo(t('adminFileIONotSupported'));
-      return;
-    }
-    if (totalSamples === 0) {
-
-      performImport('merge');
-      return;
-    }
-    const choice = await showChoice({
-      title: t('adminImportDataset'),
-      message: t('adminImportConfirmMerge'),
-      icon: 'question',
-      cancelText: t('cancel'),
-      choices: [
-        { key: 'merge', label: t('adminImportMergeOption') },
-        { key: 'replace', label: t('adminImportReplaceOption'), destructive: true },
-      ],
-    });
-    if (choice === 'merge' || choice === 'replace') {
-      performImport(choice);
-    }
-  }, [totalSamples, performImport, t]);
 
   const maxCount = Math.max(1, ...Object.values(sampleCounts));
 
@@ -241,29 +181,6 @@ export const AdminDashboardScreen: React.FC = () => {
                     <Ionicons name="videocam-outline" size={19} color={C.primary} />
                   </View>
                   <Text style={[styles.ghostActionText, { color: C.textPrimary }]}>Mis repeticiones (modelo)</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.ghostAction, { borderColor: C.borderInput, opacity: totalSamples === 0 ? 0.5 : 1 }]}
-                  onPress={handleExport}
-                  disabled={totalSamples === 0}
-                  activeOpacity={0.85}
-                >
-                  <View style={[styles.ghostActionIcon, { backgroundColor: C.primaryBg }]}>
-                    <Ionicons name="download-outline" size={19} color={C.primary} />
-                  </View>
-                  <Text style={[styles.ghostActionText, { color: C.textPrimary }]}>{t('adminExportDataset')}</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.ghostAction, { borderColor: C.borderInput }]}
-                  onPress={handleImport}
-                  activeOpacity={0.85}
-                >
-                  <View style={[styles.ghostActionIcon, { backgroundColor: C.primaryBg }]}>
-                    <Ionicons name="cloud-upload-outline" size={19} color={C.primary} />
-                  </View>
-                  <Text style={[styles.ghostActionText, { color: C.textPrimary }]}>{t('adminImportDataset')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
