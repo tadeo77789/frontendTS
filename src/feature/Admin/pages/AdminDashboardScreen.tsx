@@ -18,19 +18,12 @@ import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { useAuth } from '../../../app/providers/AuthContext';
 import {
-  getSampleCounts,
+  getGestureCounts,
   signVisionProvider,
 } from '../../../feature/Translation/services/vision';
 import { APP_VERSION } from '../../../shared/utils/appVersion';
 import { useLanguage } from '../../../app/providers/LanguageContext';
 import type { AdminStackParams } from '../../../app/routes/AdminStackNavigator';
-
-const ALPHABET_LSC = [
-  'A', 'B', 'C', 'D', 'E', 'F', 'G',
-  'H', 'I', 'J', 'K', 'L', 'M', 'N',
-  'O', 'P', 'Q', 'R', 'S', 'T', 'U',
-  'V', 'W', 'X', 'Y', 'Z',
-];
 
 type Nav = NativeStackNavigationProp<AdminStackParams, 'Dashboard'>;
 
@@ -44,10 +37,10 @@ export const AdminDashboardScreen: React.FC = () => {
   const { language } = useLanguage();
   const navigation = useNavigation<Nav>();
 
-  const [sampleCounts, setSampleCounts] = useState<Record<string, number>>({});
+  const [gestureCounts, setGestureCounts] = useState<Record<string, number>>({});
 
   const refresh = useCallback(async () => {
-    setSampleCounts(await getSampleCounts());
+    setGestureCounts(await getGestureCounts());
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -57,20 +50,16 @@ export const AdminDashboardScreen: React.FC = () => {
     return unsub;
   }, [navigation, refresh]);
 
-  const totalSamples = Object.values(sampleCounts).reduce((a, b) => a + b, 0);
-  const lettersTrained = ALPHABET_LSC.filter(l => (sampleCounts[l] ?? 0) > 0).length;
-  const coverage = Math.round((lettersTrained / ALPHABET_LSC.length) * 100);
+  const totalSamples = Object.values(gestureCounts).reduce((a, b) => a + b, 0);
+  const wordsCount = Object.values(gestureCounts).filter(n => n > 0).length;
   const aiActive = totalSamples > 0;
-
-  const maxCount = Math.max(1, ...Object.values(sampleCounts));
 
   const appVersion = APP_VERSION;
   const platformLabel = Platform.OS === 'web' ? 'Web' : Platform.OS === 'ios' ? 'iOS' : 'Android';
 
   const AI_KPIS = [
+    { icon: 'text-outline' as const, label: t('trainWordsCount'), value: String(wordsCount) },
     { icon: 'server-outline' as const, label: t('trainTotalSamples'), value: String(totalSamples) },
-    { icon: 'text-outline' as const,   label: t('trainLettersCovered'), value: `${lettersTrained} / ${ALPHABET_LSC.length}` },
-    { icon: 'speedometer-outline' as const, label: t('adminCoverage'), value: `${coverage}%` },
   ];
 
   const SYSTEM_ROWS = [
@@ -117,31 +106,6 @@ export const AdminDashboardScreen: React.FC = () => {
                 <Text style={[styles.kpiValue, { color: C.textPrimary }]}>{k.value}</Text>
               </View>
             ))}
-          </View>
-
-          {/* Muestras por símbolo */}
-          <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
-            <View style={styles.cardHead}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.cardTitle, { color: C.textPrimary }]}>{t('adminSamplesPerLetter')}</Text>
-                <Text style={[styles.cardSub, { color: C.textHint }]}>Alfabeto LSC · {ALPHABET_LSC.length} letras</Text>
-              </View>
-              <View style={[styles.coveragePill, { backgroundColor: C.primaryBg }]}>
-                <Text style={[styles.coverageText, { color: C.primaryDark }]}>{t('adminCoverage')} {coverage}%</Text>
-              </View>
-            </View>
-            <View style={styles.barsChart}>
-              {ALPHABET_LSC.map(letter => {
-                const count = sampleCounts[letter] ?? 0;
-                const pct = Math.max(6, (count / maxCount) * 100);
-                return (
-                  <View key={letter} style={styles.barCol}>
-                    <View style={[styles.barVert, { height: `${pct}%`, backgroundColor: count > 0 ? C.primary : C.border }]} />
-                    <Text style={[styles.barColLabel, { color: C.textHint }]}>{letter}</Text>
-                  </View>
-                );
-              })}
-            </View>
           </View>
 
           {/* Sistema + Acciones */}
@@ -216,17 +180,7 @@ const styles = StyleSheet.create({
   kpiValue: { fontSize: 30, fontWeight: '900', letterSpacing: -0.5 },
 
   card: { borderRadius: 20, borderWidth: 1, padding: 26 },
-  cardHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 22 },
-  cardTitle: { fontSize: 17, fontWeight: '800' },
-  cardSub: { fontSize: 13, fontWeight: '600', marginTop: 3 },
   cardLabel: { fontSize: 13, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 20 },
-  coveragePill: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999 },
-  coverageText: { fontSize: 13, fontWeight: '800' },
-
-  barsChart: { flexDirection: 'row', alignItems: 'flex-end', gap: 5, height: 150 },
-  barCol: { flex: 1, alignItems: 'center', gap: 7, height: '100%', justifyContent: 'flex-end' },
-  barVert: { width: '100%', borderTopLeftRadius: 4, borderTopRightRadius: 4, minHeight: 8 },
-  barColLabel: { fontSize: 10, fontWeight: '800' },
 
   row2: { gap: 20 },
   row2Wide: { flexDirection: 'row', alignItems: 'flex-start' },
