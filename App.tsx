@@ -8,13 +8,12 @@ import { AccessProvider } from './src/app/providers/AccessContext';
 import { ThemeProvider, useTheme } from './src/app/providers/ThemeContext';
 import { LanguageProvider } from './src/app/providers/LanguageContext';
 import { AppNavigator } from './src/app/routes/AppNavigator';
-import { DarkColors } from './src/shared/constants/colors';
 
 function AppContent() {
   const { isDark } = useTheme();
   return (
     <>
-      <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={isDark ? DarkColors.background : '#C4B5FD'} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <AppNavigator />
     </>
   );

@@ -598,7 +598,7 @@ const styles = StyleSheet.create({
   onlineText: { fontSize: 13, fontWeight: '700', color: '#10B981' },
 
   cameraInner: { position: 'relative', borderRadius: 16, borderWidth: 1, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  cameraFill: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  cameraFill: { ...StyleSheet.absoluteFill, width: '100%', height: '100%' },
   cameraCenter: { alignItems: 'center', justifyContent: 'center', gap: 12 },
   cameraCenterIcon: { width: 78, height: 78, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   cameraCenterTitle: { fontSize: 16, fontWeight: '700' },
