@@ -318,7 +318,6 @@ const en: typeof es = {
   alphabetResetView: 'Reset view',
   alphabetDragHint: 'Drag to rotate the model',
   alphabetModelError: 'The 3D model could not be loaded. Check your connection.',
-  alphabetRetry: 'Retry',
   alphabetClose: 'Close',
   alphabetOpenLetter: 'See the sign for the letter {letter}',
   alphabetTipA: 'Closed fist with the thumb to the side.',

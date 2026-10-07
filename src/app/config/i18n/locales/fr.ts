@@ -318,7 +318,6 @@ const fr: typeof es = {
   alphabetResetView: 'Recentrer',
   alphabetDragHint: 'Faites glisser pour tourner le modèle',
   alphabetModelError: 'Impossible de charger le modèle 3D. Vérifiez votre connexion.',
-  alphabetRetry: 'Réessayer',
   alphabetClose: 'Fermer',
   alphabetOpenLetter: 'Voir le signe de la lettre {letter}',
   alphabetTipA: 'Poing fermé avec le pouce sur le côté.',

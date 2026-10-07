@@ -64,6 +64,8 @@ export const ENDPOINTS = {
 
   signTemplates: '/sign-templates',
 
+  lexicon: '/lexicon',
+  lexiconSearch: '/lexicon/search',
   lexiconAlphabet: '/lexicon/alphabet',
 
   analyticsEvents: '/analytics/events',
