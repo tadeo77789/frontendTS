@@ -1,7 +1,7 @@
 /**
  * Cliente del dominio lexicon del backend (`/api/lexicon`).
  */
-import { api } from '../../Translation/services/api.service';
+import { api } from '../../../shared/services/api.client';
 import { ENDPOINTS } from '../../../app/config/api.config';
 import { LOCAL_ALPHABET, localLetterByCode, type AlphabetLetter } from '../data/alphabet';
 

@@ -318,7 +318,6 @@ const pt: typeof es = {
   alphabetResetView: 'Centralizar',
   alphabetDragHint: 'Arraste para girar o modelo',
   alphabetModelError: 'Não foi possível carregar o modelo 3D. Verifique sua conexão.',
-  alphabetRetry: 'Tentar novamente',
   alphabetClose: 'Fechar',
   alphabetOpenLetter: 'Ver o sinal da letra {letter}',
   alphabetTipA: 'Punho fechado com o polegar ao lado.',

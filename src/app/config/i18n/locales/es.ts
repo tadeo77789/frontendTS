@@ -317,7 +317,6 @@ const es = {
   alphabetResetView: 'Centrar vista',
   alphabetDragHint: 'Arrastra para girar el modelo',
   alphabetModelError: 'No se pudo cargar el modelo 3D. Revisa tu conexión.',
-  alphabetRetry: 'Reintentar',
   alphabetClose: 'Cerrar',
   alphabetOpenLetter: 'Ver la seña de la letra {letter}',
   alphabetTipA: 'Puño cerrado con el pulgar al costado.',
