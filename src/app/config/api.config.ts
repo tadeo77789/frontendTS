@@ -50,6 +50,7 @@ export const ENDPOINTS = {
 
   lexicon: '/lexicon',
   lexiconSearch: '/lexicon/search',
+  lexiconAlphabet: '/lexicon/alphabet',
 
   signTemplates: '/sign-templates',
 
