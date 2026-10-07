@@ -26,27 +26,41 @@ interface GesturesPayload {
 let cache: GestureTemplate[] | null = null;
 let loadPromise: Promise<GestureTemplate[]> | null = null;
 
+// Si AsyncStorage falla al leer, lanza y no cachea nada: la siguiente llamada reintenta,
+// y las escrituras no pisan lo guardado con una lista vacia. Un JSON corrupto si se
+// descarta (cache vacia), porque no se puede recuperar.
 const load = async (): Promise<GestureTemplate[]> => {
   if (cache) return cache;
   if (loadPromise) return loadPromise;
 
-  loadPromise = (async () => {
+  const p = (async () => {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        cache = [];
-        return cache;
-      }
-      const parsed = JSON.parse(raw) as GesturesPayload;
-      cache = Array.isArray(parsed.gestures) ? parsed.gestures : [];
-      return cache;
+      const parsed = raw ? (JSON.parse(raw) as GesturesPayload) : null;
+      cache = parsed && Array.isArray(parsed.gestures) ? parsed.gestures : [];
     } catch {
       cache = [];
-      return cache;
     }
+    return cache;
   })();
+  loadPromise = p;
+  // Lectura fallida: se suelta la promesa para que la siguiente llamada reintente
+  // (aunque getItem lance de forma sincrona, porque se limpia despues de asignarla).
+  p.catch(() => {
+    if (loadPromise === p) loadPromise = null;
+  });
 
-  return loadPromise;
+  return p;
+};
+
+// Para lecturas que no deben romper la pantalla (conteos, reconocimiento):
+// si no se puede leer, devuelve una lista vacia sin cachearla.
+const loadOrEmpty = async (): Promise<GestureTemplate[]> => {
+  try {
+    return await load();
+  } catch {
+    return [];
+  }
 };
 
 const persist = async (): Promise<void> => {
@@ -71,11 +85,11 @@ const isValidTemplate = (t: Partial<GestureTemplate>): t is GestureTemplate =>
 export const gestureStore = {
 
   async getAll(): Promise<GestureTemplate[]> {
-    return load();
+    return loadOrEmpty();
   },
 
   async countByLabel(): Promise<Record<string, number>> {
-    const all = await load();
+    const all = await loadOrEmpty();
     const counts: Record<string, number> = {};
     for (const g of all) {
       counts[g.label] = (counts[g.label] ?? 0) + 1;
@@ -98,6 +112,8 @@ export const gestureStore = {
   },
 
   async clear(): Promise<void> {
+    // Espera una lectura en curso para que, al terminar, no devuelva lo borrado a la cache.
+    await loadOrEmpty();
     cache = [];
     await persist();
   },
@@ -126,7 +142,10 @@ export const gestureStore = {
     if (incoming.length === 0) {
       throw new Error('No se encontraron gestos válidos en el archivo');
     }
-    await load();
+    // Combinar necesita lo guardado y falla si no se puede leer. Reemplazar no lo necesita,
+    // pero espera cualquier lectura en curso para que no pise lo importado al terminar.
+    if (mode === 'merge') await load();
+    else await loadOrEmpty();
     if (mode === 'replace' || !cache) {
       cache = incoming;
     } else {
