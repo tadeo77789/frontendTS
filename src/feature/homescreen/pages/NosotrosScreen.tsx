@@ -17,7 +17,6 @@ const TEAM: { name: string; role: string; icon: keyof typeof Ionicons.glyphMap; 
   { name: 'Juan Mauricio Suaza Solórzano', role: 'Tech Lead y desarrollo', icon: 'code-slash', bio: 'Equipo de desarrollo de Traduce Señas.', tint: D.lilacSoft, color: D.violet },
   { name: 'Luis Alejandro Duarte Aldana', role: 'Desarrollo', icon: 'code-slash', bio: 'Equipo de desarrollo de Traduce Señas.', tint: D.greenBg, color: D.green },
   { name: 'Juan Camilo Fierro Esquivel', role: 'Desarrollo', icon: 'code-slash', bio: 'Equipo de desarrollo de Traduce Señas.', tint: D.amberBg, color: D.amber },
-  { name: 'Jesús Ariel González Bonilla', role: 'Instructor y Product Owner', icon: 'school', bio: 'Acompaña y orienta el proyecto.', tint: D.lilacSoft, color: D.violet },
 ];
 
 const STATS = [
