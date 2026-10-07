@@ -135,8 +135,16 @@ export const AdminTrainingScreen: React.FC = () => {
     setRecordingGesture(true);
     beginGestureCapture();
     await new Promise(resolve => setTimeout(resolve, GESTURE_CAPTURE_MS));
-    const ok = await recordGesture(label);
-    setRecordingGesture(false);
+    let ok: boolean;
+    try {
+      ok = await recordGesture(label);
+    } catch {
+      // No se pudo leer lo guardado: no se graba para no pisar las plantillas existentes.
+      showError(t('genericError'));
+      return;
+    } finally {
+      setRecordingGesture(false);
+    }
     if (!ok) {
       showError(t('trainGestureNoMotion'));
       return;
@@ -155,7 +163,12 @@ export const AdminTrainingScreen: React.FC = () => {
       destructive: true,
     });
     if (!ok) return;
-    await clearGestureLabel(label);
+    try {
+      await clearGestureLabel(label);
+    } catch {
+      showError(t('genericError'));
+      return;
+    }
     await refreshCounts();
   }, [t, refreshCounts]);
 
