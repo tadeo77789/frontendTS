@@ -1,13 +1,17 @@
-import { api } from '../../../shared/services/api.client';
+/**
+ * Cliente del dominio lexicon del backend (`/api/lexicon`).
+ */
+import { api } from '../../Translation/services/api.service';
 import { ENDPOINTS } from '../../../app/config/api.config';
-import type { LanguageCode } from '../../../app/providers/LanguageContext';
+import { LOCAL_ALPHABET, localLetterByCode, type AlphabetLetter } from '../data/alphabet';
 
-export type LexiconResourceType = 'MODEL_3D' | 'IMAGE' | 'VIDEO' | 'GIF';
+export type SignType = 'LETTER' | 'WORD' | 'PHRASE';
+export type ResourceType = 'MODEL_3D' | 'IMAGE' | 'VIDEO' | 'GIF';
 
 export interface LexiconResource {
   resourceId: number;
-  type: LexiconResourceType;
-  /** URL absoluta (la arma el lexicon-service). */
+  type: ResourceType;
+  /** URL absoluta: el backend ya le antepone /api/lexicon/media. */
   url: string;
   mimeType: string | null;
   displayOrder: number;
@@ -18,57 +22,70 @@ export interface LexiconSign {
   lexiconId: number;
   code: string;
   word: string;
-  meaning: string | null;
-  type: 'LETTER' | 'WORD' | 'PHRASE';
+  type: SignType;
   letter: string | null;
   language: string;
-  category: string;
+  category: string | null;
   description: string | null;
-  /** El modelo 3D trae animacion (G, H, J, Ñ, S, Z). */
   animated: boolean;
   displayOrder: number;
   status: 'DRAFT' | 'ACTIVE' | 'INACTIVE';
   resources: LexiconResource[];
 }
 
-/** Letra lista para pintar: miniatura y modelo ya resueltos. */
-export interface AlphabetLetter {
-  letter: string;
-  imageUrl: string;
-  modelUrl: string | null;
-  animated: boolean;
-  description: string | null;
-}
+interface ApiList<T> { success: boolean; data: T[] }
+interface ApiOne<T> { success: boolean; data: T }
 
-interface AlphabetResponse {
-  success: boolean;
-  data?: LexiconSign[];
-}
+export const listSigns = async (params: { type?: SignType; q?: string; category?: string } = {}) => {
+  const { data } = await api.get<ApiList<LexiconSign>>(ENDPOINTS.lexicon, { params });
+  return data.data ?? [];
+};
 
-// El backend solo acepta es/en en `lang`; con fr/pt no se manda y responde en espanol.
-const uiLang = (language: LanguageCode): 'es' | 'en' | undefined =>
-  language === 'es' || language === 'en' ? language : undefined;
+export const searchSigns = async (q: string) => {
+  const { data } = await api.get<ApiList<LexiconSign>>(ENDPOINTS.lexiconSearch, { params: { q } });
+  return data.data ?? [];
+};
 
-const firstOf = (sign: LexiconSign, type: LexiconResourceType): string | null =>
-  [...sign.resources]
-    .filter((r) => r.type === type)
-    .sort((a, b) => a.displayOrder - b.displayOrder)[0]?.url ?? null;
+export const getSign = async (code: string) => {
+  const { data } = await api.get<ApiOne<LexiconSign>>(`${ENDPOINTS.lexicon}/${encodeURIComponent(code)}`);
+  return data.data;
+};
 
-export const fetchAlphabet = async (language: LanguageCode): Promise<AlphabetLetter[]> => {
-  const res = await api.get<AlphabetResponse>(ENDPOINTS.lexiconAlphabet, {
-    params: { lang: uiLang(language) },
-  });
-  const signs = res.data?.data;
-  if (!Array.isArray(signs) || signs.length === 0) throw new Error('Empty alphabet');
-  // La Ñ no se muestra en la app (decisión del equipo), aunque el catálogo la tenga.
-  return signs
-    .filter((s) => s.letter && s.letter !== 'Ñ')
-    .map((s) => ({
-      letter: s.letter as string,
-      // Sin miniatura propia se usa la del modelo; si falta, queda vacia.
-      imageUrl: firstOf(s, 'IMAGE') ?? '',
-      modelUrl: firstOf(s, 'MODEL_3D'),
-      animated: s.animated,
-      description: s.description,
-    }));
+const resourceUrl = (sign: LexiconSign, type: ResourceType) =>
+  sign.resources.find(r => r.type === type)?.url;
+
+/**
+ * Une el alfabeto del servidor con los recursos empaquetados.
+ *
+ * El servidor manda en el texto, el orden y que letras estan activas. Para
+ * los medios se prefiere la copia local (carga al instante y sin red); la
+ * URL remota solo se usa para letras que la app aun no trae.
+ */
+export const mergeAlphabet = (remote: LexiconSign[]): AlphabetLetter[] => {
+  const merged = remote
+    .filter(s => s.type === 'LETTER' && s.letter)
+    .map((s): AlphabetLetter | null => {
+      const local = localLetterByCode(s.code);
+      const model = local?.model ?? resourceUrl(s, 'MODEL_3D');
+      const thumbUrl = resourceUrl(s, 'IMAGE');
+      const thumb = local?.thumb ?? (thumbUrl ? { uri: thumbUrl } : undefined);
+      if (!model || !thumb) return null;
+      return {
+        code: s.code,
+        letter: s.letter as string,
+        file: local?.file ?? s.code.replace(/^LETTER_/, ''),
+        animated: s.animated,
+        description: s.description ?? local?.description ?? '',
+        thumb,
+        model,
+      };
+    })
+    .filter((l): l is AlphabetLetter => l !== null);
+
+  return merged.length ? merged : LOCAL_ALPHABET;
+};
+
+export const fetchAlphabet = async (): Promise<AlphabetLetter[]> => {
+  const { data } = await api.get<ApiList<LexiconSign>>(ENDPOINTS.lexiconAlphabet);
+  return mergeAlphabet(data.data ?? []);
 };
