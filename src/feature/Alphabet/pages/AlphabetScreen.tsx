@@ -23,14 +23,21 @@ import { AppHeader } from '../../../shared/components/common/AppHeader';
 import { Colors } from '../../../shared/constants/colors';
 import { useColors, useTheme } from '../../../app/providers/ThemeContext';
 import { useTranslation, type TranslationKey } from '../../../app/config/i18n';
+import { useTrackSectionView } from '../../../shared/hooks/useTrackSectionView';
+import { fetchAlphabet, type AlphabetLetter } from '../services/lexicon.service';
 
-interface LetterItem { letter: string; imageUrl: string }
+// Letra de la lista. `modelUrl` es null en el respaldo local: ahi se usa el modelo unico de assets.
+type LetterItem = AlphabetLetter;
 
-const ALPHABET: LetterItem[] = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+const LOCAL_ALPHABET: LetterItem[] = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   .split('')
   .map(letter => ({
     letter,
-    imageUrl: `https://www.lifeprint.com/asl101/images-handshapes/${letter.toLowerCase()}.gif`,
+    // Sin imagen: la miniatura solo se pide al catalogo (nunca de un alfabeto ajeno como ASL).
+    imageUrl: '',
+    modelUrl: null,
+    animated: false,
+    description: null,
   }));
 
 const ACCENTS = [
@@ -58,32 +65,53 @@ export const AlphabetScreen: React.FC = () => {
   const { width, height } = useWindowDimensions();
   const C = useColors();
   const { isDark } = useTheme();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  useTrackSectionView('ALPHABET');
   const PALETTE = isDark ? DARK_ACCENTS : ACCENTS;
   const webViewRef    = useRef<WebView>(null);
-  const webViewLoaded = useRef(false);
+  const iframeRef     = useRef<HTMLIFrameElement | null>(null);
   const backdropAnim  = useRef(new Animated.Value(0)).current;
 
   const [selected,   setSelected]   = useState<LetterItem | null>(null);
   const [modelReady, setModelReady] = useState(false);
   const [sheetOpen,  setSheetOpen]  = useState(false);
-  const [viewerUri,  setViewerUri]  = useState<string | null>(null);
+  const [htmlUri,    setHtmlUri]    = useState<string | null>(null);
   const [modelUri,   setModelUri]   = useState<string | null>(null);
+  const [viewerLoaded, setViewerLoaded] = useState(false);
 
+  // Alfabeto: viene de la API (lexicon-service). Si falla, queda el local.
+  const [alphabet, setAlphabet] = useState<LetterItem[]>([]);
+  const [status,   setStatus]   = useState<'loading' | 'api' | 'fallback'>('loading');
+  const [attempt,  setAttempt]  = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setStatus('loading');
+    fetchAlphabet(language)
+      .then(list => { if (!cancelled) { setAlphabet(list); setStatus('api'); } })
+      .catch(() => { if (!cancelled) { setAlphabet(LOCAL_ALPHABET); setStatus('fallback'); } });
+    return () => { cancelled = true; };
+  }, [language, attempt]);
+
+  // Modelo local de respaldo (y el visor HTML en movil).
   useEffect(() => {
     if (Platform.OS === 'web') {
       Asset.loadAsync([MODEL_ASSET]).then(([glb]) => {
-        const mUri = glb.localUri ?? glb.uri;
-        setModelUri(mUri);
-        setViewerUri(`/model_viewer.html?model=${encodeURIComponent(mUri)}`);
+        setModelUri(glb.localUri ?? glb.uri);
       }).catch(err => console.error('[AlphabetScreen] GLB load error:', err));
     } else {
       Asset.loadAsync([HTML_ASSET, MODEL_ASSET]).then(([html, glb]) => {
-        setViewerUri(html.localUri ?? html.uri);
+        setHtmlUri(html.localUri ?? html.uri);
         setModelUri(glb.localUri  ?? glb.uri);
       }).catch(err => console.error('[AlphabetScreen] Asset.loadAsync error:', err));
     }
   }, []);
+
+  // Modelo que muestra el visor ahora: el de la letra (API) o el local.
+  const currentModel = selected ? (selected.modelUrl ?? modelUri) : null;
+  const viewerUri = Platform.OS === 'web'
+    ? (currentModel ? `/model_viewer.html?model=${encodeURIComponent(currentModel)}` : null)
+    : htmlUri;
 
   // En movil 5 columnas dejaban tarjetas de ~58px donde la insignia de la letra
   // tapaba la mano: bajamos a 4 (3 en pantallas muy angostas) y ajustamos
@@ -117,12 +145,14 @@ export const AlphabetScreen: React.FC = () => {
       setSheetOpen(false);
       setSelected(null);
       setModelReady(false);
+      setViewerLoaded(false);
     });
   }, [sheetAnim, backdropAnim]);
 
   const sendPlayAnimation = useCallback((animName: string) => {
     if (Platform.OS === 'web') {
-      webViewRef.current?.injectJavaScript(`playAnimation(${JSON.stringify(animName)}); true;`);
+      iframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({ type: 'PLAY_ANIMATION', animation: animName }), window.location.origin);
     } else {
       webViewRef.current?.postMessage(JSON.stringify({ type: 'PLAY_ANIMATION', animation: animName }));
     }
@@ -133,19 +163,19 @@ export const AlphabetScreen: React.FC = () => {
   }, []);
 
   const onWebViewLoad = useCallback(() => {
-    webViewLoaded.current = true;
-    if (Platform.OS === 'web') {
-      setModelReady(true);
-    } else if (modelUri) {
-      sendLoadModel(modelUri);
-    }
-  }, [modelUri, sendLoadModel]);
+    setViewerLoaded(true);
+    if (Platform.OS === 'web') setModelReady(true);
+  }, []);
 
+  // Cambio de modelo: en web la URL del iframe ya cambia sola; en movil se le
+  // pide al visor que cargue el nuevo .glb.
   useEffect(() => {
-    if (Platform.OS !== 'web' && modelUri && webViewLoaded.current) {
-      sendLoadModel(modelUri);
+    if (!currentModel) return;
+    if (Platform.OS !== 'web') {
+      setModelReady(false);
+      if (viewerLoaded) sendLoadModel(currentModel);
     }
-  }, [modelUri, sendLoadModel]);
+  }, [currentModel, viewerLoaded, sendLoadModel]);
 
   const onWebViewMessage = useCallback((e: { nativeEvent: { data: string } }) => {
     try {
@@ -167,16 +197,13 @@ export const AlphabetScreen: React.FC = () => {
 
   const navigateLetter = useCallback((direction: 'prev' | 'next') => {
     if (!selected) return;
-    const idx = ALPHABET.findIndex(a => a.letter === selected.letter);
+    const idx = alphabet.findIndex(a => a.letter === selected.letter);
     const nextIdx = direction === 'next'
-      ? (idx + 1) % ALPHABET.length
-      : (idx - 1 + ALPHABET.length) % ALPHABET.length;
-    const nextLetter = ALPHABET[nextIdx];
-    setSelected(nextLetter);
-    if (modelReady) {
-      webViewRef.current?.postMessage(JSON.stringify({ type: 'PLAY_ANIMATION', animation: `Letra_${nextLetter.letter}` }));
-    }
-  }, [selected, modelReady]);
+      ? (idx + 1) % alphabet.length
+      : (idx - 1 + alphabet.length) % alphabet.length;
+    // La animacion se lanza sola al cambiar `selected` (efecto de arriba).
+    setSelected(alphabet[nextIdx]);
+  }, [selected, alphabet]);
 
   const handleSelect = useCallback((item: LetterItem) => {
     setSelected(item);
@@ -197,7 +224,11 @@ export const AlphabetScreen: React.FC = () => {
         activeOpacity={0.8}
       >
         <View style={[styles.imgWrap, isDark && styles.imgWrapDark]}>
-          <Image source={{ uri: item.imageUrl }} style={styles.letterImg} resizeMode="contain" />
+          {item.imageUrl ? (
+            <Image source={{ uri: item.imageUrl }} style={styles.letterImg} resizeMode="contain" />
+          ) : (
+            <Text style={[styles.letterBadgeText, { fontSize: Math.round(ITEM_SIZE * 0.4), color: ac.fg }]}>{item.letter}</Text>
+          )}
         </View>
         <View style={[styles.letterBadge, {
           backgroundColor: ac.fg,
@@ -211,11 +242,15 @@ export const AlphabetScreen: React.FC = () => {
     );
   }, [handleSelect, ITEM_SIZE, BADGE, PALETTE, isDark]);
 
+  // Consejo de la API si trae descripcion; si no, el texto local (solo A-Z).
+  const tipFor = useCallback((letter: string): string =>
+    /^[A-Z]$/.test(letter) ? t(`alphabetTip${letter}` as TranslationKey) : '', [t]);
+
   const getItemLayout = useCallback((_: unknown, i: number) => ({
     length: ITEM_SIZE + GAP, offset: (ITEM_SIZE + GAP) * Math.floor(i / COLS), index: i,
   }), [ITEM_SIZE, GAP, COLS]);
 
-  const selIdx    = selected ? ALPHABET.findIndex(a => a.letter === selected.letter) : 0;
+  const selIdx    = selected ? Math.max(0, alphabet.findIndex(a => a.letter === selected.letter)) : 0;
   const selAccent = PALETTE[selIdx % PALETTE.length];
   const sheetWidth = Math.min(width - (isPhone ? 24 : 40), 480);
   // El contenido (visor + botones + consejo + navegacion) no cabia en pantallas
@@ -227,7 +262,7 @@ export const AlphabetScreen: React.FC = () => {
       <AppHeader />
 
       <FlatList
-        data={ALPHABET}
+        data={status === 'loading' ? [] : alphabet}
         key={COLS}
         numColumns={COLS}
         keyExtractor={(item) => item.letter}
@@ -235,8 +270,14 @@ export const AlphabetScreen: React.FC = () => {
         contentContainerStyle={[styles.gridContent, { paddingHorizontal: H_PAD }]}
         renderItem={renderItem}
         getItemLayout={getItemLayout}
-        initialNumToRender={26}
+        initialNumToRender={27}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={status === 'loading' ? (
+          <View style={styles.stateBox}>
+            <ActivityIndicator size="large" color={C.primary} />
+            <Text style={[styles.loadingText, { color: C.primary }]}>{t('loading')}</Text>
+          </View>
+        ) : null}
         ListHeaderComponent={
           <View style={[styles.hero, isPhone && styles.heroPhone]}>
             <View style={[styles.heroLeft, isPhone && styles.heroLeftPhone]}>
@@ -260,9 +301,18 @@ export const AlphabetScreen: React.FC = () => {
               </Text>
               <Text style={[styles.subtitle, isPhone && styles.subtitlePhone, { color: C.textSecondary }]}>{t('alphabetTip')}</Text>
             </View>
+            {status === 'fallback' && (
+              <View style={[styles.fallbackBox, { backgroundColor: C.surface, borderColor: C.borderInput }]}>
+                <Ionicons name="cloud-offline-outline" size={16} color={C.textSecondary} />
+                <Text style={[styles.fallbackText, { color: C.textSecondary }]}>{t('alphabetFallback')}</Text>
+                <TouchableOpacity onPress={() => setAttempt(n => n + 1)}>
+                  <Text style={[styles.fallbackText, { color: C.primary, fontWeight: '800' }]}>{t('alphabetRetry')}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <View style={[styles.countPill, isPhone && styles.countPillPhone, { backgroundColor: C.surface, borderColor: C.borderInput }]}>
               <Ionicons name="grid-outline" size={16} color={C.primaryDark} />
-              <Text style={[styles.countText, { color: C.primaryDark }]}>{ALPHABET.length} {t('alphabetLetters')}</Text>
+              <Text style={[styles.countText, { color: C.primaryDark }]}>{alphabet.length} {t('alphabetLetters')}</Text>
             </View>
           </View>
         }
@@ -282,7 +332,7 @@ export const AlphabetScreen: React.FC = () => {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.sheetTitle, { color: C.textPrimary }]}>{t('alphabetSign')} {selected?.letter ?? ''}</Text>
-                <Text style={[styles.sheetSubtitle, { color: C.textHint }]}>{selIdx + 1} de {ALPHABET.length} · LSC</Text>
+                <Text style={[styles.sheetSubtitle, { color: C.textHint }]}>{selIdx + 1} de {alphabet.length} · LSC</Text>
               </View>
               <TouchableOpacity style={[styles.closeBtn, { backgroundColor: C.inputBg }]} onPress={closeSheet}>
                 <Ionicons name="close" size={20} color={C.textSecondary} />
@@ -297,7 +347,17 @@ export const AlphabetScreen: React.FC = () => {
             >
               {/* Visor 3D */}
               <View style={[styles.viewerWrap, { height: VIEWER_H, backgroundColor: C.inputBg }]}>
-                {viewerUri ? (
+                {viewerUri && Platform.OS === 'web' ? (
+                  // react-native-webview no tiene version web: en el navegador el visor va en un iframe.
+                  React.createElement('iframe', {
+                    key: viewerUri,
+                    ref: iframeRef,
+                    src: viewerUri,
+                    title: 'Visor 3D',
+                    onLoad: onWebViewLoad,
+                    style: { border: 0, width: '100%', height: '100%' },
+                  })
+                ) : viewerUri ? (
                   <WebView
                     ref={webViewRef}
                     source={{ uri: viewerUri }}
@@ -345,7 +405,7 @@ export const AlphabetScreen: React.FC = () => {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.tipTitle, { color: C.textPrimary }]}>Consejo</Text>
                   <Text style={[styles.tipText, { color: C.textSecondary }]}>
-                    {selected ? t(`alphabetTip${selected.letter}` as TranslationKey) : ''}
+                    {selected ? (selected.description ?? tipFor(selected.letter)) : ''}
                   </Text>
                 </View>
               </View>
@@ -371,6 +431,10 @@ export const AlphabetScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.backgroundGray ?? '#F8F9FC' },
+
+  stateBox: { alignItems: 'center', gap: 10, paddingVertical: 60 },
+  fallbackBox: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, alignSelf: 'stretch' },
+  fallbackText: { fontSize: 13, flexShrink: 1 },
 
   gridContent: { paddingBottom: 40, maxWidth: 1240, width: '100%', alignSelf: 'center' },
 

@@ -3,19 +3,21 @@ import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   ScrollView, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { AuthStepCard, useAuthPalette } from '../components/AuthStepCard';
-import { evaluatePassword, MIN_PASSWORD_LENGTH } from '../../../shared/utils/passwordStrength';
+import { evaluatePassword, MAX_PASSWORD_BYTES, MIN_PASSWORD_LENGTH, passwordByteLength } from '../../../shared/utils/passwordStrength';
+import { normalizeApiError } from '../../../shared/services/api.client';
+import { showAlert, showError } from '../../../shared/utils/dialogs';
+import { resetPassword } from '../services/auth.service';
+import { passwordResetFlow } from '../services/passwordResetFlow';
 import { useScrollToInput } from '../../../shared/hooks/useScrollToInput';
 
 export const NewPasswordScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const route = useRoute();
-  const fromProfile = (route.params as any)?.fromProfile ?? false;
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -23,7 +25,7 @@ export const NewPasswordScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ password?: string; confirm?: string }>({});
   const themed = useColors();
-  const P = useAuthPalette(fromProfile, themed);
+  const P = useAuthPalette(false, themed);
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const isPhone = width < 480;
@@ -37,19 +39,46 @@ export const NewPasswordScreen: React.FC = () => {
     { key: 'pwCheckSpecial', label: t('pwCheckSpecial'), ok: checks.special },
   ];
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (loading) return;
     const e: { password?: string; confirm?: string } = {};
     if (!password || password.length < MIN_PASSWORD_LENGTH) e.password = t('newPasswordErrorShort');
+    else if (passwordByteLength(password) > MAX_PASSWORD_BYTES) e.password = t('passwordTooLong');
     else if (!meetsMinimum) e.password = t('registerPasswordWeak');
     if (!confirm || password !== confirm) e.confirm = t('newPasswordErrorMismatch');
     if (Object.keys(e).length > 0) { setErrors(e); return; }
     setErrors({});
+    const flow = passwordResetFlow.get();
+    if (!flow?.code) {
+      navigation.navigate('ForgotPassword');
+      void showAlert({ message: t('resetNoSession'), icon: 'info' });
+      return;
+    }
     setLoading(true);
-    setTimeout(() => {
+    try {
+      await resetPassword(flow.email, flow.code, password);
+    } catch (error) {
       setLoading(false);
-      if (fromProfile) navigation.popToTop();
-      else navigation.navigate('Login');
-    }, 1000);
+      const { code } = normalizeApiError(error);
+      if (code === 'INVALID_CODE') {
+        // Código caducado, usado o con demasiados intentos: pedir uno nuevo.
+        passwordResetFlow.clear();
+        navigation.navigate('ForgotPassword');
+        void showError(t('verifyInvalidCode'), t('error'));
+      } else if (code === 'VALIDATION_ERROR') {
+        setErrors({ password: t('registerPasswordWeak') });
+      } else {
+        void showError(
+          code === 'NETWORK' ? t('loginNetworkError') : code === 'SERVER' ? t('serverUnavailable') : t('accountActionError'),
+          t('error'),
+        );
+      }
+      return;
+    }
+    setLoading(false);
+    passwordResetFlow.clear();
+    navigation.navigate('Login');
+    void showAlert({ message: t('resetDone'), icon: 'success' });
   };
 
   return (

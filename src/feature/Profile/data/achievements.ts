@@ -6,16 +6,23 @@ import type { useColors } from '../../../app/providers/ThemeContext';
 export type IoniconName = ComponentProps<typeof Ionicons>['name'];
 export type AppColors = ReturnType<typeof useColors>;
 
-export type AchievementCategory =
-  | 'translation'
-  | 'practice'
-  | 'vocabulary'
-  | 'consistency'
-  | 'community';
+export type AchievementCategory = 'translation' | 'vocabulary' | 'consistency';
 
 export type AchievementLevel = 'bronze' | 'silver' | 'gold';
 
-export interface Achievement {
+/** Estadisticas reales del usuario (GET /translations/me/stats). */
+export interface MyStats {
+  totalTranslations: number;
+  distinctWords: number;
+  activeDays: number;
+  currentStreakDays: number;
+  longestStreakDays: number;
+}
+
+/** Cada logro mide una de estas cifras del backend. */
+export type AchievementMetric = 'totalTranslations' | 'distinctWords' | 'longestStreakDays';
+
+interface AchievementDef {
   id: string;
   category: AchievementCategory;
   level: AchievementLevel;
@@ -23,49 +30,35 @@ export interface Achievement {
   icon: IoniconName;
   nameKey: TranslationKey;
   descKey: TranslationKey;
-  value: number;
+  metric: AchievementMetric;
   target: number;
-  /** Solo 'percent' cambia el formato del progreso; el resto se muestra valor/meta. */
-  unit?: 'percent';
 }
 
-export const ACHIEVEMENTS: Achievement[] = [
-  { id: 'firstSign',        category: 'translation', level: 'bronze', icon: 'hand-left',       nameKey: 'achFirstSignName',        descKey: 'achFirstSignDesc',        value: 1,    target: 1 },
-  { id: 'hundredSigns',     category: 'translation', level: 'silver', icon: 'hand-right',      nameKey: 'achHundredSignsName',     descKey: 'achHundredSignsDesc',     value: 100,  target: 100 },
-  { id: 'thousandSigns',    category: 'translation', level: 'gold',   icon: 'trophy',          nameKey: 'achThousandSignsName',    descKey: 'achThousandSignsDesc',    value: 412,  target: 1000 },
-  { id: 'fullConversation', category: 'translation', level: 'silver', icon: 'chatbubbles',     nameKey: 'achFullConversationName', descKey: 'achFullConversationDesc', value: 1,    target: 1 },
-  { id: 'voiceOn',          category: 'translation', level: 'bronze', icon: 'volume-high',     nameKey: 'achVoiceOnName',          descKey: 'achVoiceOnDesc',          value: 25,   target: 25 },
-  { id: 'twoWay',           category: 'translation', level: 'silver', icon: 'swap-horizontal', nameKey: 'achTwoWayName',           descKey: 'achTwoWayDesc',           value: 0,    target: 1 },
-  { id: 'offline',          category: 'translation', level: 'bronze', icon: 'cloud-offline',   nameKey: 'achOfflineName',          descKey: 'achOfflineDesc',          value: 0,    target: 1 },
+export interface Achievement extends AchievementDef {
+  /** Avance real: valor de la metrica en las estadisticas (0 si aun no cargan). */
+  value: number;
+}
 
-  { id: 'firstPractice',    category: 'practice', level: 'bronze', icon: 'videocam',    nameKey: 'achFirstPracticeName',    descKey: 'achFirstPracticeDesc',    value: 1,  target: 1 },
-  { id: 'steadyHand',       category: 'practice', level: 'silver', icon: 'locate',      nameKey: 'achSteadyHandName',       descKey: 'achSteadyHandDesc',       value: 86, target: 90, unit: 'percent' },
-  { id: 'perfectPulse',     category: 'practice', level: 'gold',   icon: 'scan-circle', nameKey: 'achPerfectPulseName',     descKey: 'achPerfectPulseDesc',     value: 13, target: 20 },
-  { id: 'sprinter',         category: 'practice', level: 'silver', icon: 'flash',       nameKey: 'achSprinterName',         descKey: 'achSprinterDesc',         value: 30, target: 30 },
-  { id: 'fingerspelling',   category: 'practice', level: 'silver', icon: 'text',        nameKey: 'achFingerspellingName',   descKey: 'achFingerspellingDesc',   value: 27, target: 27 },
-  { id: 'honestReview',     category: 'practice', level: 'bronze', icon: 'refresh',     nameKey: 'achHonestReviewName',     descKey: 'achHonestReviewDesc',     value: 31, target: 50 },
-  { id: 'facialExpression', category: 'practice', level: 'gold',   icon: 'happy',       nameKey: 'achFacialExpressionName', descKey: 'achFacialExpressionDesc', value: 0,  target: 1 },
+export const ACHIEVEMENTS: AchievementDef[] = [
+  { id: 'firstSign',     category: 'translation', level: 'bronze', icon: 'hand-left',  nameKey: 'achFirstSignName',     descKey: 'achFirstSignDesc',     metric: 'totalTranslations', target: 1 },
+  { id: 'hundredSigns',  category: 'translation', level: 'silver', icon: 'hand-right', nameKey: 'achHundredSignsName',  descKey: 'achHundredSignsDesc',  metric: 'totalTranslations', target: 100 },
+  { id: 'thousandSigns', category: 'translation', level: 'gold',   icon: 'trophy',     nameKey: 'achThousandSignsName', descKey: 'achThousandSignsDesc', metric: 'totalTranslations', target: 1000 },
 
-  { id: 'firstTen',     category: 'vocabulary', level: 'bronze', icon: 'bookmark', nameKey: 'achFirstTenName',     descKey: 'achFirstTenDesc',     value: 10,  target: 10 },
-  { id: 'twoHundred',   category: 'vocabulary', level: 'gold',   icon: 'book',     nameKey: 'achTwoHundredName',   descKey: 'achTwoHundredDesc',   value: 148, target: 200 },
-  { id: 'everyday',     category: 'vocabulary', level: 'silver', icon: 'home',     nameKey: 'achEverydayName',     descKey: 'achEverydayDesc',     value: 40,  target: 40 },
-  { id: 'numbersHours', category: 'vocabulary', level: 'bronze', icon: 'time',     nameKey: 'achNumbersHoursName', descKey: 'achNumbersHoursDesc', value: 32,  target: 32 },
-  { id: 'regionalisms', category: 'vocabulary', level: 'silver', icon: 'location', nameKey: 'achRegionalismsName', descKey: 'achRegionalismsDesc', value: 4,   target: 15 },
+  { id: 'firstTen',   category: 'vocabulary', level: 'bronze', icon: 'bookmark', nameKey: 'achFirstTenName',   descKey: 'achFirstTenDesc',   metric: 'distinctWords', target: 10 },
+  { id: 'twoHundred', category: 'vocabulary', level: 'gold',   icon: 'book',     nameKey: 'achTwoHundredName', descKey: 'achTwoHundredDesc', metric: 'distinctWords', target: 200 },
 
-  { id: 'sevenDays',  category: 'consistency', level: 'bronze', icon: 'calendar',     nameKey: 'achSevenDaysName',  descKey: 'achSevenDaysDesc',  value: 7,  target: 7 },
-  { id: 'thirtyDays', category: 'consistency', level: 'gold',   icon: 'flame',        nameKey: 'achThirtyDaysName', descKey: 'achThirtyDaysDesc', value: 18, target: 30 },
-  { id: 'beforeDawn', category: 'consistency', level: 'silver', icon: 'partly-sunny', nameKey: 'achBeforeDawnName', descKey: 'achBeforeDawnDesc', value: 10, target: 10 },
-
-  { id: 'sharedSign', category: 'community', level: 'bronze', icon: 'share-social', nameKey: 'achSharedSignName', descKey: 'achSharedSignDesc', value: 3, target: 1 },
-  { id: 'bridge',     category: 'community', level: 'gold',   icon: 'people',       nameKey: 'achBridgeName',     descKey: 'achBridgeDesc',     value: 6, target: 20 },
+  { id: 'sevenDays',  category: 'consistency', level: 'bronze', icon: 'calendar', nameKey: 'achSevenDaysName',  descKey: 'achSevenDaysDesc',  metric: 'longestStreakDays', target: 7 },
+  { id: 'thirtyDays', category: 'consistency', level: 'gold',   icon: 'flame',    nameKey: 'achThirtyDaysName', descKey: 'achThirtyDaysDesc', metric: 'longestStreakDays', target: 30 },
 ];
+
+/** Aplica las estadisticas a la lista; sin estadisticas todo queda en 0. */
+export const buildAchievements = (stats: MyStats | null): Achievement[] =>
+  ACHIEVEMENTS.map(def => ({ ...def, value: stats ? stats[def.metric] : 0 }));
 
 export const CATEGORY_LABEL_KEYS: Record<AchievementCategory, TranslationKey> = {
   translation: 'achievementsCatTranslation',
-  practice:    'achievementsCatPractice',
   vocabulary:  'achievementsCatVocabulary',
   consistency: 'achievementsCatConsistency',
-  community:   'achievementsCatCommunity',
 };
 
 export const LEVEL_LABEL_KEYS: Record<AchievementLevel, TranslationKey> = {
@@ -76,10 +69,8 @@ export const LEVEL_LABEL_KEYS: Record<AchievementLevel, TranslationKey> = {
 
 export const CATEGORY_ORDER: AchievementCategory[] = [
   'translation',
-  'practice',
   'vocabulary',
   'consistency',
-  'community',
 ];
 
 export interface AchievementProgress {
@@ -96,8 +87,8 @@ export const progressOf = (achievement: Achievement): AchievementProgress => {
   };
 };
 
-export const countUnlocked = (): number =>
-  ACHIEVEMENTS.filter(achievement => progressOf(achievement).unlocked).length;
+export const countUnlocked = (achievements: Achievement[]): number =>
+  achievements.filter(achievement => progressOf(achievement).unlocked).length;
 
 export const iconNameFor = (achievement: Achievement, unlocked: boolean): IoniconName =>
   unlocked ? achievement.icon : (`${achievement.icon}-outline` as IoniconName);

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -24,7 +24,11 @@ import { useAccess } from '../../../app/providers/AccessContext';
 import { PERMISSIONS } from '../../../shared/types/iam';
 import { userDisplayName } from '../../../shared/utils/userDisplayName';
 import { AchievementsCard } from '../components/AchievementsCard';
-import { countUnlocked } from '../data/achievements';
+import { buildAchievements, countUnlocked } from '../data/achievements';
+import { useMyStats } from '../hooks/useMyStats';
+import { DeleteAccountModal } from '../components/DeleteAccountModal';
+import { APP_VERSION } from '../../../shared/utils/appVersion';
+import { showAlert } from '../../../shared/utils/dialogs';
 
 const LANG_CODES: LanguageCode[] = ['es', 'en', 'fr', 'pt'];
 
@@ -42,15 +46,20 @@ export const ProfileScreen: React.FC = () => {
   const C = useColors();
   const { language, setLanguage } = useLanguage();
   const { t } = useTranslation();
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   // Las notificaciones son una herramienta de administracion: solo con permiso.
   const { hasPermission } = useAccess();
   const showNotifications = hasPermission(PERMISSIONS.NOTIFICATIONS_MANAGE);
 
-  const unlockedAchievements = countUnlocked();
+  const { stats, loading, error, reload } = useMyStats();
+  const achievements = useMemo(() => buildAchievements(stats), [stats]);
+  // Mientras carga (o si falla) no hay cifra real que mostrar.
+  const fmt = (n: number | undefined) => (stats && n !== undefined ? n.toLocaleString(language) : '—');
+  const unlockedAchievements = stats ? String(countUnlocked(achievements)) : '—';
 
   const displayName = userDisplayName(user);
-  const displayEmail = user?.email ?? 'usuario@traducesenas.com';
+  const displayEmail = user?.email || '—';
 
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
@@ -63,15 +72,14 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
-  const handleDeleteAccount = () => {
-    if (Platform.OS === 'web') {
-      if (confirm(t('profileConfirmDelete'))) { alert(t('profileAccountDeleted')); }
-    } else {
-      Alert.alert(t('profileDeleteAccount'), t('profileConfirmDelete'), [
-        { text: t('cancel'), style: 'cancel' },
-        { text: t('delete'), style: 'destructive', onPress: () => Alert.alert(t('profileAccountDeleted')) },
-      ]);
-    }
+  const handleDeleteAccount = () => setDeleteOpen(true);
+
+  // Cuenta ya borrada en el servidor: limpiar sesión (token y estado) y volver a la portada con aviso.
+  const handleAccountDeleted = async () => {
+    setDeleteOpen(false);
+    resetTheme();
+    await logout();
+    void showAlert({ message: t('deleteAccountDone'), icon: 'success' });
   };
 
   const IconBox: React.FC<{ name: React.ComponentProps<typeof Ionicons>['name'] }> = ({ name }) => (
@@ -97,12 +105,12 @@ export const ProfileScreen: React.FC = () => {
             </View>
             <View style={styles.heroStats}>
               <View style={styles.heroStat}>
-                <Text style={[styles.heroStatValue, { color: C.primary }]}>1,248</Text>
+                <Text style={[styles.heroStatValue, { color: C.primary }]}>{fmt(stats?.totalTranslations)}</Text>
                 <Text style={[styles.heroStatLabel, { color: C.textSecondary }]}>{t('profileTranslations')}</Text>
               </View>
               <View style={styles.heroStat}>
-                <Text style={[styles.heroStatValue, { color: C.primary }]}>84</Text>
-                <Text style={[styles.heroStatLabel, { color: C.textSecondary }]}>{t('profileLearned')}</Text>
+                <Text style={[styles.heroStatValue, { color: C.primary }]}>{fmt(stats?.distinctWords)}</Text>
+                <Text style={[styles.heroStatLabel, { color: C.textSecondary }]}>{t('profileDistinctSigns')}</Text>
               </View>
               <View style={styles.heroStat}>
                 <Text style={[styles.heroStatValue, { color: C.primary }]}>{unlockedAchievements}</Text>
@@ -110,6 +118,15 @@ export const ProfileScreen: React.FC = () => {
               </View>
             </View>
           </View>
+
+          {error && !loading && (
+            <View style={styles.statsError}>
+              <Text style={[styles.statsErrorText, { color: C.textSecondary }]}>{t('profileStatsError')}</Text>
+              <TouchableOpacity onPress={reload} accessibilityRole="button">
+                <Text style={[styles.statsErrorText, { color: C.primaryDark, fontWeight: '800' }]}>{t('statsRetry')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Cuenta */}
           <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
@@ -221,14 +238,14 @@ export const ProfileScreen: React.FC = () => {
           </View>
 
           {/* Logros */}
-          <AchievementsCard isWide={isWide} />
+          <AchievementsCard isWide={isWide} achievements={achievements} />
 
           {/* Acerca de */}
           <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
             <Text style={[styles.cardLabel, { color: C.textHint }]}>{t('profileAbout')}</Text>
             <View style={[styles.aboutRow, styles.rowDivider, { borderBottomColor: C.border }]}>
               <Text style={[styles.prefLabel, { color: C.textPrimary }]}>{t('profileAppVersion')}</Text>
-              <Text style={[styles.rowValue, { color: C.textSecondary }]}>1.0.0</Text>
+              <Text style={[styles.rowValue, { color: C.textSecondary }]}>{APP_VERSION}</Text>
             </View>
             <View style={styles.aboutLinks}>
               <TouchableOpacity onPress={() => navigation.navigate('Terms')}>
@@ -276,6 +293,8 @@ const styles = StyleSheet.create({
   userEmail: { fontSize: 15, fontWeight: '600', marginTop: 4 },
   heroStats: { flexDirection: 'row', gap: 26 },
   heroStat: { alignItems: 'center' },
+  statsError: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 16 },
+  statsErrorText: { fontSize: 13, fontWeight: '600' },
   heroStatValue: { fontSize: 26, fontWeight: '900' },
   heroStatLabel: { fontSize: 12, fontWeight: '700', marginTop: 2 },
 

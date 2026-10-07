@@ -18,9 +18,10 @@ import { AppHeader } from '../../../shared/components/common/AppHeader';
 import { Colors } from '../../../shared/constants/colors';
 import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
+import { useTrackSectionView } from '../../../shared/hooks/useTrackSectionView';
 import { useSignAgent } from '../../../feature/Translation/hooks/useSignAgent';
 import { useGestureAgent } from '../hooks/useGestureAgent';
-import { getGestureCounts, getLastWordMatch, wordEnginePerf, wordPrediction, wordState, wordVocabulary } from '../services/vision';
+import { isSimulatedRecognition, isGenericGestureEngine, getGestureCounts, getLastWordMatch, wordEnginePerf, wordPrediction, wordState, wordVocabulary } from '../services/vision';
 import type { WordMatchDebug } from '../services/vision';
 import { translationsService } from '../services/translations.service';
 import { downloadMotionTemplates } from '../services/signTemplates.service';
@@ -49,6 +50,7 @@ export const TranslationScreen: React.FC = () => {
   const cameraHeight = isDesktop ? 340 : Math.min(width * 0.62, height * 0.5);
   const C = useColors();
   const { t, language } = useTranslation();
+  useTrackSectionView('TRANSLATION');
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const {
@@ -89,6 +91,8 @@ export const TranslationScreen: React.FC = () => {
   const usingGestures = engine === 'palabras';
 
   const persistSignTranscript = useCallback(async () => {
+    // Lo que sale del simulador no es una traducción real: nunca se guarda.
+    if (isSimulatedRecognition || agentLastResult?.source === 'mock') return;
     const transcript = agentTranscript.trim();
     if (!transcript) return;
     try {
@@ -105,6 +109,10 @@ export const TranslationScreen: React.FC = () => {
 
   const handleAction = useCallback(async () => {
     if (!isActive) {
+      if (isSimulatedRecognition && !usingGestures) {
+        showError(t('recognitionUnavailableMobile'));
+        return;
+      }
       if (!permission?.granted) {
         const res = await requestPermission();
         if (!res.granted) {
@@ -314,6 +322,13 @@ export const TranslationScreen: React.FC = () => {
                   </View>
                 )}
 
+                {isSimulatedRecognition && !usingGestures && (
+                  <View style={[styles.banner, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
+                    <Ionicons name="warning-outline" size={16} color="#B45309" />
+                    <Text style={[styles.bannerText, { color: '#B45309' }]}>{t('recognitionUnavailableMobile')}</Text>
+                  </View>
+                )}
+
                 {usingGestures && gesture.error && (
                   <View style={[styles.banner, { backgroundColor: '#FEE2E2', borderColor: '#EF4444' }]}>
                     <Ionicons name="close-circle-outline" size={16} color="#B91C1C" />
@@ -419,8 +434,14 @@ export const TranslationScreen: React.FC = () => {
                 </View>
 
                 {usingGestures ? (
+                  vocabulary.length > 0 && (
                   <View style={styles.vocabBlock}>
-                    <Text style={[styles.vocabTitle, { color: C.textSecondary }]}>{t('gestureVocabulary')}</Text>
+                    <Text style={[styles.vocabTitle, { color: C.textSecondary }]}>
+                      {isGenericGestureEngine() ? t('gestureVocabularyGeneric') : t('gestureVocabulary')}
+                    </Text>
+                    {isGenericGestureEngine() && (
+                      <Text style={[styles.vocabHint, { color: C.textHint }]}>{t('gestureGenericNote')}</Text>
+                    )}
                     <View style={styles.vocabRow}>
                       {vocabulary.map(item => (
                         <View key={item.word} style={[styles.vocabChip, { backgroundColor: C.primaryBg }]}>
@@ -432,6 +453,7 @@ export const TranslationScreen: React.FC = () => {
                       ))}
                     </View>
                   </View>
+                  )
                 ) : (
                   <View style={styles.tipsRow}>
                     {TIPS.map((tip, i) => (

@@ -29,8 +29,6 @@ const RESOURCES: { label: string; route: string }[] = [
 ];
 
 const CONTACT: { icon: keyof typeof Ionicons.glyphMap; text: string }[] = [
-  { icon: 'mail-outline',     text: 'hola@traducesena.com' },
-  { icon: 'call-outline',     text: '+57 300 123 4567' },
   { icon: 'location-outline', text: 'Neiva, Huila — Colombia' },
 ];
 
