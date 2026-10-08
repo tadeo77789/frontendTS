@@ -285,10 +285,8 @@ const pt: typeof es = {
 
   adminDashboardTitle: 'Painel de administração',
   adminDashboardSubtitle: 'Estado da IA e métricas do app',
-  adminAiState: 'Amostras neste dispositivo',
-  adminAiActive: 'Amostras salvas neste dispositivo',
-  adminAiInactive: 'Nenhuma amostra salva neste dispositivo',
-  adminCoverage: 'Cobertura',
+  adminAiActive: 'Modelos de palavras neste dispositivo',
+  adminAiInactive: 'Nenhum modelo de palavra neste dispositivo',
   adminSamplesPerLetter: 'Amostras por letra',
   adminSystem: 'Sistema',
   adminAppVersion: 'Versão do app',

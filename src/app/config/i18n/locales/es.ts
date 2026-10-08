@@ -284,10 +284,8 @@ const es = {
 
   adminDashboardTitle: 'Panel de administración',
   adminDashboardSubtitle: 'Estado de la IA y métricas de la app',
-  adminAiState: 'Muestras en este dispositivo',
-  adminAiActive: 'Muestras guardadas en este dispositivo',
-  adminAiInactive: 'Sin muestras guardadas en este dispositivo',
-  adminCoverage: 'Cobertura',
+  adminAiActive: 'Plantillas de palabras en este dispositivo',
+  adminAiInactive: 'Sin plantillas de palabras en este dispositivo',
   adminSamplesPerLetter: 'Muestras por letra',
   adminSystem: 'Sistema',
   adminAppVersion: 'Versión de la app',
