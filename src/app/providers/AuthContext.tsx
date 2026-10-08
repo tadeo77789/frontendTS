@@ -37,6 +37,7 @@ export interface RegisterResult {
 
 interface AuthContextType extends AuthState {
   login: (payload: LoginPayload) => Promise<void>;
+  loginWithFacebook: (accessToken: string) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<RegisterResult>;
   logout: () => Promise<void>;
 }
@@ -124,6 +125,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await persistSession(mapBackendUser(data.data.user as BackendUser), data.data.token as string);
   }, [persistSession]);
 
+  // El backend valida el token de Facebook y responde igual que /auth/login.
+  const loginWithFacebook = useCallback(async (accessToken: string) => {
+    const { data } = await api.post(ENDPOINTS.facebookLogin, { accessToken });
+    await persistSession(mapBackendUser(data.data.user as BackendUser), data.data.token as string);
+  }, [persistSession]);
+
   const register = useCallback(async (payload: RegisterPayload): Promise<RegisterResult> => {
     const { data } = await api.post(ENDPOINTS.register, {
       name: payload.nombre,
@@ -140,8 +147,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [clearSession]);
 
   const value = useMemo<AuthContextType>(
-    () => ({ ...state, login, register, logout }),
-    [state, login, register, logout]
+    () => ({ ...state, login, loginWithFacebook, register, logout }),
+    [state, login, loginWithFacebook, register, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
