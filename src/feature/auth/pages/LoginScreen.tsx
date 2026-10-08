@@ -19,7 +19,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { LandingTheme as D } from '../../../shared/constants/landingTheme';
 import { useLoginForm } from '../hooks/useLoginForm';
 import { useScrollToInput } from '../../../shared/hooks/useScrollToInput';
-import { googleIcon, facebookIcon } from '../../../assets/icons/socialIcons';
+import { googleIcon } from '../../../assets/icons/socialIcons';
+import { FacebookLoginButton } from '../components/FacebookLoginButton';
 import { useTranslation } from '../../../app/config/i18n';
 import { HoverShadow, HoverShadowSoft } from '../../../shared/constants/hoverStyles';
 
@@ -145,10 +146,12 @@ export const LoginScreen: React.FC = () => {
           <Image source={googleIcon} style={styles.googleImg} resizeMode="contain" />
           <Text style={styles.socialText}>Google</Text>
         </Pressable>
-        <Pressable style={({ hovered }: any) => [styles.socialBtn, hovered && styles.socialBtnHover, hovered && HoverShadowSoft]}>
-          <Image source={facebookIcon} style={styles.fbImg} resizeMode="contain" />
-          <Text style={styles.socialText}>Facebook</Text>
-        </Pressable>
+        <FacebookLoginButton
+          style={styles.socialBtn}
+          hoverStyle={styles.socialBtnHover}
+          iconStyle={styles.fbImg}
+          textStyle={styles.socialText}
+        />
       </View>
 
       <Text style={styles.legalText}>

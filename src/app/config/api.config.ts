@@ -36,6 +36,13 @@ export const API_BASE_URL = __DEV__
 
 export const API_TIMEOUT = 10_000;
 
+/**
+ * App ID de Facebook (developers.facebook.com). No es secreto: el App Secret
+ * vive solo en el backend. Se lee de EXPO_PUBLIC_FACEBOOK_APP_ID al compilar;
+ * vacio = boton de Facebook desactivado con un aviso.
+ */
+export const FACEBOOK_APP_ID = process.env.EXPO_PUBLIC_FACEBOOK_APP_ID ?? '';
+
 export const ENDPOINTS = {
   login: '/auth/login',
   register: '/auth/register',
@@ -44,6 +51,7 @@ export const ENDPOINTS = {
   verifyEmail: '/auth/verify-email',
   resendVerification: '/auth/resend-verification',
   resetPassword: '/auth/reset-password',
+  facebookLogin: '/auth/facebook',
 
   me: '/users/me',
   mePassword: '/users/me/password',
