@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "icon": "./src/assets/images/icono.png",
+    "icon": "./src/assets/images/app-icon.png",
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -20,7 +20,7 @@
     "android": {
       "package": "com.traducsenas.app",
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/images/icono.png",
+        "foregroundImage": "./src/assets/images/adaptive-icon.png",
         "backgroundColor": "#EDE9FE"
       },
       "permissions": [
@@ -36,7 +36,7 @@
       "description": "Traduce Lengua de Señas Colombiana a texto en tiempo real.",
       "themeColor": "#7C3AED",
       "backgroundColor": "#EDE9FE",
-      "favicon": "./src/assets/images/icono.png"
+      "favicon": "./src/web/images/favicon.png"
     },
     "plugins": [
       "expo-camera",
@@ -47,12 +47,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./src/assets/images/icono.png",
+          "image": "./src/assets/images/splash-logo.png",
           "imageWidth": 180,
           "resizeMode": "contain",
           "backgroundColor": "#EDE9FE",
           "dark": {
-            "image": "./src/assets/images/icono.png",
+            "image": "./src/assets/images/splash-logo-dark.png",
             "backgroundColor": "#1A1327"
           }
         }
