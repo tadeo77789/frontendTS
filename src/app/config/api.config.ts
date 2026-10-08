@@ -28,8 +28,8 @@ const devHost = (): string => {
 // TODO: confirmar el dominio real de produccion; 'api.traducsenas.com' no esta verificado.
 export const API_BASE_URL = __DEV__
   ? Platform.OS === 'web'
-    ? 'http://localhost:3000/api'
-    : `http://${devHost()}:3000/api`
+    ? 'http://localhost:8080/api'
+    : `http://${devHost()}:8080/api`
   : Platform.OS === 'web'
     ? '/api'
     : 'https://api.traducsenas.com/api';
