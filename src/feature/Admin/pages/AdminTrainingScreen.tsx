@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   meterPercent: { fontSize: 14, fontWeight: '800', minWidth: 42, textAlign: 'right' },
 
   cameraInner: { position: 'relative', borderRadius: 16, overflow: 'hidden', aspectRatio: 4 / 3, backgroundColor: '#2A2140', alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
-  cameraFill: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  cameraFill: { ...StyleSheet.absoluteFill, width: '100%', height: '100%' },
   dashedFrame: { position: 'absolute', top: 20, left: 20, right: 20, bottom: 20, borderWidth: 2, borderColor: 'rgba(190,158,244,0.55)', borderStyle: 'dashed', borderRadius: 16 },
   capturingBadge: { position: 'absolute', top: 16, left: 16, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 999, paddingVertical: 7, paddingHorizontal: 13 },
   recDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#EF4444' },
