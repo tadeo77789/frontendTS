@@ -55,6 +55,7 @@ export const ENDPOINTS = {
 
   me: '/users/me',
   mePassword: '/users/me/password',
+  profilePreferences: '/profile/preferences',
 
   translate: '/translations',
   history: '/translations/history',

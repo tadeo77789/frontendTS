@@ -47,12 +47,17 @@ const isApiRequest = (config: InternalAxiosRequestConfig): boolean => {
 
 api.interceptors.request.use(async (config) => {
   if (!isApiRequest(config)) return config;
+
+  // Conserva el token de la sesión que inició la solicitud.
+  if (config.headers.has('Authorization')) return config;
+
   try {
     const token = await tokenStorage.get();
     if (token) config.headers.Authorization = `Bearer ${token}`;
   } catch {
-    // sin token: la petición sigue sin Authorization
+    // Sin token: la petición sigue sin Authorization.
   }
+
   return config;
 });
 
