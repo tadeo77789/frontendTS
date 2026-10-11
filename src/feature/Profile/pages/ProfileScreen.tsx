@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import {
   View,
@@ -17,8 +16,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../../app/providers/AuthContext';
-import { useTheme, useColors, type ColorAccent } from '../../../app/providers/ThemeContext';
-import { useLanguage, type LanguageCode } from '../../../app/providers/LanguageContext';
+import { usePreferences } from '../../../app/providers/PreferencesContext';
+import {
+  useTheme,
+  useColors,
+  type ColorAccent,
+} from '../../../app/providers/ThemeContext';
+import {
+  useLanguage,
+  type LanguageCode,
+} from '../../../app/providers/LanguageContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { useAccess } from '../../../app/providers/AccessContext';
 import { PERMISSIONS } from '../../../shared/types/iam';
@@ -32,204 +39,635 @@ import { showAlert } from '../../../shared/utils/dialogs';
 
 const LANG_CODES: LanguageCode[] = ['es', 'en', 'fr', 'pt'];
 
-const COLOR_ACCENTS: { key: ColorAccent; label: string; color: string; dark: string }[] = [
-  { key: 'purple', label: 'Morado', color: '#9B77E6', dark: '#9D60F5' },
-  { key: 'green',  label: 'Verde',  color: '#4CAF82', dark: '#5DBF92' },
+const COLOR_ACCENTS: {
+  key: ColorAccent;
+  label: string;
+  color: string;
+  dark: string;
+}[] = [
+  {
+    key: 'purple',
+    label: 'Morado',
+    color: '#9B77E6',
+    dark: '#9D60F5',
+  },
+  {
+    key: 'green',
+    label: 'Verde',
+    color: '#4CAF82',
+    dark: '#5DBF92',
+  },
 ];
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { width } = useWindowDimensions();
   const isWide = width >= 768;
-  const { user, logout } = useAuth();
-  const { isDark, toggleTheme, resetTheme, colorAccent, setColorAccent } = useTheme();
+  const { user, logout, isAuthenticated } = useAuth();
+
+  // Estos providers exponen los valores que se muestran en la pantalla.
+  const {
+    isDark,
+    toggleTheme: toggleLocalTheme,
+    colorAccent,
+    setColorAccent: setLocalColorAccent,
+  } = useTheme();
   const C = useColors();
-  const { language, setLanguage } = useLanguage();
+  const {
+    language,
+    setLanguage: setLocalLanguage,
+  } = useLanguage();
+
+  // PreferencesProvider coordina las solicitudes, la caché y los errores.
+  const {
+    setTheme: saveTheme,
+    setLanguage: saveLanguage,
+    setColorAccent: saveColorAccent,
+    loading: preferencesLoading,
+    saving: preferencesSaving,
+    error: preferencesError,
+    retry: retryPreferences,
+  } = usePreferences();
+
+  // Evita cambios mientras se carga o guarda una preferencia.
+  const preferencesDisabled =
+    preferencesLoading || preferencesSaving;
+
   const { t } = useTranslation();
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  // Las notificaciones son una herramienta de administracion: solo con permiso.
+  const [notificationsEnabled, setNotificationsEnabled] =
+    useState(true);
+
+  // Este control administrativo sigue siendo local.
+  // Su conexión al backend se implementará por separado.
   const { hasPermission } = useAccess();
-  const showNotifications = hasPermission(PERMISSIONS.NOTIFICATIONS_MANAGE);
+  const showNotifications = hasPermission(
+    PERMISSIONS.NOTIFICATIONS_MANAGE,
+  );
 
   const { stats, loading, error, reload } = useMyStats();
-  const achievements = useMemo(() => buildAchievements(stats), [stats]);
-  // Mientras carga (o si falla) no hay cifra real que mostrar.
-  const fmt = (n: number | undefined) => (stats && n !== undefined ? n.toLocaleString(language) : '—');
-  const unlockedAchievements = stats ? String(countUnlocked(achievements)) : '—';
+  const achievements = useMemo(
+    () => buildAchievements(stats),
+    [stats],
+  );
+
+  // Mientras carga o falla la consulta, no se muestra una cifra inventada.
+  const fmt = (n: number | undefined) =>
+    stats && n !== undefined ? n.toLocaleString(language) : '—';
+  const unlockedAchievements = stats
+    ? String(countUnlocked(achievements))
+    : '—';
 
   const displayName = userDisplayName(user);
   const displayEmail = user?.email || '—';
 
+  /**
+   * Con sesión, guarda el tema mediante PATCH.
+   * Para visitantes, conserva el cambio local.
+   * El provider mantiene el valor anterior si falla el guardado.
+   */
+  const handleThemeChange = (dark: boolean) => {
+    if (preferencesDisabled) return;
+
+    if (isAuthenticated) {
+      void saveTheme(dark ? 'dark' : 'light');
+    } else {
+      toggleLocalTheme();
+    }
+  };
+
+  /**
+   * ES/EN se sincronizan con el servidor.
+   * FR/PT se conservan como excepciones locales por usuario.
+   */
+  const handleLanguageChange = (code: LanguageCode) => {
+    if (preferencesDisabled) return;
+
+    if (isAuthenticated) {
+      void saveLanguage(code);
+    } else {
+      void setLocalLanguage(code);
+    }
+  };
+
+  /** El acento se guarda localmente, sin enviar PATCH. */
+  const handleAccentChange = (accent: ColorAccent) => {
+    if (preferencesDisabled) return;
+
+    if (isAuthenticated) {
+      void saveColorAccent(accent);
+    } else {
+      setLocalColorAccent(accent);
+    }
+  };
+
+  // Al cerrar sesión, PreferencesProvider selecciona el ámbito visitante.
+  // No reiniciamos el tema manualmente ni sobrescribimos la caché del usuario.
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
-      if (confirm(t('profileConfirmLogout'))) { resetTheme(); await logout(); }
+      if (confirm(t('profileConfirmLogout'))) {
+        await logout();
+      }
     } else {
       Alert.alert(t('logout'), t('profileConfirmLogout'), [
         { text: t('cancel'), style: 'cancel' },
-        { text: t('profileLogout'), style: 'destructive', onPress: async () => { resetTheme(); await logout(); } },
+        {
+          text: t('profileLogout'),
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+          },
+        },
       ]);
     }
   };
 
   const handleDeleteAccount = () => setDeleteOpen(true);
 
-  // Cuenta ya borrada en el servidor: limpiar sesión (token y estado) y volver a la portada con aviso.
+  // Cuenta borrada en el servidor: limpiar la sesión y mostrar el aviso.
   const handleAccountDeleted = async () => {
     setDeleteOpen(false);
-    resetTheme();
     await logout();
-    void showAlert({ message: t('deleteAccountDone'), icon: 'success' });
+    void showAlert({
+      message: t('deleteAccountDone'),
+      icon: 'success',
+    });
   };
 
-  const IconBox: React.FC<{ name: React.ComponentProps<typeof Ionicons>['name'] }> = ({ name }) => (
-    <View style={[styles.iconBox, { backgroundColor: C.primaryBg }]}>
+  const IconBox: React.FC<{
+    name: React.ComponentProps<typeof Ionicons>['name'];
+  }> = ({ name }) => (
+    <View
+      style={[
+        styles.iconBox,
+        { backgroundColor: C.primaryBg },
+      ]}
+    >
       <Ionicons name={name} size={20} color={C.primary} />
     </View>
   );
 
   return (
-    <View style={[styles.root, { backgroundColor: C.backgroundGray }]}>
+    <View
+      style={[
+        styles.root,
+        { backgroundColor: C.backgroundGray },
+      ]}
+    >
       <AppHeader />
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.inner}>
 
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.inner}>
           {/* Hero */}
           <View style={[styles.hero, isWide && styles.heroWide]}>
-            <LinearGradient colors={[C.primaryLight, C.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.avatar, { shadowColor: C.primary }]}>
+            <LinearGradient
+              colors={[C.primaryLight, C.primary]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.avatar, { shadowColor: C.primary }]}
+            >
               <Ionicons name="person" size={48} color="#fff" />
             </LinearGradient>
-            <View style={[styles.heroInfo, isWide && styles.heroInfoWide]}>
-              <Text style={[styles.userName, { color: C.textPrimary }]}>{displayName}</Text>
-              <Text style={[styles.userEmail, { color: C.textSecondary }]}>{displayEmail}</Text>
+
+            <View
+              style={[
+                styles.heroInfo,
+                isWide && styles.heroInfoWide,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.userName,
+                  { color: C.textPrimary },
+                ]}
+              >
+                {displayName}
+              </Text>
+              <Text
+                style={[
+                  styles.userEmail,
+                  { color: C.textSecondary },
+                ]}
+              >
+                {displayEmail}
+              </Text>
             </View>
+
             <View style={styles.heroStats}>
               <View style={styles.heroStat}>
-                <Text style={[styles.heroStatValue, { color: C.primary }]}>{fmt(stats?.totalTranslations)}</Text>
-                <Text style={[styles.heroStatLabel, { color: C.textSecondary }]}>{t('profileTranslations')}</Text>
+                <Text
+                  style={[
+                    styles.heroStatValue,
+                    { color: C.primary },
+                  ]}
+                >
+                  {fmt(stats?.totalTranslations)}
+                </Text>
+                <Text
+                  style={[
+                    styles.heroStatLabel,
+                    { color: C.textSecondary },
+                  ]}
+                >
+                  {t('profileTranslations')}
+                </Text>
               </View>
+
               <View style={styles.heroStat}>
-                <Text style={[styles.heroStatValue, { color: C.primary }]}>{fmt(stats?.distinctWords)}</Text>
-                <Text style={[styles.heroStatLabel, { color: C.textSecondary }]}>{t('profileDistinctSigns')}</Text>
+                <Text
+                  style={[
+                    styles.heroStatValue,
+                    { color: C.primary },
+                  ]}
+                >
+                  {fmt(stats?.distinctWords)}
+                </Text>
+                <Text
+                  style={[
+                    styles.heroStatLabel,
+                    { color: C.textSecondary },
+                  ]}
+                >
+                  {t('profileDistinctSigns')}
+                </Text>
               </View>
+
               <View style={styles.heroStat}>
-                <Text style={[styles.heroStatValue, { color: C.primary }]}>{unlockedAchievements}</Text>
-                <Text style={[styles.heroStatLabel, { color: C.textSecondary }]}>{t('achievements')}</Text>
+                <Text
+                  style={[
+                    styles.heroStatValue,
+                    { color: C.primary },
+                  ]}
+                >
+                  {unlockedAchievements}
+                </Text>
+                <Text
+                  style={[
+                    styles.heroStatLabel,
+                    { color: C.textSecondary },
+                  ]}
+                >
+                  {t('achievements')}
+                </Text>
               </View>
             </View>
           </View>
 
           {error && !loading && (
             <View style={styles.statsError}>
-              <Text style={[styles.statsErrorText, { color: C.textSecondary }]}>{t('profileStatsError')}</Text>
-              <TouchableOpacity onPress={reload} accessibilityRole="button">
-                <Text style={[styles.statsErrorText, { color: C.primaryDark, fontWeight: '800' }]}>{t('statsRetry')}</Text>
+              <Text
+                style={[
+                  styles.statsErrorText,
+                  { color: C.textSecondary },
+                ]}
+              >
+                {t('profileStatsError')}
+              </Text>
+              <TouchableOpacity
+                onPress={reload}
+                accessibilityRole="button"
+              >
+                <Text
+                  style={[
+                    styles.statsErrorText,
+                    { color: C.primaryDark, fontWeight: '800' },
+                  ]}
+                >
+                  {t('statsRetry')}
+                </Text>
               </TouchableOpacity>
             </View>
           )}
 
           {/* Cuenta */}
-          <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
-            <Text style={[styles.cardLabel, { color: C.textHint }]}>{t('profileAccount')}</Text>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: C.surface, borderColor: C.border },
+            ]}
+          >
+            <Text style={[styles.cardLabel, { color: C.textHint }]}>
+              {t('profileAccount')}
+            </Text>
 
-            <View style={[styles.row, styles.rowDivider, { borderBottomColor: C.border }]}>
+            <View
+              style={[
+                styles.row,
+                styles.rowDivider,
+                { borderBottomColor: C.border },
+              ]}
+            >
               <IconBox name="person-outline" />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.rowSub, { color: C.textSecondary }]}>{t('name')}</Text>
-                <Text style={[styles.rowValue, { color: C.textPrimary }]}>{displayName}</Text>
+                <Text
+                  style={[styles.rowSub, { color: C.textSecondary }]}
+                >
+                  {t('name')}
+                </Text>
+                <Text
+                  style={[styles.rowValue, { color: C.textPrimary }]}
+                >
+                  {displayName}
+                </Text>
               </View>
             </View>
 
-            <View style={[styles.row, styles.rowDivider, { borderBottomColor: C.border }]}>
+            <View
+              style={[
+                styles.row,
+                styles.rowDivider,
+                { borderBottomColor: C.border },
+              ]}
+            >
               <IconBox name="mail-outline" />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.rowSub, { color: C.textSecondary }]}>{t('email')}</Text>
-                <Text style={[styles.rowValue, { color: C.textPrimary }]}>{displayEmail}</Text>
+                <Text
+                  style={[styles.rowSub, { color: C.textSecondary }]}
+                >
+                  {t('email')}
+                </Text>
+                <Text
+                  style={[styles.rowValue, { color: C.textPrimary }]}
+                >
+                  {displayEmail}
+                </Text>
               </View>
             </View>
 
             <View style={styles.row}>
               <IconBox name="lock-closed-outline" />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.rowSub, { color: C.textSecondary }]}>{t('password')}</Text>
-                <Text style={[styles.rowValue, { color: C.textPrimary, letterSpacing: 2 }]}>••••••••</Text>
+                <Text
+                  style={[styles.rowSub, { color: C.textSecondary }]}
+                >
+                  {t('password')}
+                </Text>
+                <Text
+                  style={[
+                    styles.rowValue,
+                    { color: C.textPrimary, letterSpacing: 2 },
+                  ]}
+                >
+                  ••••••••
+                </Text>
               </View>
-              
-              <TouchableOpacity style={styles.linkRow}
-               onPress={() => navigation.navigate('ChangePassword')}>
-
-                <Ionicons name="key-outline" size={15} color={C.primary} />
-                <Text style={[styles.link, { color: C.primary }]}>{t('profileChangePassword')}</Text>
+              <TouchableOpacity
+                style={styles.linkRow}
+                onPress={() => navigation.navigate('ChangePassword')}
+              >
+                <Ionicons
+                  name="key-outline"
+                  size={15}
+                  color={C.primary}
+                />
+                <Text style={[styles.link, { color: C.primary }]}>
+                  {t('profileChangePassword')}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Preferencias */}
-          <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
-            <Text style={[styles.cardLabel, { color: C.textHint }]}>{t('profilePreferences')}</Text>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: C.surface, borderColor: C.border },
+            ]}
+          >
+            <Text style={[styles.cardLabel, { color: C.textHint }]}>
+              {t('profilePreferences')}
+            </Text>
 
-            <View style={[styles.prefRow, !isWide && styles.prefRowStacked, styles.rowDivider, { borderBottomColor: C.border }]}>
+            {/* El reintento lo decide el provider según la operación fallida. */}
+            {preferencesError && (
+              <View style={{ gap: 8, marginBottom: 16 }}>
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={{ color: C.textSecondary }}
+                >
+                  {preferencesError.message}
+                </Text>
+                <TouchableOpacity
+                  disabled={preferencesDisabled}
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    disabled: preferencesDisabled,
+                  }}
+                  onPress={() => {
+                    void retryPreferences();
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: C.primary,
+                      opacity: preferencesDisabled ? 0.5 : 1,
+                    }}
+                  >
+                    {t('statsRetry')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <View
+              style={[
+                styles.prefRow,
+                !isWide && styles.prefRowStacked,
+                styles.rowDivider,
+                { borderBottomColor: C.border },
+              ]}
+            >
               <View style={styles.prefLeft}>
                 <IconBox name="color-palette-outline" />
-                <Text style={[styles.prefLabel, { color: C.textPrimary }]}>Color de la app</Text>
+                <Text
+                  style={[styles.prefLabel, { color: C.textPrimary }]}
+                >
+                  Color de la app
+                </Text>
               </View>
-              <View style={[styles.chipsRow, !isWide && styles.chipsRowStacked]}>
+
+              <View
+                style={[
+                  styles.chipsRow,
+                  !isWide && styles.chipsRowStacked,
+                ]}
+              >
                 {COLOR_ACCENTS.map(accent => {
                   const selected = colorAccent === accent.key;
-                  const accentColor = isDark ? accent.dark : accent.color;
+                  const accentColor = isDark
+                    ? accent.dark
+                    : accent.color;
+
                   return (
                     <TouchableOpacity
                       key={accent.key}
-                      onPress={() => setColorAccent(accent.key)}
+                      onPress={() => handleAccentChange(accent.key)}
+                      disabled={preferencesDisabled}
+                      accessibilityState={{
+                        disabled: preferencesDisabled,
+                      }}
                       activeOpacity={0.8}
                       style={[
                         styles.colorChip,
-                        { borderColor: selected ? accentColor : C.border, backgroundColor: selected ? accentColor + '18' : C.surface },
+                        preferencesDisabled && { opacity: 0.5 },
+                        {
+                          borderColor: selected
+                            ? accentColor
+                            : C.border,
+                          backgroundColor: selected
+                            ? accentColor + '18'
+                            : C.surface,
+                        },
                       ]}
                     >
-                      <View style={[styles.colorDot, { backgroundColor: accentColor }]} />
-                      <Text style={[styles.colorChipText, { color: selected ? C.textPrimary : C.textSecondary }]}>{accent.label}</Text>
+                      <View
+                        style={[
+                          styles.colorDot,
+                          { backgroundColor: accentColor },
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          styles.colorChipText,
+                          {
+                            color: selected
+                              ? C.textPrimary
+                              : C.textSecondary,
+                          },
+                        ]}
+                      >
+                        {accent.label}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
             </View>
 
-            <View style={[styles.prefRow, styles.rowDivider, { borderBottomColor: C.border }]}>
+            <View
+              style={[
+                styles.prefRow,
+                styles.rowDivider,
+                { borderBottomColor: C.border },
+              ]}
+            >
               <View style={styles.prefLeft}>
-                <IconBox name={isDark ? 'moon-outline' : 'sunny-outline'} />
-                <Text style={[styles.prefLabel, { color: C.textPrimary }]}>
-                  {t('profileThemeLabel')} {isDark ? t('profileThemeDark') : t('profileThemeLight')}
+                <IconBox
+                  name={isDark ? 'moon-outline' : 'sunny-outline'}
+                />
+                <Text
+                  style={[styles.prefLabel, { color: C.textPrimary }]}
+                >
+                  {t('profileThemeLabel')}{' '}
+                  {isDark
+                    ? t('profileThemeDark')
+                    : t('profileThemeLight')}
                 </Text>
               </View>
-              <Switch value={isDark} onValueChange={toggleTheme} trackColor={{ false: C.toggleOff, true: C.primary }} thumbColor="#fff" />
+              <Switch
+                value={isDark}
+                disabled={preferencesDisabled}
+                onValueChange={handleThemeChange}
+                trackColor={{
+                  false: C.toggleOff,
+                  true: C.primary,
+                }}
+                thumbColor="#fff"
+              />
             </View>
 
             {showNotifications && (
-              <View style={[styles.prefRow, styles.rowDivider, { borderBottomColor: C.border }]}>
+              <View
+                style={[
+                  styles.prefRow,
+                  styles.rowDivider,
+                  { borderBottomColor: C.border },
+                ]}
+              >
                 <View style={styles.prefLeft}>
                   <IconBox name="notifications-outline" />
-                  <Text style={[styles.prefLabel, { color: C.textPrimary }]}>{t('profileNotifications')}</Text>
+                  <Text
+                    style={[
+                      styles.prefLabel,
+                      { color: C.textPrimary },
+                    ]}
+                  >
+                    {t('profileNotifications')}
+                  </Text>
                 </View>
-                <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} trackColor={{ false: C.toggleOff, true: C.primary }} thumbColor="#fff" />
+                <Switch
+                  value={notificationsEnabled}
+                  onValueChange={setNotificationsEnabled}
+                  trackColor={{
+                    false: C.toggleOff,
+                    true: C.primary,
+                  }}
+                  thumbColor="#fff"
+                />
               </View>
             )}
 
-            <View style={[styles.prefRow, !isWide && styles.prefRowStacked]}>
+            <View
+              style={[
+                styles.prefRow,
+                !isWide && styles.prefRowStacked,
+              ]}
+            >
               <View style={styles.prefLeft}>
                 <IconBox name="language-outline" />
-                <Text style={[styles.prefLabel, { color: C.textPrimary }]}>{t('profileLanguage')}</Text>
+                <Text
+                  style={[styles.prefLabel, { color: C.textPrimary }]}
+                >
+                  {t('profileLanguage')}
+                </Text>
               </View>
-              <View style={[styles.chipsRow, !isWide && styles.chipsRowStacked]}>
+              <View
+                style={[
+                  styles.chipsRow,
+                  !isWide && styles.chipsRowStacked,
+                ]}
+              >
                 {LANG_CODES.map(code => {
                   const active = language === code;
+
                   return (
                     <TouchableOpacity
                       key={code}
-                      onPress={() => setLanguage(code)}
-                      style={[styles.langChip, active ? { backgroundColor: C.primary, borderColor: C.primary } : { backgroundColor: C.surface, borderColor: C.border }]}
+                      onPress={() => handleLanguageChange(code)}
+                      disabled={preferencesDisabled}
+                      accessibilityState={{
+                        disabled: preferencesDisabled,
+                      }}
+                      style={[
+                        styles.langChip,
+                        preferencesDisabled && { opacity: 0.5 },
+                        active
+                          ? {
+                              backgroundColor: C.primary,
+                              borderColor: C.primary,
+                            }
+                          : {
+                              backgroundColor: C.surface,
+                              borderColor: C.border,
+                            },
+                      ]}
                     >
-                      <Text style={[styles.langChipText, { color: active ? '#fff' : C.textSecondary }]}>{code.toUpperCase()}</Text>
+                      <Text
+                        style={[
+                          styles.langChipText,
+                          {
+                            color: active
+                              ? '#fff'
+                              : C.textSecondary,
+                          },
+                        ]}
+                      >
+                        {code.toUpperCase()}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -238,37 +676,108 @@ export const ProfileScreen: React.FC = () => {
           </View>
 
           {/* Logros */}
-          <AchievementsCard isWide={isWide} achievements={achievements} />
+          <AchievementsCard
+            isWide={isWide}
+            achievements={achievements}
+          />
 
           {/* Acerca de */}
-          <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
-            <Text style={[styles.cardLabel, { color: C.textHint }]}>{t('profileAbout')}</Text>
-            <View style={[styles.aboutRow, styles.rowDivider, { borderBottomColor: C.border }]}>
-              <Text style={[styles.prefLabel, { color: C.textPrimary }]}>{t('profileAppVersion')}</Text>
-              <Text style={[styles.rowValue, { color: C.textSecondary }]}>{APP_VERSION}</Text>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: C.surface, borderColor: C.border },
+            ]}
+          >
+            <Text style={[styles.cardLabel, { color: C.textHint }]}>
+              {t('profileAbout')}
+            </Text>
+            <View
+              style={[
+                styles.aboutRow,
+                styles.rowDivider,
+                { borderBottomColor: C.border },
+              ]}
+            >
+              <Text
+                style={[styles.prefLabel, { color: C.textPrimary }]}
+              >
+                {t('profileAppVersion')}
+              </Text>
+              <Text
+                style={[styles.rowValue, { color: C.textSecondary }]}
+              >
+                {APP_VERSION}
+              </Text>
             </View>
             <View style={styles.aboutLinks}>
-              <TouchableOpacity onPress={() => navigation.navigate('Terms')}>
-                <Text style={[styles.link, { color: C.primary }]}>{t('profileTerms')}</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Terms')}
+              >
+                <Text style={[styles.link, { color: C.primary }]}>
+                  {t('profileTerms')}
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')}>
-                <Text style={[styles.link, { color: C.primary }]}>{t('profilePrivacy')}</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('PrivacyPolicy')}
+              >
+                <Text style={[styles.link, { color: C.primary }]}>
+                  {t('profilePrivacy')}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Acciones */}
-          <View style={[styles.actions, !isWide && styles.actionsStack]}>
-            <TouchableOpacity style={[styles.actionBtn, { borderColor: C.borderInput, backgroundColor: C.surface }]} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={19} color={C.primary} />
-              <Text style={[styles.actionText, { color: C.primary }]}>{t('profileLogout')}</Text>
+          <View
+            style={[
+              styles.actions,
+              !isWide && styles.actionsStack,
+            ]}
+          >
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
+                {
+                  borderColor: C.borderInput,
+                  backgroundColor: C.surface,
+                },
+              ]}
+              onPress={handleLogout}
+            >
+              <Ionicons
+                name="log-out-outline"
+                size={19}
+                color={C.primary}
+              />
+              <Text
+                style={[styles.actionText, { color: C.primary }]}
+              >
+                {t('profileLogout')}
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionBtn, { borderColor: '#F3D3D3', backgroundColor: C.surface }]} onPress={handleDeleteAccount}>
-              <Ionicons name="trash-outline" size={19} color={C.danger} />
-              <Text style={[styles.actionText, { color: C.danger }]}>{t('profileDeleteAccount')}</Text>
+
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
+                {
+                  borderColor: '#F3D3D3',
+                  backgroundColor: C.surface,
+                },
+              ]}
+              onPress={handleDeleteAccount}
+            >
+              <Ionicons
+                name="trash-outline"
+                size={19}
+                color={C.danger}
+              />
+              <Text
+                style={[styles.actionText, { color: C.danger }]}
+              >
+                {t('profileDeleteAccount')}
+              </Text>
             </TouchableOpacity>
           </View>
-
         </View>
       </ScrollView>
     </View>
@@ -279,58 +788,141 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.backgroundGray },
   scroll: { flex: 1 },
   content: { padding: 20, paddingBottom: 48 },
-  inner: { width: '100%', maxWidth: 880, alignSelf: 'center', gap: 22 },
+  inner: {
+    width: '100%',
+    maxWidth: 880,
+    alignSelf: 'center',
+    gap: 22,
+  },
 
   hero: { alignItems: 'center', gap: 16, paddingVertical: 8 },
   heroWide: { flexDirection: 'row' },
   avatar: {
-    width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center',
-    shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.28, shadowRadius: 26, elevation: 10,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.28,
+    shadowRadius: 26,
+    elevation: 10,
   },
   heroInfo: { flex: 1, alignItems: 'center' },
   heroInfoWide: { alignItems: 'flex-start' },
-  userName: { fontSize: 28, fontWeight: '800', letterSpacing: -0.5, textTransform: 'capitalize' },
+  userName: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    textTransform: 'capitalize',
+  },
   userEmail: { fontSize: 15, fontWeight: '600', marginTop: 4 },
   heroStats: { flexDirection: 'row', gap: 26 },
   heroStat: { alignItems: 'center' },
-  statsError: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 16 },
+  statsError: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
   statsErrorText: { fontSize: 13, fontWeight: '600' },
   heroStatValue: { fontSize: 26, fontWeight: '900' },
   heroStatLabel: { fontSize: 12, fontWeight: '700', marginTop: 2 },
 
   card: { borderRadius: 20, borderWidth: 1, padding: 26 },
-  cardLabel: { fontSize: 13, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 20 },
+  cardLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: 20,
+  },
 
-  iconBox: { width: 42, height: 42, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  iconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   row: { flexDirection: 'row', alignItems: 'center', gap: 13 },
-  rowDivider: { paddingBottom: 16, marginBottom: 16, borderBottomWidth: 1 },
+  rowDivider: {
+    paddingBottom: 16,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+  },
   rowSub: { fontSize: 13, fontWeight: '700' },
   rowValue: { fontSize: 15, fontWeight: '700', marginTop: 1 },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   link: { fontSize: 14, fontWeight: '700' },
 
-  prefRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  prefLeft: { flexDirection: 'row', alignItems: 'center', gap: 13, flexShrink: 1 },
+  prefRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  prefLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+    flexShrink: 1,
+  },
   prefLabel: { fontSize: 15, fontWeight: '700', flexShrink: 1 },
-  chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' },
-  // En pantallas estrechas la etiqueta y los chips van apilados: si comparten fila,
-  // chipsRow no encoge y el texto queda espachurrado en una columna de una palabra.
-  prefRowStacked: { flexDirection: 'column', alignItems: 'stretch', gap: 14 },
+  chipsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+  },
+
+  // En pantallas estrechas, apilar evita comprimir las etiquetas.
+  prefRowStacked: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 14,
+  },
   chipsRowStacked: { justifyContent: 'flex-start' },
-  colorChip: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 38, paddingHorizontal: 15, borderRadius: 999, borderWidth: 1.5 },
+  colorChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    height: 38,
+    paddingHorizontal: 15,
+    borderRadius: 999,
+    borderWidth: 1.5,
+  },
   colorDot: { width: 14, height: 14, borderRadius: 7 },
   colorChipText: { fontSize: 13, fontWeight: '700' },
-  langChip: { height: 36, minWidth: 44, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  langChip: {
+    height: 36,
+    minWidth: 44,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   langChipText: { fontSize: 13, fontWeight: '800' },
 
-  aboutRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  aboutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   aboutLinks: { flexDirection: 'row', gap: 24 },
 
   actions: { flexDirection: 'row', gap: 14 },
   actionsStack: { flexDirection: 'column' },
   actionBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9,
-    height: 54, borderRadius: 12, borderWidth: 1.5,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+    height: 54,
+    borderRadius: 12,
+    borderWidth: 1.5,
   },
   actionText: { fontSize: 15, fontWeight: '700' },
 });
