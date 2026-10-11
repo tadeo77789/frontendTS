@@ -9,6 +9,7 @@ import { AccessProvider } from './src/app/providers/AccessContext';
 import { ThemeProvider, useTheme } from './src/app/providers/ThemeContext';
 import { LanguageProvider } from './src/app/providers/LanguageContext';
 import { AppNavigator } from './src/app/routes/AppNavigator';
+import { PreferencesProvider } from './src/app/providers/PreferencesContext';
 
 // En web, la ventana emergente de Facebook vuelve a la app con el token: esto
 // se lo entrega a la ventana principal y la cierra.
@@ -31,9 +32,11 @@ export default function App() {
         <LanguageProvider>
           <ThemeProvider>
             <AuthProvider>
-              <AccessProvider>
-                <AppContent />
-              </AccessProvider>
+             <PreferencesProvider>
+               <AccessProvider>
+                 <AppContent />
+               </AccessProvider>
+             </PreferencesProvider>
             </AuthProvider>
           </ThemeProvider>
         </LanguageProvider>
