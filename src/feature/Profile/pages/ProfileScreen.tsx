@@ -80,6 +80,8 @@ export const ProfileScreen: React.FC = () => {
 
   // PreferencesProvider coordina las solicitudes, la caché y los errores.
   const {
+    preferences,
+    saveChanges,
     setTheme: saveTheme,
     setLanguage: saveLanguage,
     setColorAccent: saveColorAccent,
@@ -95,8 +97,8 @@ export const ProfileScreen: React.FC = () => {
 
   const { t } = useTranslation();
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] =
-    useState(true);
+  // Muestra el valor confirmado del servidor, sin un estado local independiente.
+  const notificationsEnabled = preferences?.notificationsEnabled ?? true;
 
   // Este control administrativo sigue siendo local.
   // Su conexión al backend se implementará por separado.
@@ -161,6 +163,11 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
+  /** Cambia únicamente los avisos del administrador autenticado. */
+const handleNotificationsChange = (enabled: boolean) => {
+  if (preferencesDisabled || !showNotifications || !preferences) return;
+  void saveChanges({ notificationsEnabled: enabled });
+};
   // Al cerrar sesión, PreferencesProvider selecciona el ámbito visitante.
   // No reiniciamos el tema manualmente ni sobrescribimos la caché del usuario.
   const handleLogout = async () => {
@@ -601,7 +608,8 @@ export const ProfileScreen: React.FC = () => {
                 </View>
                 <Switch
                   value={notificationsEnabled}
-                  onValueChange={setNotificationsEnabled}
+                  onValueChange={handleNotificationsChange}
+disabled={preferencesDisabled || !preferences}
                   trackColor={{
                     false: C.toggleOff,
                     true: C.primary,
