@@ -1,26 +1,29 @@
 import { useTranslation } from '../../../app/config/i18n';
-import { LEVEL_LABEL_KEYS, progressOf, type Achievement } from '../data/achievements';
+import {
+  persistedProgressOf,
+  type PersistedAchievementProgress,
+} from '../data/persistedAchievements';
 
-/** Etiquetas de progreso, nivel y estado, resueltas con el idioma activo. */
+/** Etiquetas de interfaz; no traduce ni revela los textos del catalogo. */
 export const useAchievementText = () => {
   const { t } = useTranslation();
 
-  // Las metas de un solo paso no tienen contador que mostrar: se leen como
-  // completado o pendiente en lugar de "1/1".
-  const progressText = (achievement: Achievement): string => {
-    const { unlocked } = progressOf(achievement);
-    if (achievement.target === 1) return unlocked ? t('achievementCompleted') : t('achievementPending');
-    const reached = Math.min(achievement.value, achievement.target);
-    return `${reached}/${achievement.target}`;
+  const progressText = (progress: PersistedAchievementProgress): string => {
+    const { unlocked } = persistedProgressOf(progress);
+    const { targetCount } = progress.achievement;
+    if (
+      !Number.isSafeInteger(targetCount) || targetCount <= 0
+      || !Number.isSafeInteger(progress.currentCount) || progress.currentCount < 0
+    ) {
+      return '—';
+    }
+    if (targetCount === 1) return unlocked ? t('achievementCompleted') : t('achievementPending');
+    const reached = Math.min(progress.currentCount, targetCount);
+    return `${reached}/${targetCount}`;
   };
 
-  const levelText = (achievement: Achievement): string => {
-    const { unlocked } = progressOf(achievement);
-    return unlocked ? t(LEVEL_LABEL_KEYS[achievement.level]) : t('achievementLocked');
-  };
+  const stateText = (progress: PersistedAchievementProgress): string =>
+    persistedProgressOf(progress).unlocked ? t('achievementUnlocked') : t('achievementInProgress');
 
-  const stateText = (achievement: Achievement): string =>
-    progressOf(achievement).unlocked ? t('achievementUnlocked') : t('achievementInProgress');
-
-  return { progressText, levelText, stateText };
+  return { progressText, stateText };
 };

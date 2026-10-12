@@ -411,6 +411,11 @@ const fr: typeof es = {
   profileTranslations: 'Traductions',
   profileDistinctSigns: 'Signes distincts',
   profileStatsError: 'Impossible de charger tes statistiques.',
+  achievementsLoading: 'Chargement des succès...',
+  achievementsLoadError: 'Impossible de charger tes succès.',
+  achievementsCatalogEmpty: 'Aucun succès disponible.',
+  achievementsUnavailable: 'Les succès ne sont pas disponibles.',
+  profileDistinctWords: 'Textes distincts',
 
   searchSigns: 'Rechercher des signes...',
   allCategories: 'Tous',

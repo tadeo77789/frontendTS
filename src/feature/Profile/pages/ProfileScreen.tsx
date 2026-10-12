@@ -31,8 +31,9 @@ import { useAccess } from '../../../app/providers/AccessContext';
 import { PERMISSIONS } from '../../../shared/types/iam';
 import { userDisplayName } from '../../../shared/utils/userDisplayName';
 import { AchievementsCard } from '../components/AchievementsCard';
-import { buildAchievements, countUnlocked } from '../data/achievements';
 import { useMyStats } from '../hooks/useMyStats';
+import { persistedCatalogProgress } from '../data/persistedAchievements';
+import { useMyAchievements } from '../hooks/useMyAchievements';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
 import { APP_VERSION } from '../../../shared/utils/appVersion';
 import { showAlert } from '../../../shared/utils/dialogs';
@@ -97,28 +98,43 @@ export const ProfileScreen: React.FC = () => {
 
   const { t } = useTranslation();
   const [deleteOpen, setDeleteOpen] = useState(false);
+
   // Muestra el valor confirmado del servidor, sin un estado local independiente.
   const notificationsEnabled = preferences?.notificationsEnabled ?? true;
 
-  // Este control administrativo sigue siendo local.
-  // Su conexión al backend se implementará por separado.
+  // Permite al administrador gestionar sus propios avisos mediante PreferencesProvider.
   const { hasPermission } = useAccess();
   const showNotifications = hasPermission(
     PERMISSIONS.NOTIFICATIONS_MANAGE,
   );
 
+  // Las estadísticas proceden de Recognition.
   const { stats, loading, error, reload } = useMyStats();
-  const achievements = useMemo(
-    () => buildAchievements(stats),
-    [stats],
+
+  // El catálogo, progreso y desbloqueos proceden de Profile.
+  const {
+    achievements,
+    loading: achievementsLoading,
+    error: achievementsError,
+    reload: reloadAchievements,
+  } = useMyAchievements();
+
+  const achievementsSummary = useMemo(
+    () => achievements === null
+      ? null
+      : persistedCatalogProgress(achievements),
+    [achievements],
   );
 
-  // Mientras carga o falla la consulta, no se muestra una cifra inventada.
+  // Sin estadísticas disponibles, no se muestra una cifra inventada.
   const fmt = (n: number | undefined) =>
     stats && n !== undefined ? n.toLocaleString(language) : '—';
-  const unlockedAchievements = stats
-    ? String(countUnlocked(achievements))
-    : '—';
+
+  // El contador procede de Profile, independiente de Recognition.
+  const unlockedAchievements =
+    !achievementsLoading && !achievementsError && achievementsSummary
+      ? String(achievementsSummary.unlocked)
+      : '—';
 
   const displayName = userDisplayName(user);
   const displayEmail = user?.email || '—';
@@ -164,10 +180,11 @@ export const ProfileScreen: React.FC = () => {
   };
 
   /** Cambia únicamente los avisos del administrador autenticado. */
-const handleNotificationsChange = (enabled: boolean) => {
-  if (preferencesDisabled || !showNotifications || !preferences) return;
-  void saveChanges({ notificationsEnabled: enabled });
-};
+  const handleNotificationsChange = (enabled: boolean) => {
+    if (preferencesDisabled || !showNotifications || !preferences) return;
+    void saveChanges({ notificationsEnabled: enabled });
+  };
+
   // Al cerrar sesión, PreferencesProvider selecciona el ámbito visitante.
   // No reiniciamos el tema manualmente ni sobrescribimos la caché del usuario.
   const handleLogout = async () => {
@@ -299,7 +316,7 @@ const handleNotificationsChange = (enabled: boolean) => {
                     { color: C.textSecondary },
                   ]}
                 >
-                  {t('profileDistinctSigns')}
+                  {t('profileDistinctWords')}
                 </Text>
               </View>
 
@@ -609,7 +626,7 @@ const handleNotificationsChange = (enabled: boolean) => {
                 <Switch
                   value={notificationsEnabled}
                   onValueChange={handleNotificationsChange}
-disabled={preferencesDisabled || !preferences}
+                  disabled={preferencesDisabled || !preferences}
                   trackColor={{
                     false: C.toggleOff,
                     true: C.primary,
@@ -687,6 +704,9 @@ disabled={preferencesDisabled || !preferences}
           <AchievementsCard
             isWide={isWide}
             achievements={achievements}
+            loading={achievementsLoading}
+            error={achievementsError}
+            reload={reloadAchievements}
           />
 
           {/* Acerca de */}

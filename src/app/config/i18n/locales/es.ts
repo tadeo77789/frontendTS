@@ -410,6 +410,11 @@ const es = {
   profileTranslations: 'Traducciones',
   profileDistinctSigns: 'Señas distintas',
   profileStatsError: 'No se pudieron cargar tus estadísticas.',
+  achievementsLoading: 'Cargando logros...',
+  achievementsLoadError: 'No se pudieron cargar tus logros.',
+  achievementsCatalogEmpty: 'No hay logros disponibles.',
+  achievementsUnavailable: 'Los logros no están disponibles.',
+  profileDistinctWords: 'Textos distintos',
 
   searchSigns: 'Buscar señas...',
   allCategories: 'Todas',

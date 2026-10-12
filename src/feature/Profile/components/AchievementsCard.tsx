@@ -1,81 +1,96 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../../app/providers/AuthContext';
 import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
 import {
-  CATEGORY_LABEL_KEYS,
-  CATEGORY_ORDER,
-  countUnlocked,
-  progressOf,
-  type Achievement,
-  type AchievementCategory,
-} from '../data/achievements';
+  persistedCatalogProgress,
+  persistedProgressOf,
+  type PersistedAchievementProgress,
+} from '../data/persistedAchievements';
 import { useAchievementText } from '../hooks/useAchievementText';
 import { AchievementMedal } from './AchievementMedal';
 import { AchievementProgressBar } from './AchievementProgressBar';
 import { AchievementDetailModal } from './AchievementDetailModal';
 
-type Filter = AchievementCategory | 'all';
-
 const GRID_GAP = 12;
 const MIN_TILE = 150;
 /** Medallas visibles antes de pulsar "ver mas". */
 const PREVIEW_COUNT = 2;
-/** Ancho real de la tarjeta antes de medirla: 20 de padding del scroll a cada
- *  lado, 880 de ancho maximo del perfil y 26 de padding de la tarjeta. */
 const estimateGridWidth = (windowWidth: number) => Math.max(160, Math.min(windowWidth - 40, 880) - 52);
 
+interface DetailSession {
+  userId: number | null;
+  token: string | null;
+  generation: number;
+}
+
 interface AchievementsCardProps {
-  achievements: Achievement[];
+  achievements: PersistedAchievementProgress[] | null;
+  loading: boolean;
+  error: boolean;
+  reload: () => Promise<void>;
   isWide: boolean;
 }
 
-export const AchievementsCard: React.FC<AchievementsCardProps> = ({ isWide, achievements }) => {
+export const AchievementsCard: React.FC<AchievementsCardProps> = ({
+  isWide, achievements, loading, error, reload,
+}) => {
   const C = useColors();
   const { t } = useTranslation();
-  const { progressText, levelText } = useAchievementText();
+  const { progressText, stateText } = useAchievementText();
   const { width } = useWindowDimensions();
+  const { user, token, sessionGeneration, isSessionCurrent } = useAuth();
+  const userId = user?.id_usuario ?? null;
+  const session = useMemo<DetailSession>(() => ({
+    userId, token, generation: sessionGeneration,
+  }), [userId, token, sessionGeneration]);
 
-  const [filter, setFilter] = useState<Filter>('all');
+  const [selection, setSelection] = useState<{
+    id: string;
+    session: DetailSession;
+  } | null>(null);
   const [showAll, setShowAll] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(null);
   const [gridWidth, setGridWidth] = useState(0);
 
-  const unlockedCount = useMemo(() => countUnlocked(achievements), [achievements]);
-  const totalPercent = Math.round((unlockedCount / achievements.length) * 100);
+  // El render tambien comprueba el ambito: no espera al efecto para ocultar el detalle.
+  useEffect(() => {
+    setSelection(null);
+    setShowAll(false);
+  }, [session]);
 
-  // Los dos logros mas avanzados de los que aun no estan desbloqueados.
-  const inProgress = useMemo(
-    () =>
-      achievements.map(achievement => ({ achievement, ...progressOf(achievement) }))
-        .filter(entry => !entry.unlocked && entry.percent > 0)
-        .sort((a, b) => b.percent - a.percent)
-        .slice(0, 2),
-    [achievements]
-  );
+  const ready =
+    !loading && !error && achievements !== null
+    && isSessionCurrent(session.generation);
+  const items = ready ? achievements : [];
+  const summary = persistedCatalogProgress(items);
+  const inProgress = items.map(achievement => ({
+    achievement, ...persistedProgressOf(achievement),
+  }))
+    .filter(entry => !entry.unlocked && entry.percent > 0)
+    .sort((a, b) => b.percent - a.percent)
+    .slice(0, 2);
 
-  const visible = filter === 'all' ? achievements : achievements.filter(a => a.category === filter);
-  // La tarjeta abre con dos medallas para no alargar el perfil; el resto queda
-  // detras del boton de ver mas.
-  const shown = showAll ? visible : visible.slice(0, PREVIEW_COUNT);
-  const hidden = visible.length - shown.length;
-  const open = achievements.find(a => a.id === openId) ?? null;
+  const shown = showAll ? items : items.slice(0, PREVIEW_COUNT);
+  const hidden = items.length - shown.length;
+  const open = selection?.session === session
+    ? items.find(item => item.achievement.id === selection.id) ?? null
+    : null;
+  const select = (achievement: PersistedAchievementProgress) => {
+    setSelection({ id: achievement.achievement.id, session });
+  };
 
   const available = gridWidth || estimateGridWidth(width);
   const columns = Math.max(2, Math.floor((available + GRID_GAP) / (MIN_TILE + GRID_GAP)));
   const tileWidth = (available - GRID_GAP * (columns - 1)) / columns;
 
-  const filters: { key: Filter; label: string }[] = [
-    { key: 'all', label: t('achievementsAll') },
-    ...CATEGORY_ORDER.filter(category => achievements.some(a => a.category === category)).map(category => ({ key: category as Filter, label: t(CATEGORY_LABEL_KEYS[category]) })),
-  ];
-
-  const renderInProgress = (achievement: Achievement, percent: number) => (
+  const renderInProgress = (achievement: PersistedAchievementProgress, percent: number) => (
     <TouchableOpacity
-      key={achievement.id}
+      key={achievement.achievement.id}
       activeOpacity={0.8}
-      onPress={() => setOpenId(achievement.id)}
+      accessibilityRole="button"
+      onPress={() => select(achievement)}
       style={[
         styles.inProgressRow,
         isWide && styles.inProgressRowWide,
@@ -83,11 +98,11 @@ export const AchievementsCard: React.FC<AchievementsCardProps> = ({ isWide, achi
       ]}
     >
       <View style={[styles.inProgressIcon, { backgroundColor: C.surface, borderColor: C.primaryLight }]}>
-        <Ionicons name={achievement.icon} size={19} color={C.primaryDark} />
+        <Ionicons name="ribbon-outline" size={19} color={C.primary} />
       </View>
       <View style={styles.inProgressBody}>
         <Text style={[styles.inProgressName, { color: C.textPrimary }]} numberOfLines={1}>
-          {t(achievement.nameKey)}
+          {achievement.achievement.name}
         </Text>
         <View style={styles.inProgressMeter}>
           <AchievementProgressBar percent={percent} track={C.surface} fill={C.primary} height={6} />
@@ -102,95 +117,95 @@ export const AchievementsCard: React.FC<AchievementsCardProps> = ({ isWide, achi
     <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
       <View style={[styles.header, !isWide && styles.headerStacked]}>
         <Text style={[styles.cardLabel, { color: C.textHint }]}>{t('achievements')}</Text>
-        <Text style={[styles.headerCount, { color: C.textSecondary }]}>
-          {t('achievementsProgress', { unlocked: unlockedCount, total: achievements.length })}
+        {ready && (
+          <>
+            <Text style={[styles.headerCount, { color: C.textSecondary }]}>
+              {t('achievementsProgress', { unlocked: summary.unlocked, total: summary.total })}
+            </Text>
+            <View style={[styles.headerMeter, isWide && styles.headerMeterWide]}>
+              <AchievementProgressBar percent={summary.percent} track={C.inputBg} fill={C.primary} />
+              <Text style={[styles.headerPercent, { color: C.primaryDark }]}>{summary.percent}%</Text>
+            </View>
+          </>
+        )}
+      </View>
+
+      {loading ? (
+        <Text accessibilityLiveRegion="polite" style={[styles.message, { color: C.textSecondary }]}>
+          {t('achievementsLoading')}
         </Text>
-        <View style={[styles.headerMeter, isWide && styles.headerMeterWide]}>
-          <AchievementProgressBar percent={totalPercent} track={C.inputBg} fill={C.primary} />
-          <Text style={[styles.headerPercent, { color: C.primaryDark }]}>{totalPercent}%</Text>
+      ) : error ? (
+        <View style={styles.error}>
+          <Text accessibilityLiveRegion="polite" style={[styles.message, { color: C.textSecondary }]}>
+            {t('achievementsLoadError')}
+          </Text>
+          <TouchableOpacity onPress={() => { void reload(); }} accessibilityRole="button">
+            <Text style={[styles.seeMoreText, { color: C.primary }]}>{t('statsRetry')}</Text>
+          </TouchableOpacity>
         </View>
-      </View>
+      ) : !ready ? (
+        <Text style={[styles.message, { color: C.textSecondary }]}>{t('achievementsUnavailable')}</Text>
+      ) : items.length === 0 ? (
+        <Text style={[styles.message, { color: C.textSecondary }]}>{t('achievementsCatalogEmpty')}</Text>
+      ) : (
+        <>
+          {inProgress.length > 0 && (
+            <View style={[styles.inProgressList, isWide && styles.inProgressListWide]}>
+              {inProgress.map(entry => renderInProgress(entry.achievement, entry.percent))}
+            </View>
+          )}
 
-      {inProgress.length > 0 && (
-        <View style={[styles.inProgressList, isWide && styles.inProgressListWide]}>
-          {inProgress.map(entry => renderInProgress(entry.achievement, entry.percent))}
-        </View>
-      )}
+          <View style={styles.grid} onLayout={event => setGridWidth(event.nativeEvent.layout.width)}>
+            {shown.map(achievement => {
+              const { unlocked } = persistedProgressOf(achievement);
+              return (
+                <TouchableOpacity
+                  key={achievement.achievement.id}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${achievement.achievement.name} · ${stateText(achievement)}`}
+                  onPress={() => select(achievement)}
+                  style={[
+                    styles.tile,
+                    {
+                      width: tileWidth,
+                      backgroundColor: unlocked ? C.surface : C.backgroundGray,
+                      borderColor: unlocked ? C.borderInput : C.border,
+                    },
+                  ]}
+                >
+                  <AchievementMedal achievement={achievement} size={56} />
+                  <Text
+                    style={[styles.tileName, { color: unlocked ? C.textPrimary : C.textSecondary }]}
+                    numberOfLines={2}
+                  >
+                    {achievement.achievement.name}
+                  </Text>
+                  <Text style={[styles.tileState, { color: unlocked ? C.primaryDark : C.textHint }]}>
+                    {stateText(achievement)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
-      <View style={styles.filters}>
-        {filters.map(({ key, label }) => {
-          const active = filter === key;
-          return (
+          {(hidden > 0 || showAll) && (
             <TouchableOpacity
-              key={key}
-              onPress={() => { setFilter(key); setShowAll(false); }}
-              activeOpacity={0.8}
-              style={[
-                styles.filterChip,
-                active
-                  ? { backgroundColor: C.primaryBg, borderColor: C.primary }
-                  : { backgroundColor: C.surface, borderColor: C.border },
-              ]}
-            >
-              <Text style={[styles.filterText, { color: active ? C.primaryDark : C.textSecondary }]}>{label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      <View style={styles.grid} onLayout={event => setGridWidth(event.nativeEvent.layout.width)}>
-        {shown.map(achievement => {
-          const { unlocked } = progressOf(achievement);
-          return (
-            <TouchableOpacity
-              key={achievement.id}
+              onPress={() => setShowAll(value => !value)}
               activeOpacity={0.8}
               accessibilityRole="button"
-              accessibilityLabel={`${t(achievement.nameKey)} · ${levelText(achievement)}`}
-              onPress={() => setOpenId(achievement.id)}
-              style={[
-                styles.tile,
-                {
-                  width: tileWidth,
-                  backgroundColor: unlocked ? C.surface : C.backgroundGray,
-                  borderColor: unlocked ? C.borderInput : C.border,
-                },
-              ]}
+              style={[styles.seeMore, { borderColor: C.borderInput, backgroundColor: C.surface }]}
             >
-              <AchievementMedal achievement={achievement} size={56} />
-              <Text
-                style={[styles.tileName, { color: unlocked ? C.textPrimary : C.textSecondary }]}
-                numberOfLines={2}
-              >
-                {t(achievement.nameKey)}
+              <Text style={[styles.seeMoreText, { color: C.primaryDark }]}>
+                {showAll ? t('achievementsSeeLess') : t('achievementsSeeMore', { count: hidden })}
               </Text>
-              <Text style={[styles.tileLevel, { color: unlocked ? C.primaryDark : C.textHint }]}>
-                {levelText(achievement)}
-              </Text>
+              <Ionicons name={showAll ? 'chevron-up' : 'chevron-down'} size={15} color={C.primaryDark} />
             </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {(hidden > 0 || showAll) && (
-        <TouchableOpacity
-          onPress={() => setShowAll(value => !value)}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          style={[styles.seeMore, { borderColor: C.borderInput, backgroundColor: C.surface }]}
-        >
-          <Text style={[styles.seeMoreText, { color: C.primaryDark }]}>
-            {showAll ? t('achievementsSeeLess') : t('achievementsSeeMore', { count: hidden })}
-          </Text>
-          <Ionicons name={showAll ? 'chevron-up' : 'chevron-down'} size={15} color={C.primaryDark} />
-        </TouchableOpacity>
+          )}
+        </>
       )}
 
-      {visible.length === 0 && (
-        <Text style={[styles.empty, { color: C.textSecondary }]}>{t('achievementsEmpty')}</Text>
-      )}
-
-      <AchievementDetailModal achievement={open} onClose={() => setOpenId(null)} />
+      <AchievementDetailModal achievement={open} onClose={() => setSelection(null)} />
     </View>
   );
 };
@@ -198,66 +213,39 @@ export const AchievementsCard: React.FC<AchievementsCardProps> = ({ isWide, achi
 const styles = StyleSheet.create({
   card: { borderRadius: 20, borderWidth: 1, padding: 26 },
   cardLabel: { fontSize: 13, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase' },
-
   header: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 18 },
-  // En estrecho la barra no cabe junto a las dos etiquetas: se apilan.
   headerStacked: { flexDirection: 'column', alignItems: 'flex-start', gap: 10 },
   headerCount: { fontSize: 13, fontWeight: '600', marginRight: 'auto' },
   headerMeter: { flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'stretch' },
   headerMeterWide: { flex: 1, maxWidth: 260 },
   headerPercent: { fontSize: 13, fontWeight: '800' },
-
   inProgressList: { gap: GRID_GAP, marginBottom: 20 },
   inProgressListWide: { flexDirection: 'row' },
   inProgressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 13,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
+    flexDirection: 'row', alignItems: 'center', gap: 13,
+    padding: 14, borderRadius: 14, borderWidth: 1,
   },
   inProgressRowWide: { flex: 1 },
   inProgressIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
+    width: 42, height: 42, borderRadius: 21,
+    alignItems: 'center', justifyContent: 'center', borderWidth: 1,
   },
   inProgressBody: { flex: 1, minWidth: 0 },
   inProgressName: { fontSize: 14, fontWeight: '700' },
   inProgressMeter: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 7 },
   inProgressValue: { fontSize: 12, fontWeight: '700' },
-
-  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 18 },
-  filterChip: { height: 34, paddingHorizontal: 15, borderRadius: 999, borderWidth: 1.5, justifyContent: 'center' },
-  filterText: { fontSize: 13, fontWeight: '700' },
-
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP },
   tile: {
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 18,
-    paddingHorizontal: 10,
-    borderRadius: 14,
-    borderWidth: 1,
+    alignItems: 'center', gap: 10, paddingVertical: 18,
+    paddingHorizontal: 10, borderRadius: 14, borderWidth: 1,
   },
   tileName: { fontSize: 13, fontWeight: '700', lineHeight: 17, textAlign: 'center' },
-  tileLevel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
-
+  tileState: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
   seeMore: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 46,
-    marginTop: 16,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, height: 46, marginTop: 16, borderRadius: 12, borderWidth: 1.5,
   },
   seeMoreText: { fontSize: 14, fontWeight: '800' },
-
-  empty: { fontSize: 14, fontWeight: '600', textAlign: 'center', paddingVertical: 24 },
+  message: { fontSize: 14, fontWeight: '600', textAlign: 'center', paddingVertical: 24 },
+  error: { alignItems: 'center', gap: 8 },
 });
