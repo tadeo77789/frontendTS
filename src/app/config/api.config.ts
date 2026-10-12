@@ -3,6 +3,7 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
+
 /**
  * Direccion del backend cuando se trabaja en desarrollo.
  *
@@ -52,6 +53,7 @@ export const ENDPOINTS = {
   resendVerification: '/auth/resend-verification',
   resetPassword: '/auth/reset-password',
   facebookLogin: '/auth/facebook',
+  achievements: '/achievements',
 
   me: '/users/me',
   mePassword: '/users/me/password',
