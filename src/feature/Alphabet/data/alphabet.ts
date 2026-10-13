@@ -5,9 +5,9 @@
  * pero los 27 modelos 3D y sus miniaturas tambien viajan en el bundle: la
  * pantalla se ve sin conexion y sin esperar a la API. Los modelos salen de
  * `modelado/` (ver su README); si se regeneran hay que copiarlos a
- * `src/assets/alfabeto/` y a `backend/public/lexicon/alfabeto/`.
+ * `src/assets/alfabeto/` y a `backend/services/lexicon-service/public/lexicon/alfabeto/`.
  *
- * Las descripciones coinciden con la semilla de backend/migrations/003_lexicon.sql.
+ * Las descripciones coinciden con la semilla de backend/services/lexicon-service/db/003_lexicon.sql.
  */
 import type { ImageSourcePropType } from 'react-native';
 
@@ -47,7 +47,7 @@ const ENTRIES: Entry[] = [
   ['N', 'N', false, 'Índice y medio flexionados cubren el pulgar.'],
   ['Ñ', 'NN', true, 'Con la configuración de la N, la mano hace un movimiento ondulado corto.'],
   ['O', 'O', false, 'Dedos y pulgar curvados formando un círculo cerrado.'],
-  ['P', 'P', false, 'Mano colgando con el índice recto hacia abajo; el medio se une con la punta del pulgar formando un aro a un lado. Anular y meñique recogidos.'],
+  ['P', 'P', false, 'Palma hacia abajo con el índice recto apuntando hacia abajo; el medio pasa por encima y su yema toca la mitad del índice, dejando un hueco que forma la panza de la P. Anular y meñique recogidos.'],
   ['Q', 'Q', false, 'Los cuatro dedos juntos y semiflexionados, con la punta del pulgar tocando las yemas de índice y medio. Se muestra el dorso de la mano.'],
   ['R', 'R', false, 'Índice y medio extendidos hacia arriba y separados.'],
   ['S', 'S', true, 'Índice extendido hacia arriba trazando una S en el aire.'],
