@@ -6,16 +6,18 @@ import { API_BASE_URL, API_TIMEOUT } from '../../app/config/api.config';
 import type { User } from '../types';
 
 const TOKEN_KEY = '@auth_token';
+// SecureStore solo admite letras, números, ".", "-" y "_": con '@' lanza y el login nativo falla.
+const SECURE_TOKEN_KEY = 'auth_token';
 const USER_KEY = '@auth_user';
 
 // Token: SecureStore en nativo; en web no existe, se usa el almacenamiento del navegador.
 export const tokenStorage = {
   get: (): Promise<string | null> =>
-    Platform.OS === 'web' ? AsyncStorage.getItem(TOKEN_KEY) : SecureStore.getItemAsync(TOKEN_KEY),
+    Platform.OS === 'web' ? AsyncStorage.getItem(TOKEN_KEY) : SecureStore.getItemAsync(SECURE_TOKEN_KEY),
   set: (token: string): Promise<void> =>
-    Platform.OS === 'web' ? AsyncStorage.setItem(TOKEN_KEY, token) : SecureStore.setItemAsync(TOKEN_KEY, token),
+    Platform.OS === 'web' ? AsyncStorage.setItem(TOKEN_KEY, token) : SecureStore.setItemAsync(SECURE_TOKEN_KEY, token),
   clear: async (): Promise<void> => {
-    if (Platform.OS !== 'web') await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
+    if (Platform.OS !== 'web') await SecureStore.deleteItemAsync(SECURE_TOKEN_KEY).catch(() => undefined);
     await AsyncStorage.removeItem(TOKEN_KEY);
   },
 };
