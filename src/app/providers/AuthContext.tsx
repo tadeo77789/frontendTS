@@ -38,6 +38,7 @@ export interface RegisterResult {
 interface AuthContextType extends AuthState {
   login: (payload: LoginPayload) => Promise<void>;
   loginWithFacebook: (accessToken: string) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<RegisterResult>;
   logout: () => Promise<void>;
 }
@@ -131,6 +132,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await persistSession(mapBackendUser(data.data.user as BackendUser), data.data.token as string);
   }, [persistSession]);
 
+  // El backend verifica el ID token con Google y responde igual que /auth/login.
+  const loginWithGoogle = useCallback(async (idToken: string) => {
+    const { data } = await api.post(ENDPOINTS.googleLogin, { idToken });
+    await persistSession(mapBackendUser(data.data.user as BackendUser), data.data.token as string);
+  }, [persistSession]);
+
   const register = useCallback(async (payload: RegisterPayload): Promise<RegisterResult> => {
     const { data } = await api.post(ENDPOINTS.register, {
       name: payload.nombre,
@@ -147,8 +154,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [clearSession]);
 
   const value = useMemo<AuthContextType>(
-    () => ({ ...state, login, loginWithFacebook, register, logout }),
-    [state, login, loginWithFacebook, register, logout]
+    () => ({ ...state, login, loginWithFacebook, loginWithGoogle, register, logout }),
+    [state, login, loginWithFacebook, loginWithGoogle, register, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
