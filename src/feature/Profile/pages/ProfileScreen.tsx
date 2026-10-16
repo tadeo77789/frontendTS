@@ -6,8 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Alert,
-  Platform,
   useWindowDimensions,
 } from 'react-native';
 import { AppHeader } from '../../../shared/components/common/AppHeader';
@@ -36,7 +34,7 @@ import { persistedCatalogProgress } from '../data/persistedAchievements';
 import { useMyAchievements } from '../hooks/useMyAchievements';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
 import { APP_VERSION } from '../../../shared/utils/appVersion';
-import { showAlert } from '../../../shared/utils/dialogs';
+import { showAlert, showConfirm } from '../../../shared/utils/dialogs';
 
 const LANG_CODES: LanguageCode[] = ['es', 'en', 'fr', 'pt'];
 
@@ -188,21 +186,15 @@ export const ProfileScreen: React.FC = () => {
   // Al cerrar sesión, PreferencesProvider selecciona el ámbito visitante.
   // No reiniciamos el tema manualmente ni sobrescribimos la caché del usuario.
   const handleLogout = async () => {
-    if (Platform.OS === 'web') {
-      if (confirm(t('profileConfirmLogout'))) {
-        await logout();
-      }
-    } else {
-      Alert.alert(t('logout'), t('profileConfirmLogout'), [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('profileLogout'),
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-          },
-        },
-      ]);
+    const ok = await showConfirm({
+      title: t('logout'),
+      message: t('profileConfirmLogout'),
+      confirmText: t('profileLogout'),
+      cancelText: t('cancel'),
+      destructive: true,
+    });
+    if (ok) {
+      await logout();
     }
   };
 

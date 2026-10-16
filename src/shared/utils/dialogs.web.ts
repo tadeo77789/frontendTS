@@ -1,5 +1,9 @@
 
-import Swal, { type SweetAlertIcon } from 'sweetalert2';
+import BaseSwal, { type SweetAlertIcon } from 'sweetalert2';
+
+// heightAuto: false evita que SweetAlert fuerce height:auto en <html>/<body>,
+// lo que colapsa el layout de React Native Web y deja el fondo en blanco.
+const Swal = BaseSwal.mixin({ heightAuto: false });
 
 const PRIMARY = '#9B77E6';
 const DANGER = '#DC2626';
