@@ -60,15 +60,7 @@
         }
       ],
       "expo-status-bar",
-      "expo-web-browser",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "usesCleartextTraffic": true
-          }
-        }
-      ]
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {
