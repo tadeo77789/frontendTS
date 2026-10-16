@@ -22,14 +22,18 @@ export const API_TIMEOUT = 10_000;
 export const FACEBOOK_APP_ID = process.env.EXPO_PUBLIC_FACEBOOK_APP_ID ?? '';
 
 /**
- * Client IDs de OAuth de Google (console.cloud.google.com), uno por plataforma.
- * No son secretos. Se leen de EXPO_PUBLIC_GOOGLE_*_CLIENT_ID al compilar;
- * vacio en la plataforma actual = boton de Google desactivado con un aviso.
+ * Client IDs de OAuth de Google (proyecto traducesenas-511802 en console.cloud.google.com),
+ * uno por plataforma. No son secretos: van dentro de la app por diseño. Estan aqui como valor
+ * por defecto porque ni EAS (.easignore) ni el build web del servidor leen el .env;
+ * EXPO_PUBLIC_GOOGLE_*_CLIENT_ID los sustituye si hace falta. Vacio en la plataforma
+ * actual = boton de Google desactivado con un aviso.
  * El backend debe tener los mismos IDs en GOOGLE_CLIENT_IDS.
  */
 export const GOOGLE_CLIENT_IDS = {
-  web: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '',
-  android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? '',
+  web: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+    || '662909972578-v7sidtu7niq5ojnvj4ob5urlaqbs3s0k.apps.googleusercontent.com',
+  android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
+    || '662909972578-5vh54bol8umt39qp31393ii47omp2ue8.apps.googleusercontent.com',
   ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '',
 };
 
