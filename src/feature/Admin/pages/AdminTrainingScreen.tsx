@@ -290,7 +290,7 @@ export const AdminTrainingScreen: React.FC = () => {
               <Ionicons name="barbell-outline" size={14} color={C.primary} />
               <Text style={[styles.heroBadgeText, { color: C.primaryDark }]}>{t('trainTitle')}</Text>
             </View>
-            <Text style={[styles.title, { color: C.textPrimary }]}>Captura de muestras</Text>
+            <Text style={[styles.title, { color: C.textPrimary }]}>{t('adminTrainingTitle')}</Text>
           </View>
 
           {/* Las dos secciones viven sobre la camara y comparten el mismo visor. */}

@@ -270,6 +270,7 @@ const CardinalityTable: React.FC<{
   compact?: boolean;
 }> = ({ rows, compact }) => {
   const C = useColors();
+  const { t } = useTranslation();
 
   if (compact) {
     const displayRows = rows.slice(0, 3);
@@ -291,8 +292,8 @@ const CardinalityTable: React.FC<{
   return (
     <View style={[tbl.container, { backgroundColor: C.inputBg, borderColor: C.border }]}>
       <View style={[tbl.header, { borderBottomColor: C.border }]}>
-        <Text style={[tbl.headerCell, { color: C.textSecondary, flex: 2 }]}>Categoría</Text>
-        <Text style={[tbl.headerCell, { color: C.textSecondary }]}>Valor</Text>
+        <Text style={[tbl.headerCell, { color: C.textSecondary, flex: 2 }]}>{t('statsTableCategory')}</Text>
+        <Text style={[tbl.headerCell, { color: C.textSecondary }]}>{t('statsTableValue')}</Text>
       </View>
       {rows.map((row, i) => (
         <View key={i} style={[tbl.row, i % 2 === 0 && { backgroundColor: C.surface }, { borderBottomColor: C.border }]}>
@@ -543,11 +544,11 @@ export const StatsScreen: React.FC = () => {
           <View style={styles.hero}>
             <View style={[styles.heroBadge, { backgroundColor: C.primaryBg }]}>
               <Ionicons name="bar-chart-outline" size={14} color={C.primary} />
-              <Text style={[styles.heroBadgeText, { color: C.primaryDark }]}>Panel de métricas</Text>
+              <Text style={[styles.heroBadgeText, { color: C.primaryDark }]}>{t('statsBadge')}</Text>
             </View>
-            <Text style={[styles.title, { color: C.textPrimary }]}>Estadísticas</Text>
+            <Text style={[styles.title, { color: C.textPrimary }]}>{t('statsTitle')}</Text>
             <Text style={[styles.subtitle, { color: C.textSecondary }]}>
-              Resumen de uso de la plataforma.
+              {t('statsSubtitle')}
             </Text>
           </View>
 

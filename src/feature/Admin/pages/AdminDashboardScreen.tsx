@@ -81,7 +81,7 @@ export const AdminDashboardScreen: React.FC = () => {
             <View style={styles.heroLeft}>
               <View style={[styles.heroBadge, { backgroundColor: C.primaryBg }]}>
                 <Ionicons name="shield-outline" size={14} color={C.primary} />
-                <Text style={[styles.heroBadgeText, { color: C.primaryDark }]}>Solo administradores</Text>
+                <Text style={[styles.heroBadgeText, { color: C.primaryDark }]}>{t('adminOnlyBadge')}</Text>
               </View>
               <Text style={[styles.title, { color: C.textPrimary }]}>{t('adminDashboardTitle')}</Text>
             </View>
@@ -149,7 +149,7 @@ export const AdminDashboardScreen: React.FC = () => {
                   <View style={[styles.ghostActionIcon, { backgroundColor: C.primaryBg }]}>
                     <Ionicons name="videocam-outline" size={19} color={C.primary} />
                   </View>
-                  <Text style={[styles.ghostActionText, { color: C.textPrimary }]}>Mis repeticiones (modelo)</Text>
+                  <Text style={[styles.ghostActionText, { color: C.textPrimary }]}>{t('adminMyRepetitions')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
