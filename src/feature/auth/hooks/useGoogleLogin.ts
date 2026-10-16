@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Google from 'expo-auth-session/providers/google';
@@ -36,8 +36,20 @@ export function useGoogleLogin() {
     iosClientId: GOOGLE_CLIENT_IDS.ios || undefined,
   });
 
+  const mountedRef = useRef(true);
   useEffect(() => {
-    if (!response) return;
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  // Cada respuesta de Google se procesa una sola vez. El efecto se vuelve a ejecutar con
+  // cada render (t cambia de identidad) y el login cambia el estado de la sesion: sin
+  // esta guarda se lanzaba un login nuevo en cada render, cancelando el anterior (bucle).
+  const handledResponseRef = useRef<typeof response>(null);
+
+  useEffect(() => {
+    if (!response || handledResponseRef.current === response) return;
+    handledResponseRef.current = response;
     if (response.type === 'error') {
       void showError(t('loginGoogleError'), t('error'));
       return;
@@ -49,12 +61,11 @@ export function useGoogleLogin() {
       void showError(t('loginGoogleError'), t('error'));
       return;
     }
-    let cancelled = false;
     setLoading(true);
     loginWithGoogle(idToken)
       .catch((error) => {
         // Sesion sustituida (logout u otro login a mitad): no es un error del usuario.
-        if (cancelled || isAuthOperationCancelled(error)) return;
+        if (!mountedRef.current || isAuthOperationCancelled(error)) return;
         const { code, status } = normalizeApiError(error);
         const msg = code === 'NETWORK' ? t('loginNetworkError')
           : status === 503 ? t('loginGoogleUnavailable')
@@ -64,8 +75,7 @@ export function useGoogleLogin() {
           : t('loginGoogleError');
         void showError(msg, t('error'));
       })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+      .finally(() => { if (mountedRef.current) setLoading(false); });
   }, [response, loginWithGoogle, t]);
 
   const handleGoogleLogin = useCallback(() => {
