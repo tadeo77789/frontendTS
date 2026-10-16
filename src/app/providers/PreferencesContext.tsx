@@ -10,7 +10,7 @@ import { useLanguage, type LanguageCode } from './LanguageContext';
 import type { ThemeMode } from '../../shared/types';
 import {
   preferencesService, parsePreferencesResponse,
-  type ProfilePreferences, type PreferencesPatch,
+  type ProfilePreferences, type PreferencesPatch, type PreferencesLanguage,
 } from '../../feature/Profile/services/preferences.service';
 
 type LocalLanguage = 'fr' | 'pt';
@@ -69,6 +69,11 @@ const emptyState = (): StoredState => ({
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/** Idioma guardado en el servidor (ES/EN/FR/PT) -> idioma de la app; sin preferencias, español. */
+const toAppLanguage = (ui: PreferencesLanguage | undefined): LanguageCode =>
+  (ui ? ui.toLowerCase() : 'es') as LanguageCode;
+
+/** Solo para leer overrides guardados en el dispositivo antes de que el servidor aceptara FR y PT. */
 const isLocalLanguage = (value: unknown): value is LocalLanguage =>
   value === 'fr' || value === 'pt';
 
@@ -176,7 +181,7 @@ export const PreferencesProvider: React.FC<{
     // No se modifica el acento hidratado por ThemeContext.
     applyTheme(next?.theme === 'DARK' ? 'dark' : 'light');
     applyLanguage(
-      localLanguageOverride ?? (next?.uiLanguage === 'EN' ? 'en' : 'es'),
+      localLanguageOverride ?? toAppLanguage(next?.uiLanguage),
     );
   }, [applyTheme, applyLanguage, isCurrent]);
 
@@ -185,7 +190,7 @@ export const PreferencesProvider: React.FC<{
       if (!isCurrent(scope)) return;
       const snapshot = scope.state;
       const language = snapshot.localLanguageOverride
-        ?? (snapshot.preferences?.uiLanguage === 'EN' ? 'en' : 'es');
+        ?? toAppLanguage(snapshot.preferences?.uiLanguage);
 
       await AsyncStorage.multiSet([
         [keyFor(scope, 'language'), language],
@@ -423,42 +428,12 @@ export const PreferencesProvider: React.FC<{
     saveChanges({ theme: mode === 'dark' ? 'DARK' : 'LIGHT' }),
   [saveChanges]);
 
-  const saveLocalLanguage = useCallback((
-    scope: Scope,
-    language: LocalLanguage,
-  ): Promise<boolean> =>
-    runOperation(scope, 'local', async () => {
-      const next: StoredState = {
-        ...scope.state, localLanguageOverride: language, cleanupPending: true,
-      };
-      // El idioma local solo se muestra tras confirmar este único documento.
-      await enqueueStorage(async () => {
-        if (!isCurrent(scope)) return;
-        await AsyncStorage.setItem(
-          keyFor(scope, 'preferences_state'), JSON.stringify(next),
-        );
-      });
-      if (!isCurrent(scope)) return;
-      scope.state = next;
-      applyState(scope);
-      try {
-        await cleanLegacyKeys(scope);
-      } catch {
-        cacheWarning(scope);
-      }
-    }, () => saveLocalLanguage(scope, language)),
-  [
-    applyState, cacheWarning, cleanLegacyKeys, enqueueStorage,
-    isCurrent, runOperation,
-  ]);
-
   const setLanguage = useCallback((language: LanguageCode): Promise<boolean> => {
     const scope = getBoundScope();
     if (!scope || scope.userId === null || !scope.token) return Promise.resolve(false);
-    return isLocalLanguage(language)
-      ? saveLocalLanguage(scope, language)
-      : saveRemote(scope, { uiLanguage: language === 'en' ? 'EN' : 'ES' });
-  }, [getBoundScope, saveLocalLanguage, saveRemote]);
+    // Los cuatro idiomas se guardan en el servidor; al guardar se descarta un override local antiguo.
+    return saveRemote(scope, { uiLanguage: language.toUpperCase() as PreferencesLanguage });
+  }, [getBoundScope, saveRemote]);
 
   const saveAccent = useCallback((
     scope: Scope,
