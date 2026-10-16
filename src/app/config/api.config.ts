@@ -1,38 +1,16 @@
 
 
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
 
 /**
- * Direccion del backend cuando se trabaja en desarrollo.
- *
- * Desde el navegador del mismo PC, localhost sirve. Desde un telefono no:
- * ahi localhost es el telefono. Antes Android apuntaba a 10.0.2.2, que es
- * como el EMULADOR de Android llama a la maquina anfitriona; en un telefono
- * real esa direccion no existe y todo intento de entrar termina en "error del
- * servidor".
- *
- * La IP buena es la del PC en la red local, y no hace falta escribirla: es la
- * misma por la que el telefono acaba de cargar la app, y Expo la publica en
- * `hostUri` (algo como "192.168.20.82:8081"). Se le cambia el puerto y ya.
+ * Backend publicado en el VPS de Hostinger (gateway en el puerto 8080).
+ * Web en desarrollo, Expo Go y la APK apuntan aqui. Cuando haya dominio con
+ * HTTPS, se cambia solo esta constante (por ejemplo 'https://tudominio.com/api').
  */
-const devHost = (): string => {
-  const expo = Constants.expoConfig as { hostUri?: string } | null;
-  const expoGo = Constants.expoGoConfig as { debuggerHost?: string } | null;
-  const host = (expo?.hostUri ?? expoGo?.debuggerHost)?.split(':')[0];
-  if (host) return host;
-  // Sin hostUri (por ejemplo en una build de desarrollo) queda el emulador.
-  return Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
-};
+const VPS_API_URL = 'http://179.236.77.215:8080/api';
 
-// TODO: confirmar el dominio real de produccion; 'api.traducsenas.com' no esta verificado.
-export const API_BASE_URL = __DEV__
-  ? Platform.OS === 'web'
-    ? 'http://localhost:3000/api'
-    : `http://${devHost()}:3000/api`
-  : Platform.OS === 'web'
-    ? '/api'
-    : 'https://api.traducsenas.com/api';
+// La web en produccion se sirve detras del mismo dominio que la API, por eso usa ruta relativa.
+export const API_BASE_URL = !__DEV__ && Platform.OS === 'web' ? '/api' : VPS_API_URL;
 
 export const API_TIMEOUT = 10_000;
 
