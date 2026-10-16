@@ -585,6 +585,15 @@ const es = {
   recognitionUnavailableMobile: "En el móvil el reconocimiento de señas aún no está disponible. Usa la versión web para traducir con la cámara.",
   gestureVocabularyGeneric: "Gestos de prueba",
   gestureGenericNote: "Son gestos de prueba del reconocedor genérico de Google, no señas de la LSC. Las palabras de la LSC aparecen cuando el modelo propio está disponible.",
+  vocabCatGreetings: 'Saludos',
+  vocabCatCourtesy: 'Cortesía',
+  vocabCatFeelings: 'Estados de ánimo',
+  vocabCatAnswers: 'Respuestas',
+  vocabCatColors: 'Colores',
+  vocabCatNumbers: 'Números',
+  vocabCatActions: 'Acciones',
+  vocabCatOthers: 'Otros',
+  vocabCatAdded: 'Añadidos',
 };
 
 export default es;

@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import { isSimulatedRecognition, isGenericGestureEngine, getGestureCounts, getLa
 import type { WordMatchDebug } from '../services/vision';
 import { translationsService } from '../services/translations.service';
 import { downloadMotionTemplates } from '../services/signTemplates.service';
+import { groupVocabulary } from '../data/vocabularyCategories';
 import { copyToClipboard } from '../../../shared/utils/clipboard';
 import { showSuccess, showError } from '../../../shared/utils/dialogs';
 import type { SignAgentStatus } from '../../../shared/types';
@@ -80,6 +81,8 @@ export const TranslationScreen: React.FC = () => {
   const [isActive, setIsActive] = useState(false);
   const [engine, setEngine] = useState<Engine>('palabras');
   const [templateCount, setTemplateCount] = useState(0);
+  /** Palabras grabadas en el admin (plantillas del servidor): van en "Añadidos". */
+  const [addedWords, setAddedWords] = useState<string[]>([]);
   // El vocabulario depende del motor que se haya activado: las glosas del
   // modelo propio, o los 7 gestos de Google si no hay modelo servido.
   const [vocabulary, setVocabulary] = useState(wordVocabulary());
@@ -89,6 +92,10 @@ export const TranslationScreen: React.FC = () => {
   const [estadoSena, setEstadoSena] = useState<'quieto' | 'senando' | 'analizando'>('quieto');
   const [wordMatch, setWordMatch] = useState<WordMatchDebug | null>(null);
   const usingGestures = engine === 'palabras';
+  const vocabularyGroups = useMemo(
+    () => groupVocabulary(vocabulary.map(v => v.word), addedWords),
+    [vocabulary, addedWords],
+  );
 
   const persistSignTranscript = useCallback(async () => {
     // Lo que sale del simulador no es una traducción real: nunca se guarda.
@@ -195,7 +202,10 @@ export const TranslationScreen: React.FC = () => {
     void downloadMotionTemplates('replace')
       .catch(() => undefined)
       .then(() => getGestureCounts())
-      .then(counts => setTemplateCount(Object.values(counts).reduce((a, b) => a + b, 0)))
+      .then(counts => {
+        setTemplateCount(Object.values(counts).reduce((a, b) => a + b, 0));
+        setAddedWords(Object.keys(counts));
+      })
       .catch(() => undefined);
   }, []);
 
@@ -442,16 +452,33 @@ export const TranslationScreen: React.FC = () => {
                     {isGenericGestureEngine() && (
                       <Text style={[styles.vocabHint, { color: C.textHint }]}>{t('gestureGenericNote')}</Text>
                     )}
-                    <View style={styles.vocabRow}>
-                      {vocabulary.map(item => (
-                        <View key={item.word} style={[styles.vocabChip, { backgroundColor: C.primaryBg }]}>
-                          <Text style={[styles.vocabWord, { color: C.primary }]}>{item.word}</Text>
-                          {!!item.hint && (
-                            <Text style={[styles.vocabHint, { color: C.textHint }]}>{item.hint}</Text>
-                          )}
+                    {isGenericGestureEngine() ? (
+                      <View style={styles.vocabRow}>
+                        {vocabulary.map(item => (
+                          <View key={item.word} style={[styles.vocabChip, { backgroundColor: C.primaryBg }]}>
+                            <Text style={[styles.vocabWord, { color: C.primary }]}>{item.word}</Text>
+                            {!!item.hint && (
+                              <Text style={[styles.vocabHint, { color: C.textHint }]}>{item.hint}</Text>
+                            )}
+                          </View>
+                        ))}
+                      </View>
+                    ) : (
+                      vocabularyGroups.map(group => (
+                        <View key={group.key} style={styles.vocabGroup}>
+                          <Text style={[styles.vocabGroupTitle, { color: C.textHint }]}>
+                            {t(group.labelKey)} · {group.words.length}
+                          </Text>
+                          <View style={styles.vocabRow}>
+                            {group.words.map(word => (
+                              <View key={word} style={[styles.vocabChip, { backgroundColor: C.primaryBg }]}>
+                                <Text style={[styles.vocabWord, { color: C.primary }]}>{word}</Text>
+                              </View>
+                            ))}
+                          </View>
                         </View>
-                      ))}
-                    </View>
+                      ))
+                    )}
                   </View>
                   )
                 ) : (
@@ -650,6 +677,8 @@ const styles = StyleSheet.create({
 
   vocabBlock: { gap: 10, marginTop: 16 },
   vocabTitle: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  vocabGroup: { gap: 6 },
+  vocabGroupTitle: { fontSize: 11.5, fontWeight: '700' },
   vocabRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   vocabChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, gap: 2 },
   vocabWord: { fontSize: 13, fontWeight: '800' },
