@@ -109,6 +109,7 @@ interface AuthContextType extends AuthState {
   isSessionCurrent: (generation: number) => boolean;
   login: (payload: LoginPayload) => Promise<void>;
   loginWithFacebook: (accessToken: string) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<RegisterResult>;
   logout: () => Promise<void>;
 }
@@ -423,6 +424,13 @@ export const AuthProvider: React.FC<{
     requestLogin(ENDPOINTS.facebookLogin, { accessToken }),
   [requestLogin]);
 
+  // El backend verifica el ID token con Google y responde igual que /auth/login.
+  const loginWithGoogle = useCallback((
+    idToken: string,
+  ): Promise<void> =>
+    requestLogin(ENDPOINTS.googleLogin, { idToken }),
+  [requestLogin]);
+
   const register = useCallback(async (
     payload: RegisterPayload,
   ): Promise<RegisterResult> => {
@@ -453,6 +461,7 @@ export const AuthProvider: React.FC<{
     isSessionCurrent,
     login,
     loginWithFacebook,
+    loginWithGoogle,
     register,
     logout,
   }), [
@@ -460,6 +469,7 @@ export const AuthProvider: React.FC<{
     isSessionCurrent,
     login,
     loginWithFacebook,
+    loginWithGoogle,
     register,
     logout,
   ]);
