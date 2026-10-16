@@ -1,5 +1,3 @@
-
-
 import { Platform } from 'react-native';
 
 /**
@@ -30,9 +28,11 @@ export const ENDPOINTS = {
   resendVerification: '/auth/resend-verification',
   resetPassword: '/auth/reset-password',
   facebookLogin: '/auth/facebook',
+  achievements: '/achievements',
 
   me: '/users/me',
   mePassword: '/users/me/password',
+  profilePreferences: '/profile/preferences',
 
   translate: '/translations',
   history: '/translations/history',

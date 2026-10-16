@@ -1,13 +1,20 @@
-
 import { useState, useCallback, useMemo } from 'react';
 import { AccessibilityInfo } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { showError, showAlert } from '../../../shared/utils/dialogs';
-import { useAuth } from '../../../app/providers/AuthContext';
+import {
+  useAuth,
+  isAuthOperationCancelled,
+} from '../../../app/providers/AuthContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { normalizeApiError } from '../../../shared/services/api.client';
 import { pendingAuthFlow } from '../services/pendingAuthFlow';
-import { checkEmail, isValidEmail, normalizeEmail, type EmailIssue } from '../../../shared/utils/email';
+import {
+  checkEmail,
+  isValidEmail,
+  normalizeEmail,
+  type EmailIssue,
+} from '../../../shared/utils/email';
 
 interface LoginErrors {
   email?: string;
@@ -22,14 +29,13 @@ export function useLoginForm() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<LoginErrors>({});
-  // El error de correo solo se muestra cuando el campo ya se "toco" (blur o
-  // intento de envio), para no regañar al usuario mientras aun escribe.
   const [emailTouched, setEmailTouched] = useState(false);
 
-  const emailMessage = useCallback((issue: EmailIssue | undefined): string | undefined => {
+  const emailMessage = useCallback((
+    issue: EmailIssue | undefined,
+  ): string | undefined => {
     if (!issue) return undefined;
     if (issue === 'required') return t('loginEmailRequired');
-    // Sin arroba: lo que escribio parece un nombre de usuario, no un correo.
     if (issue === 'notEmail') return t('loginEmailNotUser');
     return t('loginEmailInvalid');
   }, [t]);
@@ -38,48 +44,77 @@ export function useLoginForm() {
 
   const setEmail = useCallback((value: string) => {
     setEmailValue(value);
-    // Una vez tocado, el mensaje se actualiza en vivo: aparece apenas deja de
-    // ser un correo valido y desaparece en cuanto lo es.
-    setErrors(prev => (emailTouched ? { ...prev, email: emailMessage(checkEmail(value)) } : { ...prev, email: undefined }));
+    setErrors(prev => (
+      emailTouched
+        ? { ...prev, email: emailMessage(checkEmail(value)) }
+        : { ...prev, email: undefined }
+    ));
   }, [emailTouched, emailMessage]);
 
   const handleEmailBlur = useCallback(() => {
     setEmailTouched(true);
-    setErrors(prev => ({ ...prev, email: emailMessage(checkEmail(email)) }));
+    setErrors(prev => ({
+      ...prev,
+      email: emailMessage(checkEmail(email)),
+    }));
   }, [email, emailMessage]);
 
   const validate = useCallback((): boolean => {
-    const e: LoginErrors = {};
-    e.email = emailMessage(checkEmail(email));
-    if (!password) e.password = t('loginPasswordRequired');
+    const next: LoginErrors = {};
+    next.email = emailMessage(checkEmail(email));
+    if (!password) next.password = t('loginPasswordRequired');
     setEmailTouched(true);
-    setErrors(e);
-    return !e.email && !e.password;
+    setErrors(next);
+    return !next.email && !next.password;
   }, [email, password, emailMessage, t]);
 
   const handleLogin = useCallback(async () => {
     if (!validate()) return;
+
     setLoading(true);
     try {
       await login({ email: normalizeEmail(email), password });
     } catch (error) {
+      if (isAuthOperationCancelled(error)) return;
+
       const { code } = normalizeApiError(error);
       if (code === 'EMAIL_NOT_VERIFIED') {
-        pendingAuthFlow.set({ mode: 'verify', email: normalizeEmail(email), password });
-        AccessibilityInfo.announceForAccessibility(t('loginConfirmEmail'));
-        void showAlert({ message: t('loginConfirmEmail'), icon: 'info' });
+        pendingAuthFlow.set({
+          mode: 'verify',
+          email: normalizeEmail(email),
+          password,
+        });
+        AccessibilityInfo.announceForAccessibility(
+          t('loginConfirmEmail'),
+        );
+        void showAlert({
+          message: t('loginConfirmEmail'),
+          icon: 'info',
+        });
         navigation.navigate('VerifyCode', { mode: 'verify' });
         return;
       }
-      const msg = code === 'NETWORK' ? t('loginNetworkError')
+
+      const message = code === 'NETWORK' ? t('loginNetworkError')
         : code === 'SERVER' ? t('serverUnavailable')
         : code === 'ACCOUNT_BLOCKED' ? t('loginAccountBlocked')
         : t('loginErrorMsg');
-      void showError(msg, t('error'));
+
+      void showError(message, t('error'));
     } finally {
       setLoading(false);
     }
   }, [validate, login, email, password, t, navigation]);
 
-  return { email, setEmail, handleEmailBlur, emailValid, password, setPassword, loading, errors, handleLogin };
+  return {
+    email,
+    setEmail,
+    handleEmailBlur,
+    emailValid,
+    password,
+    setPassword,
+    loading,
+    errors,
+    handleLogin,
+  };
 }

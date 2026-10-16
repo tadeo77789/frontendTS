@@ -411,6 +411,11 @@ const en: typeof es = {
   profileTranslations: 'Translations',
   profileDistinctSigns: 'Distinct signs',
   profileStatsError: 'Could not load your statistics.',
+  achievementsLoading: 'Loading achievements...',
+  achievementsLoadError: 'Could not load your achievements.',
+  achievementsCatalogEmpty: 'No achievements are available.',
+  achievementsUnavailable: 'Achievements are unavailable.',
+  profileDistinctWords: 'Distinct texts',
 
   searchSigns: 'Search signs...',
   allCategories: 'All',

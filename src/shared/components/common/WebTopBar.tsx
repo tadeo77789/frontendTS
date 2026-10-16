@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Pressable, StyleSheet, Image } from 'react-native';
 import { BottomTabHeaderProps } from '@react-navigation/bottom-tabs';
@@ -9,6 +8,7 @@ import { useColors, useTheme } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { useLanguage, LANGUAGE_NAMES, type LanguageCode } from '../../../app/providers/LanguageContext';
 import { useAuth } from '../../../app/providers/AuthContext';
+import { usePreferences } from '../../../app/providers/PreferencesContext';
 import { useAdminMode } from '../../../app/providers/AccessContext';
 import { userDisplayName } from '../../../shared/utils/userDisplayName';
 import { HoverShadowSoft } from '../../../shared/constants/hoverStyles';
@@ -20,9 +20,21 @@ export const WebTopBar: React.FC<BottomTabHeaderProps> = ({ navigation, route })
   const currentTab = route.name;
   const C = useColors();
   const { t } = useTranslation();
-  const { isDark, toggleTheme } = useTheme();
-  const { language, setLanguage } = useLanguage();
-  const { user } = useAuth();
+
+  // Theme y Language mantienen los valores visuales compartidos con Perfil.
+  const { isDark, toggleTheme: toggleLocalTheme } = useTheme();
+  const { language, setLanguage: setLocalLanguage } = useLanguage();
+  const { user, isAuthenticated } = useAuth();
+
+  // El provider coordina el guardado, la sesión y los errores.
+  const {
+    setTheme: saveTheme, setLanguage: saveLanguage,
+    loading: preferencesLoading, saving: preferencesSaving,
+    error: preferencesError, retry: retryPreferences,
+  } = usePreferences();
+
+  // Bloquea los controles mientras se cargan o guardan preferencias.
+  const preferencesDisabled = preferencesLoading || preferencesSaving;
   const [langOpen, setLangOpen] = useState(false);
 
   const userName = userDisplayName(user);
@@ -40,6 +52,23 @@ export const WebTopBar: React.FC<BottomTabHeaderProps> = ({ navigation, route })
       ];
 
   const goTo = (name: string) => navigation.navigate(name);
+
+  /** Guarda el tema en el servidor con sesión; para visitantes usa almacenamiento local. */
+  const handleThemeChange = (dark: boolean) => {
+    if (preferencesDisabled) return;
+    if (isAuthenticated) void saveTheme(dark ? 'dark' : 'light');
+    else toggleLocalTheme();
+  };
+
+  /**
+   * PreferencesProvider sincroniza ES/EN y conserva FR/PT localmente por usuario.
+   * Las solicitudes nacen de esta acción, no de efectos de carga.
+   */
+  const handleLanguageChange = (code: LanguageCode) => {
+    if (preferencesDisabled) return;
+    if (isAuthenticated) void saveLanguage(code);
+    else void setLocalLanguage(code);
+  };
 
   return (
     <View style={[styles.bar, { backgroundColor: C.surface, borderBottomColor: C.border }]}>
@@ -84,11 +113,14 @@ export const WebTopBar: React.FC<BottomTabHeaderProps> = ({ navigation, route })
           <Pressable
             style={({ hovered }: any) => [
               styles.iconBtn,
+              preferencesDisabled && { opacity: 0.5 },
               isDark ? { backgroundColor: C.primary, borderColor: C.primary } : { backgroundColor: C.backgroundGray, borderColor: C.border },
               hovered && { borderColor: C.primary },
               hovered && HoverShadowSoft,
             ]}
-            onPress={toggleTheme}
+            onPress={() => handleThemeChange(!isDark)}
+            disabled={preferencesDisabled}
+            accessibilityState={{ disabled: preferencesDisabled }}
             accessibilityLabel="Cambiar tema"
           >
             <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={20} color={isDark ? '#fff' : C.primary} />
@@ -98,18 +130,22 @@ export const WebTopBar: React.FC<BottomTabHeaderProps> = ({ navigation, route })
             <Pressable
               style={({ hovered }: any) => [
                 styles.langBtn,
+                preferencesDisabled && { opacity: 0.5 },
                 { backgroundColor: C.backgroundGray, borderColor: C.border },
                 hovered && { borderColor: C.primary },
                 hovered && HoverShadowSoft,
               ]}
               onPress={() => setLangOpen(o => !o)}
+              disabled={preferencesDisabled}
+              accessibilityState={{ disabled: preferencesDisabled }}
             >
               <Ionicons name="globe-outline" size={18} color={C.primary} />
               <Text style={[styles.langText, { color: C.textPrimary }]}>{LANGUAGE_NAMES[language as LanguageCode]}</Text>
               <Ionicons name="chevron-down" size={16} color={C.textHint} />
             </Pressable>
 
-            {langOpen && (
+            {/* Durante una operación, no permite elegir otro idioma. */}
+            {langOpen && !preferencesDisabled && (
               <View style={[styles.langMenu, { backgroundColor: C.surface, borderColor: C.border, shadowColor: C.primary }]}>
                 {LANG_CODES.map(code => {
                   const active = language === code;
@@ -117,7 +153,9 @@ export const WebTopBar: React.FC<BottomTabHeaderProps> = ({ navigation, route })
                     <TouchableOpacity
                       key={code}
                       style={[styles.langItem, active && { backgroundColor: C.primaryBg }]}
-                      onPress={() => { setLanguage(code); setLangOpen(false); }}
+                      onPress={() => { handleLanguageChange(code); setLangOpen(false); }}
+                      disabled={preferencesDisabled}
+                      accessibilityState={{ disabled: preferencesDisabled }}
                       activeOpacity={0.8}
                     >
                       <Text style={styles.langFlag}>{LANG_FLAGS[code]}</Text>
@@ -147,6 +185,21 @@ export const WebTopBar: React.FC<BottomTabHeaderProps> = ({ navigation, route })
         </View>
 
       </View>
+
+      {/* Muestra el error sin cambiar el valor confirmado; permite reintentar. */}
+      {preferencesError && (
+        <View style={{ paddingHorizontal: 26, paddingBottom: 10, gap: 6 }}>
+          <Text accessibilityLiveRegion="polite" style={{ color: C.textSecondary }}>{preferencesError.message}</Text>
+          <TouchableOpacity
+            disabled={preferencesDisabled}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: preferencesDisabled }}
+            onPress={() => { void retryPreferences(); }}
+          >
+            <Text style={{ color: C.primary, opacity: preferencesDisabled ? 0.5 : 1 }}>{t('statsRetry')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };
