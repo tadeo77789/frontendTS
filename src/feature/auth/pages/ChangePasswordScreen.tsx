@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   ScrollView, KeyboardAvoidingView, Platform, useWindowDimensions,
@@ -10,19 +10,23 @@ import { AuthStepCard, useAuthPalette } from '../components/AuthStepCard';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
-import { normalizeApiError } from '../../../shared/services/api.client';
+import { api, normalizeApiError } from '../../../shared/services/api.client';
+import { ENDPOINTS } from '../../../app/config/api.config';
 import { showAlert, showError } from '../../../shared/utils/dialogs';
 import {
   evaluatePassword, MAX_PASSWORD_BYTES, MIN_PASSWORD_LENGTH, passwordByteLength,
 } from '../../../shared/utils/passwordStrength';
 import { useScrollToInput } from '../../../shared/hooks/useScrollToInput';
-import { changePassword } from '../services/auth.service';
+import { changePassword, forgotPassword, resetPassword } from '../services/auth.service';
 
-type Errors = { current?: string; password?: string; confirm?: string };
+type Errors = { current?: string; code?: string; password?: string; confirm?: string };
+
+/** Mismo intervalo que exige el backend entre envios de codigo. */
+const RESEND_COOLDOWN_S = 60;
 
 export function ChangePasswordScreen() {
   const navigation = useNavigation<any>();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const themed = useColors();
   const P = useAuthPalette(true, themed);
   const { t } = useTranslation();
@@ -39,6 +43,52 @@ export function ChangePasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
 
+  // Cuentas creadas con Google no tienen contraseña: en vez de pedir la actual se crea una con un
+  // codigo enviado al correo (mismos endpoints que "olvide mi contraseña"). null = aun no se sabe.
+  const [hasPassword, setHasPassword] = useState<boolean | null>(null);
+  const [code, setCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    api.get(ENDPOINTS.me)
+      .then(({ data }) => {
+        // Un backend sin has_password se trata como cuenta con contraseña (comportamiento anterior).
+        if (active) setHasPassword(data?.data?.has_password !== false);
+      })
+      .catch(() => { if (active) setHasPassword(true); });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (cooldown <= 0) return undefined;
+    const timer = setTimeout(() => setCooldown(s => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  const createMode = hasPassword === false;
+  const email = user?.email ?? '';
+
+  const handleSendCode = async () => {
+    if (sending || cooldown > 0 || !email) return;
+    setSending(true);
+    try {
+      await forgotPassword(email);
+    } catch (error) {
+      setSending(false);
+      const { code: apiCode } = normalizeApiError(error);
+      void showError(apiCode === 'NETWORK' ? t('loginNetworkError')
+        : apiCode === 'SERVER' ? t('serverUnavailable') : t('accountActionError'), t('error'));
+      return;
+    }
+    setSending(false);
+    setCodeSent(true);
+    setCooldown(RESEND_COOLDOWN_S);
+    void showAlert({ message: t('changePwCodeSent', { email }), icon: 'info' });
+  };
+
   const { checks } = evaluatePassword(password);
   const reqs = [
     { key: 'pwCheckLength', label: t('pwCheckLength'), ok: checks.length },
@@ -52,25 +102,29 @@ export function ChangePasswordScreen() {
   const handleConfirm = async () => {
     if (loading) return;
     const e: Errors = {};
-    if (!current) e.current = t('changePwCurrentRequired');
+    if (createMode) {
+      if (!/^\d{6}$/.test(code)) e.code = t('changePwCodeRequired');
+    } else if (!current) e.current = t('changePwCurrentRequired');
     if (!password || password.length < MIN_PASSWORD_LENGTH) e.password = t('newPasswordErrorShort');
     else if (passwordByteLength(password) > MAX_PASSWORD_BYTES) e.password = t('passwordTooLong');
     else if (!meetsAll) e.password = t('registerPasswordWeak');
-    else if (password === current) e.password = t('changePwSameAsCurrent');
+    else if (!createMode && password === current) e.password = t('changePwSameAsCurrent');
     if (!confirm || password !== confirm) e.confirm = t('newPasswordErrorMismatch');
     if (Object.keys(e).length > 0) { setErrors(e); return; }
     setErrors({});
     setLoading(true);
     try {
-      await changePassword(current, password);
+      if (createMode) await resetPassword(email, code, password);
+      else await changePassword(current, password);
     } catch (error) {
       setLoading(false);
-      const { code } = normalizeApiError(error);
-      if (code === 'INVALID_PASSWORD') setErrors({ current: t('changePwInvalidPassword') });
-      else if (code === 'VALIDATION_ERROR') setErrors({ password: t('registerPasswordWeak') });
+      const { code: apiCode } = normalizeApiError(error);
+      if (apiCode === 'INVALID_PASSWORD') setErrors({ current: t('changePwInvalidPassword') });
+      else if (apiCode === 'INVALID_CODE') setErrors({ code: t('changePwCodeInvalid') });
+      else if (apiCode === 'VALIDATION_ERROR') setErrors({ password: t('registerPasswordWeak') });
       else {
-        const msg = code === 'NETWORK' ? t('loginNetworkError')
-          : code === 'SERVER' ? t('serverUnavailable')
+        const msg = apiCode === 'NETWORK' ? t('loginNetworkError')
+          : apiCode === 'SERVER' ? t('serverUnavailable')
           : t('accountActionError');
         void showError(msg, t('error'));
       }
@@ -78,7 +132,7 @@ export function ChangePasswordScreen() {
     }
     // La contraseña cambió: cerrar sesión (vuelve al login) y avisar.
     await logout();
-    void showAlert({ message: t('changePwDone'), icon: 'success' });
+    void showAlert({ message: t(createMode ? 'changePwCreated' : 'changePwDone'), icon: 'success' });
   };
 
   const field = (
@@ -129,11 +183,49 @@ export function ChangePasswordScreen() {
           P={P}
           step={1}
           icon="key-outline"
-          title={t('changePwTitle')}
-          subtitle={t('changePwSubtitle')}
+          title={t(createMode ? 'changePwCreateTitle' : 'changePwTitle')}
+          subtitle={t(createMode ? 'changePwCreateSubtitle' : 'changePwSubtitle')}
           onBack={() => navigation.goBack()}
         >
-          {field(t('changePwCurrentLabel'), current, setCurrent, showCurrent, () => setShowCurrent(v => !v),
+          {createMode ? (
+            <>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={handleSendCode}
+                disabled={sending || cooldown > 0}
+                accessibilityRole="button"
+                style={[styles.sendBtn, { borderColor: P.accent }, (sending || cooldown > 0) && { opacity: 0.6 }]}
+              >
+                <Ionicons name="mail-outline" size={18} color={P.accent} />
+                <Text style={[styles.sendBtnText, { color: P.accent }]}>
+                  {cooldown > 0 ? t('changePwResendIn', { seconds: cooldown })
+                    : codeSent ? t('changePwResendCode') : t('changePwSendCode')}
+                </Text>
+              </TouchableOpacity>
+              <Text style={[styles.label, { color: P.label }]}>{t('changePwCodeLabel')}</Text>
+              <View style={[styles.field, { backgroundColor: P.field, borderColor: errors.code ? '#F0A9A9' : P.border }]}>
+                <Ionicons name="keypad-outline" size={19} color={P.accent} />
+                <TextInput
+                  style={[styles.input, { color: P.ink }, { outlineStyle: 'none' } as any]}
+                  value={code}
+                  onChangeText={v => { setCode(v.replace(/\D/g, '').slice(0, 6)); setErrors(prev => ({ ...prev, code: undefined })); }}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  textContentType="oneTimeCode"
+                  autoComplete="one-time-code"
+                  onFocus={handleInputFocus}
+                  placeholder={t('changePwCodePlaceholder')}
+                  placeholderTextColor="#A6A0B4"
+                />
+              </View>
+              {!!errors.code && (
+                <View style={styles.errorRow}>
+                  <Ionicons name="alert-circle-outline" size={14} color="#EF4444" />
+                  <Text style={styles.errorText}>{errors.code}</Text>
+                </View>
+              )}
+            </>
+          ) : field(t('changePwCurrentLabel'), current, setCurrent, showCurrent, () => setShowCurrent(v => !v),
             t('changePwCurrentPlaceholder'), errors.current, 'current', 'current-password')}
           {field(t('newPasswordNewLabel'), password, setPassword, showPw, () => setShowPw(v => !v),
             t('newPasswordNewPlaceholder'), errors.password, 'password', 'new-password')}
@@ -152,7 +244,7 @@ export function ChangePasswordScreen() {
 
           <TouchableOpacity activeOpacity={0.9} onPress={handleConfirm} disabled={loading} accessibilityRole="button" accessibilityState={{ disabled: loading, busy: loading }} style={[styles.btnWrap, loading && { opacity: 0.7 }]}>
             <LinearGradient colors={P.accentGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btn}>
-              <Text style={styles.btnText}>{loading ? t('newPasswordBtnLoading') : t('changePwBtn')}</Text>
+              <Text style={styles.btnText}>{loading ? t('newPasswordBtnLoading') : t(createMode ? 'changePwCreateBtn' : 'changePwBtn')}</Text>
               {!loading && <Ionicons name="checkmark" size={18} color="#fff" />}
             </LinearGradient>
           </TouchableOpacity>
@@ -170,6 +262,8 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '800', marginBottom: 8 },
   field: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1.5, borderRadius: 12, height: 52, paddingHorizontal: 16, marginBottom: 14 },
   input: { flex: 1, fontSize: 15 },
+  sendBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5, borderRadius: 12, height: 46, marginBottom: 16 },
+  sendBtnText: { fontSize: 14, fontWeight: '800' },
   reqs: { gap: 8, marginBottom: 18 },
   reqsPhone: { gap: 6, marginBottom: 14 },
   reqRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
