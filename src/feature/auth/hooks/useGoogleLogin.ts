@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Google from 'expo-auth-session/providers/google';
 import { showError } from '../../../shared/utils/dialogs';
-import { useAuth } from '../../../app/providers/AuthContext';
+import { isAuthOperationCancelled, useAuth } from '../../../app/providers/AuthContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { normalizeApiError } from '../../../shared/services/api.client';
 import { GOOGLE_CLIENT_IDS } from '../../../app/config/api.config';
@@ -53,7 +53,8 @@ export function useGoogleLogin() {
     setLoading(true);
     loginWithGoogle(idToken)
       .catch((error) => {
-        if (cancelled) return;
+        // Sesion sustituida (logout u otro login a mitad): no es un error del usuario.
+        if (cancelled || isAuthOperationCancelled(error)) return;
         const { code, status } = normalizeApiError(error);
         const msg = code === 'NETWORK' ? t('loginNetworkError')
           : status === 503 ? t('loginGoogleUnavailable')
