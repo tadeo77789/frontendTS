@@ -3,13 +3,15 @@
 import { Platform } from 'react-native';
 
 /**
- * Backend publicado en el VPS de Hostinger (gateway en el puerto 8080).
- * Web en desarrollo, Expo Go y la APK apuntan aqui. Cuando haya dominio con
- * HTTPS, se cambia solo esta constante (por ejemplo 'https://tudominio.com/api').
+ * Backend publicado en el VPS (Caddy con HTTPS delante del api-gateway).
+ * Web en desarrollo, Expo Go y la APK apuntan aqui.
+ * Para trabajar contra un backend local sin tocar el codigo:
+ * EXPO_PUBLIC_API_URL=http://localhost:8080/api en .env (se lee al compilar).
  */
-const VPS_API_URL = 'http://179.236.77.215:8080/api';
+const SERVER_API_URL = 'https://traducesenas.tech/api';
+const VPS_API_URL = process.env.EXPO_PUBLIC_API_URL || SERVER_API_URL;
 
-// La web en produccion se sirve detras del mismo dominio que la API, por eso usa ruta relativa.
+// La web en produccion se sirve en el mismo dominio que la API, por eso usa ruta relativa.
 export const API_BASE_URL = !__DEV__ && Platform.OS === 'web' ? '/api' : VPS_API_URL;
 
 export const API_TIMEOUT = 10_000;
