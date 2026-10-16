@@ -586,6 +586,15 @@ const en: typeof es = {
   recognitionUnavailableMobile: "Sign recognition is not available on mobile yet. Use the web version to translate with the camera.",
   gestureVocabularyGeneric: "Test gestures",
   gestureGenericNote: "These are test gestures from Google's generic recognizer, not LSC signs. LSC words appear when our own model is available.",
+  vocabCatGreetings: 'Greetings',
+  vocabCatCourtesy: 'Courtesy',
+  vocabCatFeelings: 'Feelings',
+  vocabCatAnswers: 'Answers',
+  vocabCatColors: 'Colors',
+  vocabCatNumbers: 'Numbers',
+  vocabCatActions: 'Actions',
+  vocabCatOthers: 'Others',
+  vocabCatAdded: 'Added',
 };
 
 export default en;

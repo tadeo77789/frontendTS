@@ -586,6 +586,15 @@ const pt: typeof es = {
   recognitionUnavailableMobile: "O reconhecimento de sinais ainda não está disponível no celular. Use a versão web para traduzir com a câmera.",
   gestureVocabularyGeneric: "Gestos de teste",
   gestureGenericNote: "São gestos de teste do reconhecedor genérico do Google, não sinais da LSC. As palavras da LSC aparecem quando o modelo próprio estiver disponível.",
+  vocabCatGreetings: 'Saudações',
+  vocabCatCourtesy: 'Cortesia',
+  vocabCatFeelings: 'Estados de ânimo',
+  vocabCatAnswers: 'Respostas',
+  vocabCatColors: 'Cores',
+  vocabCatNumbers: 'Números',
+  vocabCatActions: 'Ações',
+  vocabCatOthers: 'Outros',
+  vocabCatAdded: 'Adicionados',
 };
 
 export default pt;
