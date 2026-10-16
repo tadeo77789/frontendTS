@@ -31,7 +31,15 @@ export const changePassword = async (currentPassword: string, newPassword: strin
   await api.post(ENDPOINTS.mePassword, { currentPassword, newPassword });
 };
 
-/** Elimina la cuenta y sus datos. 403 INVALID_PASSWORD, 409 LAST_ADMIN. */
-export const deleteAccount = async (password: string): Promise<void> => {
-  await api.delete(ENDPOINTS.me, { data: { password } });
+/**
+ * Elimina la cuenta y sus datos. Con contraseña se confirma con ella (403 INVALID_PASSWORD); las cuentas
+ * creadas con Google, con el codigo de sendDeletionCode (400 INVALID_CODE). 409 LAST_ADMIN.
+ */
+export const deleteAccount = async (confirmation: { password: string } | { code: string }): Promise<void> => {
+  await api.delete(ENDPOINTS.me, { data: confirmation });
+};
+
+/** Envia al correo el codigo que confirma el borrado de una cuenta sin contraseña. 429 si se pide muy seguido. */
+export const sendDeletionCode = async (): Promise<void> => {
+  await api.post(ENDPOINTS.meDeleteCode);
 };

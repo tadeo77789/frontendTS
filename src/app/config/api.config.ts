@@ -51,6 +51,7 @@ export const ENDPOINTS = {
 
   me: '/users/me',
   mePassword: '/users/me/password',
+  meDeleteCode: '/users/me/delete-code',
   profilePreferences: '/profile/preferences',
 
   translate: '/translations',
