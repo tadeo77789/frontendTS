@@ -13,10 +13,11 @@ export type LanguageCode = 'es' | 'en' | 'fr' | 'pt';
 
 const VALID_CODES: readonly LanguageCode[] = ['es', 'en', 'fr', 'pt'];
 
+/** Cada idioma con su propio nombre (autonimo): se reconoce sin depender del idioma activo. */
 export const LANGUAGE_NAMES: Record<LanguageCode, string> = {
   es: 'Español',
-  en: 'Inglés',
-  fr: 'Francés',
+  en: 'English',
+  fr: 'Français',
   pt: 'Português',
 };
 
