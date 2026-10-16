@@ -1,7 +1,7 @@
 import { api } from '../../../shared/services/api.client';
 import { ENDPOINTS } from '../../../app/config/api.config';
 
-export type PreferencesLanguage = 'ES' | 'EN';
+export type PreferencesLanguage = 'ES' | 'EN' | 'FR' | 'PT';
 export type PreferencesTheme = 'LIGHT' | 'DARK';
 
 export interface ProfilePreferences {
@@ -48,7 +48,7 @@ const isRecord = (
 const isLanguage = (
   value: unknown,
 ): value is PreferencesLanguage =>
-  value === 'ES' || value === 'EN';
+  value === 'ES' || value === 'EN' || value === 'FR' || value === 'PT';
 
 const isTheme = (
   value: unknown,
@@ -111,7 +111,7 @@ const parsePatch = (value: unknown): PreferencesPatch => {
 
   if (value.uiLanguage !== undefined) {
     if (!isLanguage(value.uiLanguage)) {
-      throw new PreferencesInputError('uiLanguage debe ser ES o EN');
+      throw new PreferencesInputError('uiLanguage debe ser ES, EN, FR o PT');
     }
     patch.uiLanguage = value.uiLanguage;
   }
