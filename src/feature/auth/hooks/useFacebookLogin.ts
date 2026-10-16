@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Facebook from 'expo-auth-session/providers/facebook';
 import { showError } from '../../../shared/utils/dialogs';
 import {
@@ -22,8 +22,19 @@ export function useFacebookLogin() {
     scopes: ['public_profile', 'email'],
   });
 
+  const mountedRef = useRef(true);
   useEffect(() => {
-    if (!response) return;
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  // Cada respuesta de Facebook se procesa una sola vez (ver useGoogleLogin): el efecto se
+  // repite en cada render y el login cambia el estado de la sesion, lo que provocaba un bucle.
+  const handledResponseRef = useRef<typeof response>(null);
+
+  useEffect(() => {
+    if (!response || handledResponseRef.current === response) return;
+    handledResponseRef.current = response;
 
     if (response.type === 'error') {
       void showError(t('loginFacebookError'), t('error'));
@@ -41,12 +52,11 @@ export function useFacebookLogin() {
       return;
     }
 
-    let cancelled = false;
     setLoading(true);
 
     loginWithFacebook(accessToken)
       .catch(error => {
-        if (cancelled || isAuthOperationCancelled(error)) return;
+        if (!mountedRef.current || isAuthOperationCancelled(error)) return;
 
         const { code } = normalizeApiError(error);
         const message = code === 'NETWORK' ? t('loginNetworkError')
@@ -59,12 +69,8 @@ export function useFacebookLogin() {
         void showError(message, t('error'));
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (mountedRef.current) setLoading(false);
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, [response, loginWithFacebook, t]);
 
   const handleFacebookLogin = useCallback(() => {
