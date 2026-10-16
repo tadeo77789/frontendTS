@@ -415,6 +415,11 @@ const pt: typeof es = {
   profileTranslations: 'Traduções',
   profileDistinctSigns: 'Sinais distintos',
   profileStatsError: 'Não foi possível carregar suas estatísticas.',
+  achievementsLoading: 'Carregando conquistas...',
+  achievementsLoadError: 'Não foi possível carregar suas conquistas.',
+  achievementsCatalogEmpty: 'Não há conquistas disponíveis.',
+  achievementsUnavailable: 'As conquistas não estão disponíveis.',
+  profileDistinctWords: 'Textos distintos',
 
   searchSigns: 'Buscar sinais...',
   allCategories: 'Todos',

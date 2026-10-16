@@ -10,25 +10,28 @@ import {
 } from 'react-native';
 import { useColors } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
-import { CATEGORY_LABEL_KEYS, progressOf, type Achievement } from '../data/achievements';
+import {
+  persistedProgressOf,
+  type PersistedAchievementProgress,
+} from '../data/persistedAchievements';
 import { useAchievementText } from '../hooks/useAchievementText';
 import { AchievementMedal } from './AchievementMedal';
 import { AchievementProgressBar } from './AchievementProgressBar';
 
 interface AchievementDetailModalProps {
-  achievement: Achievement | null;
+  achievement: PersistedAchievementProgress | null;
   onClose: () => void;
 }
 
 export const AchievementDetailModal: React.FC<AchievementDetailModalProps> = ({ achievement, onClose }) => {
   const C = useColors();
   const { t } = useTranslation();
-  const { progressText, levelText, stateText } = useAchievementText();
+  const { progressText, stateText } = useAchievementText();
   const { width } = useWindowDimensions();
 
   if (!achievement) return null;
 
-  const { unlocked, percent } = progressOf(achievement);
+  const { unlocked, percent } = persistedProgressOf(achievement);
   const sheetWidth = Math.min(420, Math.max(280, width - 48));
 
   return (
@@ -41,12 +44,13 @@ export const AchievementDetailModal: React.FC<AchievementDetailModalProps> = ({ 
 
               <View style={[styles.badge, { backgroundColor: C.primaryBg }]}>
                 <Text style={[styles.badgeText, { color: C.primaryDark }]}>
-                  {t(CATEGORY_LABEL_KEYS[achievement.category])} · {levelText(achievement)}
+                  {stateText(achievement)}
                 </Text>
               </View>
 
-              <Text style={[styles.title, { color: C.textPrimary }]}>{t(achievement.nameKey)}</Text>
-              <Text style={[styles.desc, { color: C.textSecondary }]}>{t(achievement.descKey)}</Text>
+              {/* Conserva los textos ocultos que devuelve Profile. */}
+              <Text style={[styles.title, { color: C.textPrimary }]}>{achievement.achievement.name}</Text>
+              <Text style={[styles.desc, { color: C.textSecondary }]}>{achievement.achievement.description}</Text>
 
               <View style={styles.progressRow}>
                 <AchievementProgressBar
@@ -56,8 +60,6 @@ export const AchievementDetailModal: React.FC<AchievementDetailModalProps> = ({ 
                 />
                 <Text style={[styles.progressText, { color: C.primaryDark }]}>{progressText(achievement)}</Text>
               </View>
-
-              <Text style={[styles.state, { color: C.textHint }]}>{stateText(achievement)}</Text>
 
               <TouchableOpacity
                 onPress={onClose}
@@ -95,7 +97,6 @@ const styles = StyleSheet.create({
   desc: { fontSize: 14, lineHeight: 21, textAlign: 'center' },
   progressRow: { flexDirection: 'row', alignItems: 'center', gap: 12, alignSelf: 'stretch', marginTop: 4 },
   progressText: { fontSize: 13, fontWeight: '800' },
-  state: { fontSize: 13, fontWeight: '700' },
   closeBtn: {
     alignSelf: 'stretch',
     alignItems: 'center',
@@ -103,7 +104,6 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 12,
     borderWidth: 1.5,
-    marginTop: 8,
   },
   closeText: { fontSize: 15, fontWeight: '700' },
 });
