@@ -808,6 +808,12 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
       </ScrollView>
+
+      <DeleteAccountModal
+        visible={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onDeleted={handleAccountDeleted}
+      />
     </View>
   );
 };
