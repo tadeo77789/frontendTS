@@ -136,9 +136,6 @@ export const TranslationScreen: React.FC = () => {
         // Cada sena confirmada se guarda sola; aqui solo se limpia el panel.
         gestureReset();
         gestureStart();
-        // El motor decide cual usar al arrancar, asi que el vocabulario se
-        // refresca despues, no antes.
-        setTimeout(() => setVocabulary(wordVocabulary()), 1500);
       } else {
         agentReset();
         agentStart();
@@ -208,6 +205,20 @@ export const TranslationScreen: React.FC = () => {
       })
       .catch(() => undefined);
   }, []);
+
+  /**
+   * El motor decide cual usar al arrancar y el modelo baja sus glosas despues,
+   * asi que el vocabulario se consulta hasta que llegue. Un solo intento a
+   * tiempo fijo fallaba en conexiones lentas y la lista no salia nunca.
+   */
+  useEffect(() => {
+    if (!isActive || !usingGestures || vocabulary.length > 0) return;
+    const id = setInterval(() => {
+      const words = wordVocabulary();
+      if (words.length > 0) setVocabulary(words);
+    }, 500);
+    return () => clearInterval(id);
+  }, [isActive, usingGestures, vocabulary.length]);
 
   /**
    * Diagnostico del motor de plantillas: que palabra quedo mas cerca y a que
