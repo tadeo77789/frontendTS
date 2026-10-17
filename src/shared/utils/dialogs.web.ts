@@ -1,13 +1,66 @@
 
-import BaseSwal, { type SweetAlertIcon } from 'sweetalert2';
+import BaseSwal, { type SweetAlertIcon, type SweetAlertOptions } from 'sweetalert2';
 
 // heightAuto: false evita que SweetAlert fuerce height:auto en <html>/<body>,
 // lo que colapsa el layout de React Native Web y deja el fondo en blanco.
-const Swal = BaseSwal.mixin({ heightAuto: false });
+const BaseMixin = BaseSwal.mixin({ heightAuto: false, customClass: { popup: 'ts-swal' } });
 
-const PRIMARY = '#9B77E6';
-const DANGER = '#DC2626';
 const NEUTRAL = '#9CA3AF';
+
+// Misma pila de fuentes que React Native Web usa en <Text>; sin esto SweetAlert
+// hereda la serif por defecto del <body>.
+const FONT_STACK =
+  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+export interface DialogPalette {
+  background: string;
+  title: string;
+  text: string;
+  primary: string;
+  danger: string;
+}
+
+let palette: DialogPalette = {
+  background: '#FFFFFF',
+  title: '#7C5BD0',
+  text: '#374151',
+  primary: '#9B77E6',
+  danger: '#DC2626',
+};
+
+const STYLE_ID = 'ts-swal-style';
+
+const renderStyle = (): void => {
+  if (typeof document === 'undefined') return;
+  let el = document.getElementById(STYLE_ID);
+  if (!el) {
+    el = document.createElement('style');
+    el.id = STYLE_ID;
+    document.head.appendChild(el);
+  }
+  el.textContent = `
+.ts-swal, .ts-swal button { font-family: ${FONT_STACK}; }
+.ts-swal { border-radius: 16px; }
+.ts-swal .swal2-title { color: ${palette.title}; font-size: 22px; font-weight: 700; }
+.ts-swal .swal2-html-container { color: ${palette.text}; font-size: 16px; line-height: 1.5; }
+.ts-swal .swal2-styled { border-radius: 10px; font-weight: 600; }
+`;
+};
+
+// ThemeProvider la llama al cambiar modo (claro/oscuro) o acento (morado/verde).
+export const setDialogPalette = (next: DialogPalette): void => {
+  palette = next;
+  renderStyle();
+};
+
+const Swal = {
+  fire: (opts: SweetAlertOptions) => {
+    renderStyle();
+    return BaseMixin.fire({ background: palette.background, color: palette.text, ...opts });
+  },
+  getPopup: () => BaseSwal.getPopup(),
+  close: () => BaseSwal.close(),
+};
 
 interface AlertOptions {
   title?: string;
@@ -37,7 +90,7 @@ export const showAlert = async (opts: AlertOptions): Promise<void> => {
     title: opts.title || '',
     text: opts.message || '',
     icon: opts.icon,
-    confirmButtonColor: PRIMARY,
+    confirmButtonColor: palette.primary,
   });
 };
 
@@ -58,7 +111,7 @@ export const showConfirm = async (opts: ConfirmOptions): Promise<boolean> => {
     showCancelButton: true,
     confirmButtonText: opts.confirmText || 'OK',
     cancelButtonText: opts.cancelText || 'Cancelar',
-    confirmButtonColor: opts.destructive ? DANGER : PRIMARY,
+    confirmButtonColor: opts.destructive ? palette.danger : palette.primary,
     cancelButtonColor: NEUTRAL,
     reverseButtons: true,
     focusCancel: opts.destructive,
@@ -80,8 +133,8 @@ export const showChoice = async (opts: ChoiceDialogOptions): Promise<string | nu
       confirmButtonText: first.label,
       denyButtonText: second?.label,
       cancelButtonText: opts.cancelText || 'Cancelar',
-      confirmButtonColor: first.destructive ? DANGER : PRIMARY,
-      denyButtonColor: second?.destructive ? DANGER : PRIMARY,
+      confirmButtonColor: first.destructive ? palette.danger : palette.primary,
+      denyButtonColor: second?.destructive ? palette.danger : palette.primary,
       cancelButtonColor: NEUTRAL,
       reverseButtons: true,
     });
@@ -92,7 +145,7 @@ export const showChoice = async (opts: ChoiceDialogOptions): Promise<string | nu
 
   const buttonsHtml = opts.choices
     .map((c, i) => {
-      const bg = c.destructive ? DANGER : PRIMARY;
+      const bg = c.destructive ? palette.danger : palette.primary;
       return `<button data-key="${c.key}" data-idx="${i}" style="background:${bg};color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer;margin:4px;">${c.label}</button>`;
     })
     .join('');
