@@ -14,7 +14,7 @@ export const AchievementProgressBar: React.FC<AchievementProgressBarProps> = ({
   fill,
   height = 8,
 }) => (
-  <View style={[styles.track, { height, borderRadius: height, backgroundColor: track }]}>
+  <View accessible accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: percent }} style={[styles.track, { height, borderRadius: height, backgroundColor: track }]}>
     <View style={[styles.fill, { width: `${percent}%`, borderRadius: height, backgroundColor: fill }]} />
   </View>
 );
