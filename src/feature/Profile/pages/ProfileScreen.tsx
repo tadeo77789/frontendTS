@@ -25,7 +25,7 @@ import {
   type LanguageCode,
 } from '../../../app/providers/LanguageContext';
 import { useTranslation } from '../../../app/config/i18n';
-import { useAccess } from '../../../app/providers/AccessContext';
+import { useAccess, useAdminMode } from '../../../app/providers/AccessContext';
 import { PERMISSIONS } from '../../../shared/types/iam';
 import { userDisplayName } from '../../../shared/utils/userDisplayName';
 import { AchievementsCard } from '../components/AchievementsCard';
@@ -101,7 +101,15 @@ export const ProfileScreen: React.FC = () => {
   const notificationsEnabled = preferences?.notificationsEnabled ?? true;
 
   // Permite al administrador gestionar sus propios avisos mediante PreferencesProvider.
-  const { hasPermission } = useAccess();
+  const {
+    hasPermission,
+    isLoading: accessLoading,
+    error: accessError,
+  } = useAccess();
+  const { adminMode } = useAdminMode();
+  // Los logros pertenecen al perfil de usuario normal. Esperar al acceso evita
+  // consultar o mostrar tarjeta/contador de un administrador aún sin resolver.
+  const achievementsEnabled = !adminMode && !accessLoading && !accessError;
   const showNotifications = hasPermission(
     PERMISSIONS.NOTIFICATIONS_MANAGE,
   );
@@ -115,7 +123,7 @@ export const ProfileScreen: React.FC = () => {
     loading: achievementsLoading,
     error: achievementsError,
     reload: reloadAchievements,
-  } = useMyAchievements();
+  } = useMyAchievements(achievementsEnabled);
 
   const achievementsSummary = useMemo(
     () => achievements === null
@@ -312,24 +320,26 @@ export const ProfileScreen: React.FC = () => {
                 </Text>
               </View>
 
-              <View style={styles.heroStat}>
-                <Text
-                  style={[
-                    styles.heroStatValue,
-                    { color: C.primary },
-                  ]}
-                >
-                  {unlockedAchievements}
-                </Text>
-                <Text
-                  style={[
-                    styles.heroStatLabel,
-                    { color: C.textSecondary },
-                  ]}
-                >
-                  {t('achievements')}
-                </Text>
-              </View>
+              {achievementsEnabled && (
+                <View style={styles.heroStat}>
+                  <Text
+                    style={[
+                      styles.heroStatValue,
+                      { color: C.primary },
+                    ]}
+                  >
+                    {unlockedAchievements}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.heroStatLabel,
+                      { color: C.textSecondary },
+                    ]}
+                  >
+                    {t('achievements')}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -693,13 +703,15 @@ export const ProfileScreen: React.FC = () => {
           </View>
 
           {/* Logros */}
-          <AchievementsCard
-            isWide={isWide}
-            achievements={achievements}
-            loading={achievementsLoading}
-            error={achievementsError}
-            reload={reloadAchievements}
-          />
+          {achievementsEnabled && (
+            <AchievementsCard
+              isWide={isWide}
+              achievements={achievements}
+              loading={achievementsLoading}
+              error={achievementsError}
+              reload={reloadAchievements}
+            />
+          )}
 
           {/* Acerca de */}
           <View
