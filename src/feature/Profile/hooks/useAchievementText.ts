@@ -1,29 +1,24 @@
 import { useTranslation } from '../../../app/config/i18n';
-import {
-  persistedProgressOf,
-  type PersistedAchievementProgress,
-} from '../data/persistedAchievements';
+import { persistedProgressOf, type PersistedAchievementProgress } from '../data/persistedAchievements';
 
-/** Etiquetas de interfaz; no traduce ni revela los textos del catalogo. */
 export const useAchievementText = () => {
-  const { t } = useTranslation();
-
-  const progressText = (progress: PersistedAchievementProgress): string => {
-    const { unlocked } = persistedProgressOf(progress);
-    const { targetCount } = progress.achievement;
-    if (
-      !Number.isSafeInteger(targetCount) || targetCount <= 0
-      || !Number.isSafeInteger(progress.currentCount) || progress.currentCount < 0
-    ) {
-      return '—';
-    }
-    if (targetCount === 1) return unlocked ? t('achievementCompleted') : t('achievementPending');
-    const reached = Math.min(progress.currentCount, targetCount);
-    return `${reached}/${targetCount}`;
+  const { t, language } = useTranslation();
+  const textOf = (p: PersistedAchievementProgress) => {
+    // Never reveal server-concealed secret text via a localization.
+    const localized = p.achievement.isSecret && p.achievedAt === null ? undefined
+      : p.achievement.localizations[language] ?? p.achievement.localizations.es;
+    return { name: localized?.name ?? p.achievement.name,
+      description: localized?.description ?? p.achievement.description,
+      unavailableReason: localized?.unavailableReason ?? t('achievementUnavailableReason') };
   };
-
-  const stateText = (progress: PersistedAchievementProgress): string =>
-    persistedProgressOf(progress).unlocked ? t('achievementUnlocked') : t('achievementInProgress');
-
-  return { progressText, stateText };
+  const stateText = (p: PersistedAchievementProgress): string =>
+    p.achievement.availability === 'upcoming' ? t('achievementUpcoming')
+      : persistedProgressOf(p).unlocked ? t('achievementCompleted') : t('achievementPending');
+  const progressText = (p: PersistedAchievementProgress): string => {
+    if (p.achievement.availability === 'upcoming') return t('achievementUpcoming');
+    const target = p.achievement.targetCount;
+    if (target === null || p.currentCount === null) return '—';
+    return target === 1 ? stateText(p) : `${Math.min(p.currentCount, target)}/${target}`;
+  };
+  return { textOf, progressText, stateText };
 };

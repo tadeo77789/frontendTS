@@ -12,6 +12,8 @@ export const profileAchievementsService = {
     signal: AbortSignal,
   ): Promise<PersistedAchievementProgress[]> {
     const res = await api.get<unknown>(ENDPOINTS.achievements, {
+      // Old servers safely ignore this query and keep returning only legacy achievements.
+      params: { catalogVersion: 2 },
       headers: { Authorization: `Bearer ${token}` },
       signal,
     });

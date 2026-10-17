@@ -139,7 +139,7 @@ export const ProfileScreen: React.FC = () => {
   // El contador procede de Profile, independiente de Recognition.
   const unlockedAchievements =
     !achievementsLoading && !achievementsError && achievementsSummary
-      ? String(achievementsSummary.unlocked)
+      ? achievementsSummary.available > 0 ? `${achievementsSummary.unlocked}/${achievementsSummary.available}` : '—'
       : '—';
 
   const displayName = userDisplayName(user);
@@ -336,7 +336,7 @@ export const ProfileScreen: React.FC = () => {
                       { color: C.textSecondary },
                     ]}
                   >
-                    {t('achievements')}
+                    {t('achievementAvailableLabel')}
                   </Text>
                 </View>
               )}
