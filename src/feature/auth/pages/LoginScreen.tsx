@@ -25,7 +25,7 @@ import { useTranslation } from '../../../app/config/i18n';
 import { HoverShadow, HoverShadowSoft } from '../../../shared/constants/hoverStyles';
 
 const HERO_STATS = [
-  { value: '+1000', label: 'Señas' },
+  { value: '+50', label: 'Señas' },
   { value: '26', label: 'Letras LSC' },
   { value: '100%', label: 'Gratis' },
 ];
