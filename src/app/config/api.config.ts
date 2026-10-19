@@ -15,6 +15,14 @@ export const API_BASE_URL = !__DEV__ && Platform.OS === 'web' ? '/api' : VPS_API
 export const API_TIMEOUT = 10_000;
 
 /**
+ * Enlace de descarga de la APK de Android que muestra la landing (solo web).
+ * Va como valor por defecto porque el build web del servidor no lee el .env;
+ * EXPO_PUBLIC_APK_URL lo sustituye. Vacio = boton de descarga oculto.
+ */
+export const APK_DOWNLOAD_URL = process.env.EXPO_PUBLIC_APK_URL
+  ?? 'https://traducesenas.tech/descargas/traducesenas.apk';
+
+/**
  * App ID de Facebook (developers.facebook.com). No es secreto: el App Secret
  * vive solo en el backend. Se lee de EXPO_PUBLIC_FACEBOOK_APP_ID al compilar;
  * vacio = boton de Facebook desactivado con un aviso.
