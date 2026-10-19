@@ -7,13 +7,6 @@ import { LandingTheme as D } from '../../constants/landingTheme';
 // Ano fijo del copyright del proyecto.
 const CURRENT_YEAR = 2025;
 
-const SOCIAL: { icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
-  { icon: 'logo-facebook',  label: 'Facebook' },
-  { icon: 'logo-instagram', label: 'Instagram' },
-  { icon: 'logo-youtube',   label: 'YouTube' },
-  { icon: 'mail-outline',   label: 'Correo' },
-];
-
 const QUICK: { label: string; route: string }[] = [
   { label: 'Traductor', route: 'TraductorDemo' },
   { label: 'Alfabeto',  route: 'AlfabetoDemo' },
@@ -56,13 +49,6 @@ export const PublicFooter: React.FC = () => {
             <Text style={styles.about}>
               Tecnología y educación para un mundo más inclusivo. Comunicación sin límites.
             </Text>
-            <View style={styles.socialRow}>
-              {SOCIAL.map(s => (
-                <TouchableOpacity key={s.label} style={styles.socialBtn} accessibilityLabel={s.label}>
-                  <Ionicons name={s.icon} size={18} color={D.purple} />
-                </TouchableOpacity>
-              ))}
-            </View>
           </View>
 
           {/* Enlaces rápidos */}
@@ -128,9 +114,7 @@ const styles = StyleSheet.create({
   logoImg: { width: 38, height: 38 },
   brandName: { fontSize: 18, fontWeight: '800', color: D.ink },
   brandTagline: { fontSize: 11, color: D.hint, fontWeight: '600', marginTop: 3 },
-  about: { fontSize: 14, lineHeight: 22, color: D.body, maxWidth: 260, marginTop: 16, marginBottom: 20 },
-  socialRow: { flexDirection: 'row', gap: 12 },
-  socialBtn: { width: 40, height: 40, borderRadius: 11, backgroundColor: D.lilacBg, alignItems: 'center', justifyContent: 'center' },
+  about: { fontSize: 14, lineHeight: 22, color: D.body, maxWidth: 260, marginTop: 16 },
 
   col: { gap: 13 },
   colTitle: { fontSize: 15, fontWeight: '800', color: D.ink, marginBottom: 5 },
