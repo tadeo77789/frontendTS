@@ -3,30 +3,32 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, useWindowDimensions } 
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LandingTheme as D } from '../../constants/landingTheme';
+import { useTranslation, type TranslationKey } from '../../../app/config/i18n';
 
 // Ano fijo del copyright del proyecto.
 const CURRENT_YEAR = 2025;
 
-const QUICK: { label: string; route: string }[] = [
-  { label: 'Traductor', route: 'TraductorDemo' },
-  { label: 'Alfabeto',  route: 'AlfabetoDemo' },
-  { label: 'Nosotros',  route: 'Nosotros' },
+const QUICK: { label: TranslationKey; route: string }[] = [
+  { label: 'pubNavTranslator', route: 'TraductorDemo' },
+  { label: 'pubNavAlphabet',   route: 'AlfabetoDemo' },
+  { label: 'pubNavAbout',      route: 'Nosotros' },
 ];
 
-const RESOURCES: { label: string; route: string }[] = [
-  { label: 'Estadísticas', route: 'Login' },
-  { label: 'Historial',    route: 'Login' },
-  { label: 'Perfil',       route: 'Login' },
-  { label: 'Términos y condiciones', route: 'Terms' },
-  { label: 'Política de privacidad', route: 'PrivacyPolicy' },
+const RESOURCES: { label: TranslationKey; route: string }[] = [
+  { label: 'pubFooterStats',   route: 'Login' },
+  { label: 'pubFooterHistory', route: 'Login' },
+  { label: 'pubFooterProfile', route: 'Login' },
+  { label: 'pubFooterTerms',   route: 'Terms' },
+  { label: 'pubFooterPrivacy', route: 'PrivacyPolicy' },
 ];
 
-const CONTACT: { icon: keyof typeof Ionicons.glyphMap; text: string }[] = [
-  { icon: 'location-outline', text: 'Neiva, Huila — Colombia' },
+const CONTACT: { icon: keyof typeof Ionicons.glyphMap; text: TranslationKey }[] = [
+  { icon: 'location-outline', text: 'pubFooterLocation' },
 ];
 
 export const PublicFooter: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
   const isMid = width >= 640;
@@ -43,43 +45,41 @@ export const PublicFooter: React.FC = () => {
               </View>
               <View>
                 <Text style={styles.brandName}>TraduceSeña</Text>
-                <Text style={styles.brandTagline}>Lengua de señas para todos</Text>
+                <Text style={styles.brandTagline}>{t('pubTagline')}</Text>
               </View>
             </View>
-            <Text style={styles.about}>
-              Tecnología y educación para un mundo más inclusivo. Comunicación sin límites.
-            </Text>
+            <Text style={styles.about}>{t('pubFooterAbout')}</Text>
           </View>
 
           {/* Enlaces rápidos */}
           <View style={[styles.col, isWide && { flex: 1 }]}>
-            <Text style={styles.colTitle}>Enlaces rápidos</Text>
+            <Text style={styles.colTitle}>{t('pubFooterQuickLinks')}</Text>
             {QUICK.map(l => (
               <TouchableOpacity key={l.label} onPress={() => navigation.navigate(l.route)}>
-                <Text style={styles.link}>{l.label}</Text>
+                <Text style={styles.link}>{t(l.label)}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           {/* Recursos */}
           <View style={[styles.col, isWide && { flex: 1 }]}>
-            <Text style={styles.colTitle}>Recursos</Text>
+            <Text style={styles.colTitle}>{t('pubFooterResources')}</Text>
             {RESOURCES.map(l => (
               <TouchableOpacity key={l.label} onPress={() => navigation.navigate(l.route)}>
-                <Text style={styles.link}>{l.label}</Text>
+                <Text style={styles.link}>{t(l.label)}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           {/* Contacto */}
           <View style={[styles.col, isWide && { flex: 1.4 }]}>
-            <Text style={styles.colTitle}>Contacto</Text>
+            <Text style={styles.colTitle}>{t('pubFooterContact')}</Text>
             {CONTACT.map(c => (
               <View key={c.text} style={styles.contactRow}>
                 <View style={styles.contactIcon}>
                   <Ionicons name={c.icon} size={17} color={D.purple} />
                 </View>
-                <Text style={styles.contactText}>{c.text}</Text>
+                <Text style={styles.contactText}>{t(c.text)}</Text>
               </View>
             ))}
           </View>
@@ -88,13 +88,13 @@ export const PublicFooter: React.FC = () => {
         <View style={styles.divider} />
 
         <View style={[styles.bottom, !isMid && styles.bottomStack]}>
-          <Text style={styles.copy}>© {CURRENT_YEAR} TraduceSeña. Todos los derechos reservados.</Text>
+          <Text style={styles.copy}>{t('pubFooterRights', { year: CURRENT_YEAR })}</Text>
           <View style={styles.bottomLinks}>
             <TouchableOpacity onPress={() => navigation.navigate('Terms')}>
-              <Text style={styles.bottomLink}>Términos y condiciones</Text>
+              <Text style={styles.bottomLink}>{t('pubFooterTerms')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')}>
-              <Text style={styles.bottomLink}>Política de privacidad</Text>
+              <Text style={styles.bottomLink}>{t('pubFooterPrivacy')}</Text>
             </TouchableOpacity>
           </View>
         </View>
