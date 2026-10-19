@@ -49,6 +49,7 @@ export const LanguageDropdown: React.FC<Props> = ({
       {/* Capa transparente que cubre la pantalla: tocar fuera del menú lo cierra. */}
       {visible && (
         <Pressable
+          testID="language-dropdown-backdrop"
           style={styles.backdrop}
           onPress={() => setOpen(false)}
           accessible={false}
