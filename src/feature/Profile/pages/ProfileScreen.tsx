@@ -948,7 +948,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  aboutLinks: { flexDirection: 'row', gap: 24 },
+  aboutLinks: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 24, rowGap: 8 },
 
   actions: { flexDirection: 'row', gap: 14 },
   actionsStack: { flexDirection: 'column' },

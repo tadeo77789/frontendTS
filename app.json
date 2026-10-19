@@ -2,7 +2,7 @@
   "expo": {
     "name": "Traduce Señas",
     "slug": "traduce-senas",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./src/assets/images/app-icon.png",
