@@ -6,13 +6,22 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { LandingTheme as D, PublicSection } from '../../constants/landingTheme';
 import { HoverShadow, HoverShadowSoft } from '../../constants/hoverStyles';
 import { useHover } from '../../hooks/useHover';
+import { useTranslation, type TranslationKey } from '../../../app/config/i18n';
+import { useLanguage } from '../../../app/providers/LanguageContext';
+import { LanguageDropdown } from './LanguageDropdown';
 
-const NAV_ITEMS: { key: PublicSection; label: string; icon: keyof typeof Ionicons.glyphMap; route: string }[] = [
-  { key: 'inicio',    label: 'Inicio',    icon: 'home',     route: 'Landing' },
-  { key: 'traductor', label: 'Traductor', icon: 'language', route: 'TraductorDemo' },
-  { key: 'alfabeto',  label: 'Alfabeto',  icon: 'text',     route: 'AlfabetoDemo' },
-  { key: 'nosotros',  label: 'Nosotros',  icon: 'people',   route: 'Nosotros' },
+const NAV_ITEMS: { key: PublicSection; label: TranslationKey; icon: keyof typeof Ionicons.glyphMap; route: string }[] = [
+  { key: 'inicio',    label: 'pubNavHome',       icon: 'home',     route: 'Landing' },
+  { key: 'traductor', label: 'pubNavTranslator', icon: 'language', route: 'TraductorDemo' },
+  { key: 'alfabeto',  label: 'pubNavAlphabet',   icon: 'text',     route: 'AlfabetoDemo' },
+  { key: 'nosotros',  label: 'pubNavAbout',      icon: 'people',   route: 'Nosotros' },
 ];
+
+// Colores del selector de idioma con la paleta pública.
+const LANG_COLORS = {
+  surface: D.white, buttonBg: 'transparent', border: D.border,
+  text: D.ink, hint: D.hint, primary: D.purple, primaryBg: D.lilacBg,
+};
 
 interface Props {
   active: PublicSection;
@@ -25,12 +34,13 @@ const NavItem: React.FC<{
   onPress: () => void;
 }> = ({ item, active, onPress }) => {
   const { hovered, hoverProps } = useHover();
+  const { t } = useTranslation();
   const highlight = active || hovered;
 
   return (
     <Pressable style={styles.navItem} onPress={onPress} {...hoverProps}>
       {highlight && <Ionicons name={item.icon} size={16} color={D.purple} />}
-      <Text style={[styles.navText, highlight && styles.navTextActive]}>{item.label}</Text>
+      <Text style={[styles.navText, highlight && styles.navTextActive]}>{t(item.label)}</Text>
       {highlight && <View style={[styles.navUnderline, !active && styles.navUnderlineHover]} />}
     </Pressable>
   );
@@ -38,6 +48,9 @@ const NavItem: React.FC<{
 
 export const PublicHeader: React.FC<Props> = ({ active }) => {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
+  // Las páginas públicas solo se ven sin sesión: el idioma se guarda en el dispositivo.
+  const { language, setLanguage } = useLanguage();
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
   const isMid = width >= 640;
@@ -55,7 +68,7 @@ export const PublicHeader: React.FC<Props> = ({ active }) => {
           </View>
           <View>
             <Text style={styles.brandName}>TraduceSeña</Text>
-            <Text style={styles.brandTagline}>Lengua de señas para todos</Text>
+            <Text style={styles.brandTagline}>{t('pubTagline')}</Text>
           </View>
         </TouchableOpacity>
 
@@ -73,6 +86,13 @@ export const PublicHeader: React.FC<Props> = ({ active }) => {
         )}
 
         <View style={styles.actions}>
+          <LanguageDropdown
+            language={language}
+            onSelect={code => { void setLanguage(code); }}
+            colors={LANG_COLORS}
+            compact={!isWide}
+            accessibilityLabel={t('pubLanguage')}
+          />
           <Pressable
             style={({ hovered }: any) => [
               styles.loginBtn,
@@ -82,14 +102,14 @@ export const PublicHeader: React.FC<Props> = ({ active }) => {
             onPress={() => navigation.navigate('Login')}
           >
             <Ionicons name="person-outline" size={17} color={D.purple} />
-            {isMid && <Text style={styles.loginBtnText}>Iniciar sesión</Text>}
+            {isMid && <Text style={styles.loginBtnText}>{t('pubLogin')}</Text>}
           </Pressable>
           <Pressable
             onPress={() => navigation.navigate('Register')}
             style={({ hovered }: any) => [styles.registerWrap, hovered && styles.registerWrapHover]}
           >
             <LinearGradient colors={[D.purpleBtn, D.purpleBtn2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.registerBtn}>
-              <Text style={styles.registerBtnText}>Registrarse</Text>
+              <Text style={styles.registerBtnText}>{t('pubRegister')}</Text>
             </LinearGradient>
           </Pressable>
         </View>

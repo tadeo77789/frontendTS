@@ -32,18 +32,18 @@ export const RegisterScreen: React.FC = () => {
 
   const pw = form.password;
   const reqs = [
-    { label: 'Al menos 8 caracteres', ok: pw.length >= 8 },
-    { label: 'Mayúscula y minúscula', ok: /[A-Z]/.test(pw) && /[a-z]/.test(pw) },
-    { label: 'Al menos un número', ok: /\d/.test(pw) },
-    { label: 'Un carácter especial (!@#$…)', ok: /[^A-Za-z0-9]/.test(pw) },
+    { label: t('pwCheckLength'), ok: pw.length >= 8 },
+    { label: t('pwCheckCase'), ok: /[A-Z]/.test(pw) && /[a-z]/.test(pw) },
+    { label: t('pwCheckNumber'), ok: /\d/.test(pw) },
+    { label: t('pwCheckSpecial'), ok: /[^A-Za-z0-9]/.test(pw) },
   ];
   const score = reqs.filter(r => r.ok).length;
   const strengthMeta = [
     { color: '#E3DBF7', label: '' },
-    { color: '#EF4444', label: 'Débil' },
-    { color: '#F59E0B', label: 'Regular' },
-    { color: '#F59E0B', label: 'Buena' },
-    { color: '#10B981', label: 'Fuerte' },
+    { color: '#EF4444', label: t('pwLevelWeak') },
+    { color: '#F59E0B', label: t('pwLevelFair') },
+    { color: '#F59E0B', label: t('pwLevelGood') },
+    { color: '#10B981', label: t('pwLevelStrong') },
   ][score];
 
   return (
@@ -64,7 +64,7 @@ export const RegisterScreen: React.FC = () => {
             <Ionicons name="person-add-outline" size={30} color={D.purple} />
           </View>
           <Text style={styles.title}>{t('registerTitle')}</Text>
-          <Text style={styles.subtitle}>Únete y empieza a comunicarte sin barreras</Text>
+          <Text style={styles.subtitle}>{t('registerSubtitle')}</Text>
 
           {/* Nombre */}
           <Text style={styles.label}>{t('registerNameLabel')}</Text>
@@ -110,7 +110,7 @@ export const RegisterScreen: React.FC = () => {
               autoCorrect={false}
               textContentType="newPassword"
               autoComplete="new-password"
-              placeholder="Mínimo 8 caracteres"
+              placeholder={t('registerPasswordHint')}
               placeholderTextColor="#A6A0B4"
             />
             <TouchableOpacity onPress={() => setShowPw(v => !v)}>

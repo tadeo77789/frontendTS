@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  Linking,
   useWindowDimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -14,26 +15,29 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { PublicHeader } from '../../../shared/components/common/PublicHeader';
 import { PublicFooter } from '../../../shared/components/common/PublicFooter';
 import { LandingTheme as D } from '../../../shared/constants/landingTheme';
+import { useTranslation, type TranslationKey } from '../../../app/config/i18n';
+import { APK_DOWNLOAD_URL } from '../../../app/config/api.config';
 
-const FEATURES: { icon: keyof typeof Ionicons.glyphMap; title: string; desc: string; cta: string; route: string }[] = [
+const FEATURES: { icon: keyof typeof Ionicons.glyphMap; title: TranslationKey; desc: TranslationKey; cta: TranslationKey; route: string }[] = [
   {
     icon: 'text-outline',
-    title: 'Alfabeto',
-    desc: 'Aprende el alfabeto de la lengua de señas colombiana con imágenes y modelo 3D.',
-    cta: 'Ver alfabeto',
+    title: 'pubNavAlphabet',
+    desc: 'pubFeatAlphabetDesc',
+    cta: 'pubFeatAlphabetCta',
     route: 'AlfabetoDemo',
   },
   {
     icon: 'camera-outline',
-    title: 'Traductor',
-    desc: 'Traduce tus señas a texto y voz en tiempo real desde la cámara.',
-    cta: 'Probar traductor',
+    title: 'pubNavTranslator',
+    desc: 'pubFeatTranslatorDesc',
+    cta: 'pubFeatTranslatorCta',
     route: 'TraductorDemo',
   },
 ];
 
 export const LandingScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
   const isMid = width >= 640;
@@ -55,19 +59,17 @@ export const LandingScreen: React.FC = () => {
             <View style={styles.heroText}>
               <View style={styles.heroBadge}>
                 <Ionicons name="heart" size={14} color={D.purple} />
-                <Text style={styles.heroBadgeText}>Comunicación sin barreras</Text>
+                <Text style={styles.heroBadgeText}>{t('pubHeroBadge')}</Text>
               </View>
 
               <Text style={[styles.heroTitle, isWide && styles.heroTitleWide]}>
-                Conecta con el mundo a través de la{' '}
-                <Text style={styles.heroTitleAccent}>lengua de señas.</Text>
+                {t('pubHeroTitle')}
+                <Text style={styles.heroTitleAccent}>{t('pubHeroTitleAccent')}</Text>
               </Text>
 
               <View style={styles.heroDivider} />
 
-              <Text style={styles.heroSubtitle}>
-                Aprende, traduce y comunica sin límites. Tecnología al servicio de la inclusión.
-              </Text>
+              <Text style={styles.heroSubtitle}>{t('pubHeroSubtitle')}</Text>
 
               <View style={[styles.heroActions, !isMid && styles.heroActionsStack]}>
                 <TouchableOpacity
@@ -78,7 +80,7 @@ export const LandingScreen: React.FC = () => {
                   <View style={styles.primaryBtnDot}>
                     <Ionicons name="play" size={12} color={D.white} />
                   </View>
-                  <Text style={styles.primaryBtnText}>Comenzar ahora</Text>
+                  <Text style={styles.primaryBtnText}>{t('pubStartNow')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -87,9 +89,28 @@ export const LandingScreen: React.FC = () => {
                   style={styles.ghostBtn}
                 >
                   <Ionicons name="play-circle-outline" size={19} color={D.purple} />
-                  <Text style={styles.ghostBtnText}>Ver demostración</Text>
+                  <Text style={styles.ghostBtnText}>{t('pubSeeDemo')}</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Descarga de la app Android (APK) */}
+              {APK_DOWNLOAD_URL !== '' && (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => { void Linking.openURL(APK_DOWNLOAD_URL); }}
+                  style={[styles.apkBtn, !isMid && styles.apkBtnStack]}
+                  accessibilityRole="link"
+                >
+                  <View style={styles.apkIcon}>
+                    <Ionicons name="logo-android" size={20} color={D.white} />
+                  </View>
+                  <View style={styles.apkTextCol}>
+                    <Text style={styles.apkTitle}>{t('pubDownloadApk')}</Text>
+                    <Text style={styles.apkHint}>{t('pubDownloadApkHint')}</Text>
+                  </View>
+                  <Ionicons name="download-outline" size={20} color={D.purple} />
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Columna imágenes */}
@@ -107,8 +128,8 @@ export const LandingScreen: React.FC = () => {
                     <Ionicons name="videocam-outline" size={18} color={D.purple} />
                   </View>
                   <View>
-                    <Text style={styles.plateCardTitle}>Señas en tiempo real</Text>
-                    <Text style={styles.plateCardSub}>Reconociendo en vivo...</Text>
+                    <Text style={styles.plateCardTitle}>{t('pubLiveSigns')}</Text>
+                    <Text style={styles.plateCardSub}>{t('pubLiveRecognizing')}</Text>
                   </View>
                 </View>
               </View>
@@ -124,8 +145,8 @@ export const LandingScreen: React.FC = () => {
                     <Ionicons name="chatbubbles-outline" size={18} color={D.purple} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.plateCardTitle}>Traducción</Text>
-                    <Text style={[styles.plateCardSub, { color: D.body }]}>Hola, ¿cómo estás?</Text>
+                    <Text style={styles.plateCardTitle}>{t('pubTranslationLabel')}</Text>
+                    <Text style={[styles.plateCardSub, { color: D.body }]}>{t('pubSampleSentence')}</Text>
                   </View>
                   <View style={styles.plateCardRound}>
                     <Ionicons name="volume-high-outline" size={16} color={D.purple} />
@@ -149,10 +170,10 @@ export const LandingScreen: React.FC = () => {
                 <View style={styles.featureIcon}>
                   <Ionicons name={f.icon} size={26} color={D.purple} />
                 </View>
-                <Text style={styles.featureTitle}>{f.title}</Text>
-                <Text style={styles.featureDesc}>{f.desc}</Text>
+                <Text style={styles.featureTitle}>{t(f.title)}</Text>
+                <Text style={styles.featureDesc}>{t(f.desc)}</Text>
                 <View style={styles.featureCta}>
-                  <Text style={styles.featureCtaText}>{f.cta}</Text>
+                  <Text style={styles.featureCtaText}>{t(f.cta)}</Text>
                   <Ionicons name="arrow-forward" size={15} color={D.purple} />
                 </View>
               </TouchableOpacity>
@@ -213,6 +234,16 @@ const styles = StyleSheet.create({
     height: 54, paddingHorizontal: 26, borderRadius: 12, borderWidth: 1.5, borderColor: D.borderSoft, backgroundColor: D.white,
   },
   ghostBtnText: { fontSize: 16, fontWeight: '700', color: D.purple },
+  apkBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, alignSelf: 'flex-start', marginTop: 18,
+    paddingVertical: 10, paddingLeft: 10, paddingRight: 18, borderRadius: 14,
+    borderWidth: 1.5, borderColor: D.borderSoft, backgroundColor: D.white,
+  },
+  apkBtnStack: { alignSelf: 'stretch' },
+  apkIcon: { width: 38, height: 38, borderRadius: 11, backgroundColor: D.green, alignItems: 'center', justifyContent: 'center' },
+  apkTextCol: { flexShrink: 1 },
+  apkTitle: { fontSize: 15, fontWeight: '700', color: D.ink },
+  apkHint: { fontSize: 12, fontWeight: '600', color: D.hint, marginTop: 2 },
 
   heroMedia: { gap: 18 },
   heroMediaWide: { flex: 0.95 },

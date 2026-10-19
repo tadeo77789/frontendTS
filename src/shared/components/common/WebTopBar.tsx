@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, Pressable, StyleSheet, Image } from 'react-native';
 import { BottomTabHeaderProps } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6,15 +6,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../shared/constants/colors';
 import { useColors, useTheme } from '../../../app/providers/ThemeContext';
 import { useTranslation } from '../../../app/config/i18n';
-import { useLanguage, LANGUAGE_NAMES, type LanguageCode } from '../../../app/providers/LanguageContext';
+import { useLanguage, type LanguageCode } from '../../../app/providers/LanguageContext';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { usePreferences } from '../../../app/providers/PreferencesContext';
 import { useAdminMode } from '../../../app/providers/AccessContext';
 import { userDisplayName } from '../../../shared/utils/userDisplayName';
 import { HoverShadowSoft } from '../../../shared/constants/hoverStyles';
-
-const LANG_CODES: LanguageCode[] = ['es', 'en', 'fr', 'pt'];
-const LANG_FLAGS: Record<LanguageCode, string> = { es: '🇪🇸', en: '🇺🇸', fr: '🇫🇷', pt: '🇧🇷' };
+import { LanguageDropdown } from './LanguageDropdown';
 
 export const WebTopBar: React.FC<BottomTabHeaderProps> = ({ navigation, route }) => {
   const currentTab = route.name;
@@ -35,7 +33,6 @@ export const WebTopBar: React.FC<BottomTabHeaderProps> = ({ navigation, route })
 
   // Bloquea los controles mientras se cargan o guardan preferencias.
   const preferencesDisabled = preferencesLoading || preferencesSaving;
-  const [langOpen, setLangOpen] = useState(false);
 
   const userName = userDisplayName(user);
   const { adminMode: admin, canStats, canAdmin, homeRoute } = useAdminMode();
@@ -126,47 +123,16 @@ export const WebTopBar: React.FC<BottomTabHeaderProps> = ({ navigation, route })
             <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={20} color={isDark ? '#fff' : C.primary} />
           </Pressable>
 
-          <View>
-            <Pressable
-              style={({ hovered }: any) => [
-                styles.langBtn,
-                preferencesDisabled && { opacity: 0.5 },
-                { backgroundColor: C.backgroundGray, borderColor: C.border },
-                hovered && { borderColor: C.primary },
-                hovered && HoverShadowSoft,
-              ]}
-              onPress={() => setLangOpen(o => !o)}
-              disabled={preferencesDisabled}
-              accessibilityState={{ disabled: preferencesDisabled }}
-            >
-              <Ionicons name="globe-outline" size={18} color={C.primary} />
-              <Text style={[styles.langText, { color: C.textPrimary }]}>{LANGUAGE_NAMES[language as LanguageCode]}</Text>
-              <Ionicons name="chevron-down" size={16} color={C.textHint} />
-            </Pressable>
-
-            {/* Durante una operación, no permite elegir otro idioma. */}
-            {langOpen && !preferencesDisabled && (
-              <View style={[styles.langMenu, { backgroundColor: C.surface, borderColor: C.border, shadowColor: C.primary }]}>
-                {LANG_CODES.map(code => {
-                  const active = language === code;
-                  return (
-                    <TouchableOpacity
-                      key={code}
-                      style={[styles.langItem, active && { backgroundColor: C.primaryBg }]}
-                      onPress={() => { handleLanguageChange(code); setLangOpen(false); }}
-                      disabled={preferencesDisabled}
-                      accessibilityState={{ disabled: preferencesDisabled }}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.langFlag}>{LANG_FLAGS[code]}</Text>
-                      <Text style={[styles.langItemText, { color: C.textPrimary }]}>{LANGUAGE_NAMES[code]}</Text>
-                      {active && <Ionicons name="checkmark" size={17} color={C.primary} />}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-          </View>
+          <LanguageDropdown
+            language={language}
+            onSelect={handleLanguageChange}
+            disabled={preferencesDisabled}
+            accessibilityLabel={t('profileLanguage')}
+            colors={{
+              surface: C.surface, buttonBg: C.backgroundGray, border: C.border,
+              text: C.textPrimary, hint: C.textHint, primary: C.primary, primaryBg: C.primaryBg,
+            }}
+          />
 
           <Pressable
             style={({ hovered }: any) => [
@@ -237,15 +203,6 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   divider: { width: 1, height: 32, backgroundColor: Colors.border, marginRight: 2 },
   iconBtn: { width: 44, height: 44, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  langBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 44, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1 },
-  langText: { fontSize: 15, fontWeight: '700' },
-  langMenu: {
-    position: 'absolute', top: 52, right: 0, width: 220, borderRadius: 14, borderWidth: 1, padding: 8, zIndex: 100,
-    shadowOffset: { width: 0, height: 24 }, shadowOpacity: 0.16, shadowRadius: 40, elevation: 12,
-  },
-  langItem: { flexDirection: 'row', alignItems: 'center', gap: 12, height: 44, paddingHorizontal: 12, borderRadius: 10 },
-  langFlag: { fontSize: 20 },
-  langItemText: { flex: 1, fontSize: 15, fontWeight: '600' },
 
   avatarPill: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 44, paddingLeft: 6, paddingRight: 14, borderRadius: 999, borderWidth: 1 },
   avatarCircle: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
