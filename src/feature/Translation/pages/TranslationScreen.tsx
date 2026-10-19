@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Modal,
+  Pressable,
   Platform,
   useWindowDimensions,
 } from 'react-native';
@@ -91,11 +93,15 @@ export const TranslationScreen: React.FC = () => {
   /** Punto del reconocimiento: quieto, grabando una sena, o clasificandola. */
   const [estadoSena, setEstadoSena] = useState<'quieto' | 'senando' | 'analizando'>('quieto');
   const [wordMatch, setWordMatch] = useState<WordMatchDebug | null>(null);
+  const [vocabOpen, setVocabOpen] = useState(false);
   const usingGestures = engine === 'palabras';
   const vocabularyGroups = useMemo(
     () => groupVocabulary(vocabulary.map(v => v.word), addedWords),
     [vocabulary, addedWords],
   );
+  const vocabCount = isGenericGestureEngine()
+    ? vocabulary.length
+    : vocabularyGroups.reduce((n, g) => n + g.words.length, 0);
 
   const persistSignTranscript = useCallback(async () => {
     // Lo que sale del simulador no es una traducción real: nunca se guarda.
@@ -136,9 +142,6 @@ export const TranslationScreen: React.FC = () => {
         // Cada sena confirmada se guarda sola; aqui solo se limpia el panel.
         gestureReset();
         gestureStart();
-        // El motor decide cual usar al arrancar, asi que el vocabulario se
-        // refresca despues, no antes.
-        setTimeout(() => setVocabulary(wordVocabulary()), 1500);
       } else {
         agentReset();
         agentStart();
@@ -208,6 +211,20 @@ export const TranslationScreen: React.FC = () => {
       })
       .catch(() => undefined);
   }, []);
+
+  /**
+   * El motor decide cual usar al arrancar y el modelo baja sus glosas despues,
+   * asi que el vocabulario se consulta hasta que llegue. Un solo intento a
+   * tiempo fijo fallaba en conexiones lentas y la lista no salia nunca.
+   */
+  useEffect(() => {
+    if (!isActive || !usingGestures || vocabulary.length > 0) return;
+    const id = setInterval(() => {
+      const words = wordVocabulary();
+      if (words.length > 0) setVocabulary(words);
+    }, 500);
+    return () => clearInterval(id);
+  }, [isActive, usingGestures, vocabulary.length]);
 
   /**
    * Diagnostico del motor de plantillas: que palabra quedo mas cerca y a que
@@ -445,41 +462,18 @@ export const TranslationScreen: React.FC = () => {
 
                 {usingGestures ? (
                   vocabulary.length > 0 && (
-                  <View style={styles.vocabBlock}>
-                    <Text style={[styles.vocabTitle, { color: C.textSecondary }]}>
-                      {isGenericGestureEngine() ? t('gestureVocabularyGeneric') : t('gestureVocabulary')}
+                  <TouchableOpacity
+                    style={[styles.vocabButton, { backgroundColor: C.primaryBg, borderColor: C.primary }]}
+                    onPress={() => setVocabOpen(true)}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="list-outline" size={18} color={C.primary} />
+                    <Text style={[styles.vocabButtonText, { color: C.primary }]}>
+                      {isGenericGestureEngine() ? t('gestureVocabularyGeneric') : t('gestureVocabulary')} · {vocabCount}
                     </Text>
-                    {isGenericGestureEngine() && (
-                      <Text style={[styles.vocabHint, { color: C.textHint }]}>{t('gestureGenericNote')}</Text>
-                    )}
-                    {isGenericGestureEngine() ? (
-                      <View style={styles.vocabRow}>
-                        {vocabulary.map(item => (
-                          <View key={item.word} style={[styles.vocabChip, { backgroundColor: C.primaryBg }]}>
-                            <Text style={[styles.vocabWord, { color: C.primary }]}>{item.word}</Text>
-                            {!!item.hint && (
-                              <Text style={[styles.vocabHint, { color: C.textHint }]}>{item.hint}</Text>
-                            )}
-                          </View>
-                        ))}
-                      </View>
-                    ) : (
-                      vocabularyGroups.map(group => (
-                        <View key={group.key} style={styles.vocabGroup}>
-                          <Text style={[styles.vocabGroupTitle, { color: C.textHint }]}>
-                            {t(group.labelKey)} · {group.words.length}
-                          </Text>
-                          <View style={styles.vocabRow}>
-                            {group.words.map(word => (
-                              <View key={word} style={[styles.vocabChip, { backgroundColor: C.primaryBg }]}>
-                                <Text style={[styles.vocabWord, { color: C.primary }]}>{word}</Text>
-                              </View>
-                            ))}
-                          </View>
-                        </View>
-                      ))
-                    )}
-                  </View>
+                    <Ionicons name="chevron-forward" size={16} color={C.primary} />
+                  </TouchableOpacity>
                   )
                 ) : (
                   <View style={styles.tipsRow}>
@@ -597,6 +591,53 @@ export const TranslationScreen: React.FC = () => {
 
         </View>
       </ScrollView>
+
+      <Modal visible={vocabOpen} transparent animationType="fade" onRequestClose={() => setVocabOpen(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setVocabOpen(false)}>
+          <Pressable style={[styles.modalCard, { backgroundColor: C.surface, borderColor: C.border }]} onPress={() => {}}>
+            <View style={styles.modalHead}>
+              <Text style={[styles.modalTitle, { color: C.textPrimary }]}>
+                {isGenericGestureEngine() ? t('gestureVocabularyGeneric') : t('gestureVocabulary')}
+              </Text>
+              <TouchableOpacity onPress={() => setVocabOpen(false)} accessibilityRole="button" accessibilityLabel={t('close')}>
+                <Ionicons name="close" size={24} color={C.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalScroll} contentContainerStyle={styles.vocabBlock}>
+              {isGenericGestureEngine() && (
+                <Text style={[styles.vocabHint, { color: C.textHint }]}>{t('gestureGenericNote')}</Text>
+              )}
+              {isGenericGestureEngine() ? (
+                <View style={styles.vocabRow}>
+                  {vocabulary.map(item => (
+                    <View key={item.word} style={[styles.vocabChip, { backgroundColor: C.primaryBg }]}>
+                      <Text style={[styles.vocabWord, { color: C.primary }]}>{item.word}</Text>
+                      {!!item.hint && (
+                        <Text style={[styles.vocabHint, { color: C.textHint }]}>{item.hint}</Text>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                vocabularyGroups.map(group => (
+                  <View key={group.key} style={styles.vocabGroup}>
+                    <Text style={[styles.vocabGroupTitle, { color: C.textHint }]}>
+                      {t(group.labelKey)} · {group.words.length}
+                    </Text>
+                    <View style={styles.vocabRow}>
+                      {group.words.map(word => (
+                        <View key={word} style={[styles.vocabChip, { backgroundColor: C.primaryBg }]}>
+                          <Text style={[styles.vocabWord, { color: C.primary }]}>{word}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -675,8 +716,19 @@ const styles = StyleSheet.create({
   gestureProgressTrack: { width: 140, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.3)', overflow: 'hidden', marginTop: 6 },
   gestureProgressFill: { height: '100%', borderRadius: 3, backgroundColor: '#fff' },
 
-  vocabBlock: { gap: 10, marginTop: 16 },
-  vocabTitle: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  vocabButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginTop: 16, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1.5,
+  },
+  vocabButtonText: { fontSize: 14, fontWeight: '800' },
+
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  modalCard: { width: '100%', maxWidth: 560, maxHeight: '80%', borderRadius: 20, borderWidth: 1, padding: 22 },
+  modalHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  modalTitle: { fontSize: 18, fontWeight: '800' },
+  modalScroll: { flexGrow: 0 },
+
+  vocabBlock: { gap: 10, paddingBottom: 4 },
   vocabGroup: { gap: 6 },
   vocabGroupTitle: { fontSize: 11.5, fontWeight: '700' },
   vocabRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

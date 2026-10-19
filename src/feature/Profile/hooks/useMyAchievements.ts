@@ -17,8 +17,13 @@ interface AchievementsState {
   error: boolean;
 }
 
-/** Carga los logros persistidos del usuario cada vez que Perfil recibe el foco. */
-export const useMyAchievements = () => {
+/**
+ * Carga los logros persistidos al recibir foco. enabled=false bloquea también
+ * reload, oculta datos/errores y cancela la petición. Cada cambio de enabled
+ * renueva la identidad de consulta para descartar respuestas tardías, incluso
+ * si el transporte ignora la cancelación o se vuelve a habilitar enseguida.
+ */
+export const useMyAchievements = (enabled = true) => {
   const {
     user,
     token,
@@ -33,7 +38,7 @@ export const useMyAchievements = () => {
     userId,
     token: sessionToken,
     generation: sessionGeneration,
-  }), [userId, sessionToken, sessionGeneration]);
+  }), [userId, sessionToken, sessionGeneration, enabled]);
 
   const renderedSessionRef = useRef(session);
   renderedSessionRef.current = session;
@@ -43,7 +48,7 @@ export const useMyAchievements = () => {
   const [state, setState] = useState<AchievementsState>({
     session,
     achievements: null,
-    loading: true,
+    loading: enabled,
     error: false,
   });
 
@@ -59,17 +64,18 @@ export const useMyAchievements = () => {
     setState({
       session,
       achievements: null,
-      loading: session.userId !== null && session.token !== null,
+      loading: enabled && session.userId !== null && session.token !== null,
       error: false,
     });
-  }, [session]);
+  }, [session, enabled]);
 
   const load = useCallback(async (): Promise<void> => {
     const { userId, token, generation } = session;
 
     // También descarta un reload conservado por un render de otra sesión.
     if (
-      userId === null
+      !enabled
+      || userId === null
       || token === null
       || focusedSessionRef.current !== session
       || renderedSessionRef.current !== session
@@ -84,7 +90,8 @@ export const useMyAchievements = () => {
     controllerRef.current = controller;
 
     const isCurrent = (): boolean =>
-      controllerRef.current === controller
+      enabled
+      && controllerRef.current === controller
       && !controller.signal.aborted
       && focusedSessionRef.current === session
       && renderedSessionRef.current === session
@@ -129,7 +136,7 @@ export const useMyAchievements = () => {
         }));
       }
     }
-  }, [session, isSessionCurrent, cancel]);
+  }, [session, enabled, isSessionCurrent, cancel]);
 
   useFocusEffect(
     useCallback(() => {
@@ -146,14 +153,15 @@ export const useMyAchievements = () => {
 
   // Evita mostrar datos de otra cuenta antes de que se ejecuten los efectos.
   const visible =
-    state.session === session
+    enabled
+    && state.session === session
     && isSessionCurrent(session.generation);
 
   return {
     achievements: visible ? state.achievements : null,
     loading: visible
       ? state.loading
-      : session.userId !== null && session.token !== null,
+      : enabled && session.userId !== null && session.token !== null,
     error: visible ? state.error : false,
     reload: load,
   };

@@ -6,27 +6,29 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { PublicHeader } from '../../../shared/components/common/PublicHeader';
 import { PublicFooter } from '../../../shared/components/common/PublicFooter';
 import { LandingTheme as D } from '../../../shared/constants/landingTheme';
+import { useTranslation, type TranslationKey } from '../../../app/config/i18n';
 
-const PILLARS: { icon: keyof typeof Ionicons.glyphMap; title: string; desc: string; color: string; bg: string }[] = [
-  { icon: 'flag-outline', title: 'Nuestra misión', desc: 'Hacer la LSC accesible para todos con herramientas simples y gratuitas.', color: D.purple, bg: D.lilacBg },
-  { icon: 'heart-outline', title: 'Por qué lo hacemos', desc: 'Creemos que nadie debería quedar fuera de una conversación.', color: D.green, bg: D.greenBg },
-  { icon: 'rocket-outline', title: 'Cómo trabajamos', desc: 'Diseño, código y comunidad — iterando desde Neiva para todo el país.', color: D.amber, bg: D.amberBg },
+const PILLARS: { icon: keyof typeof Ionicons.glyphMap; title: TranslationKey; desc: TranslationKey; color: string; bg: string }[] = [
+  { icon: 'flag-outline', title: 'pubAbMissionTitle', desc: 'pubAbMissionDesc', color: D.purple, bg: D.lilacBg },
+  { icon: 'heart-outline', title: 'pubAbWhyTitle', desc: 'pubAbWhyDesc', color: D.green, bg: D.greenBg },
+  { icon: 'rocket-outline', title: 'pubAbHowTitle', desc: 'pubAbHowDesc', color: D.amber, bg: D.amberBg },
 ];
 
-const TEAM: { name: string; role: string; icon: keyof typeof Ionicons.glyphMap; bio: string; tint: string; color: string }[] = [
-  { name: 'Juan Mauricio Suaza Solórzano', role: 'Tech Lead y desarrollo', icon: 'code-slash', bio: 'Equipo de desarrollo de Traduce Señas.', tint: D.lilacSoft, color: D.violet },
-  { name: 'Luis Alejandro Duarte Aldana', role: 'Desarrollo', icon: 'code-slash', bio: 'Equipo de desarrollo de Traduce Señas.', tint: D.greenBg, color: D.green },
-  { name: 'Juan Camilo Fierro Esquivel', role: 'Desarrollo', icon: 'code-slash', bio: 'Equipo de desarrollo de Traduce Señas.', tint: D.amberBg, color: D.amber },
+const TEAM: { name: string; role: TranslationKey; icon: keyof typeof Ionicons.glyphMap; bio: TranslationKey; tint: string; color: string }[] = [
+  { name: 'Juan Mauricio Suaza Solórzano', role: 'pubAbRoleLead', icon: 'code-slash', bio: 'pubAbBio', tint: D.lilacSoft, color: D.violet },
+  { name: 'Luis Alejandro Duarte Aldana', role: 'pubAbRoleDev', icon: 'code-slash', bio: 'pubAbBio', tint: D.greenBg, color: D.green },
+  { name: 'Juan Camilo Fierro Esquivel', role: 'pubAbRoleDev', icon: 'code-slash', bio: 'pubAbBio', tint: D.amberBg, color: D.amber },
 ];
 
-const STATS = [
-  { value: '3', label: 'Integrantes' },
-  { value: 'Neiva', label: 'Nuestra base' },
-  { value: 'LSC', label: 'Lengua de Señas Colombiana' },
+const STATS: { value: string; label: TranslationKey }[] = [
+  { value: '3', label: 'pubAbStatMembers' },
+  { value: 'Neiva', label: 'pubAbStatBase' },
+  { value: 'LSC', label: 'pubAbStatLanguage' },
 ];
 
 export const NosotrosScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
   const isMid = width >= 640;
@@ -40,15 +42,12 @@ export const NosotrosScreen: React.FC = () => {
           <View style={styles.heroInner}>
             <View style={styles.pill}>
               <Ionicons name="location-outline" size={14} color={D.purple} />
-              <Text style={styles.pillText}>Neiva, Huila · Colombia</Text>
+              <Text style={styles.pillText}>{t('pubAbLocation')}</Text>
             </View>
             <Text style={[styles.heroTitle, isWide && styles.heroTitleWide]}>
-              Somos un equipo de <Text style={{ color: D.purple }}>tres</Text> creando comunicación sin barreras
+              {t('pubAbTitle')}<Text style={{ color: D.purple }}>{t('pubAbTitleAccent')}</Text>{t('pubAbTitleEnd')}
             </Text>
-            <Text style={styles.heroSub}>
-              Tres estudiantes de Neiva que unimos tecnología e inclusión para acercar la Lengua de Señas
-              Colombiana a más personas.
-            </Text>
+            <Text style={styles.heroSub}>{t('pubAbSubtitle')}</Text>
           </View>
         </LinearGradient>
 
@@ -61,8 +60,8 @@ export const NosotrosScreen: React.FC = () => {
                   <Ionicons name={p.icon} size={22} color={p.color} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.pillarTitle}>{p.title}</Text>
-                  <Text style={styles.pillarDesc}>{p.desc}</Text>
+                  <Text style={styles.pillarTitle}>{t(p.title)}</Text>
+                  <Text style={styles.pillarDesc}>{t(p.desc)}</Text>
                 </View>
               </View>
             ))}
@@ -71,20 +70,20 @@ export const NosotrosScreen: React.FC = () => {
 
         {/* Equipo */}
         <View style={styles.section}>
-          <Text style={styles.h2}>El equipo</Text>
-          <Text style={styles.h2Sub}>Tres personas, un mismo propósito</Text>
+          <Text style={styles.h2}>{t('pubAbTeam')}</Text>
+          <Text style={styles.h2Sub}>{t('pubAbTeamSub')}</Text>
           <View style={[styles.teamGrid, isMid && styles.teamGridWide]}>
-            {TEAM.map((t, i) => (
+            {TEAM.map((m, i) => (
               <View key={i} style={[styles.teamCard, isMid && { flex: 1 }]}>
-                <View style={[styles.avatar, { backgroundColor: t.tint }]}>
-                  <Ionicons name={t.icon} size={44} color={t.color} />
+                <View style={[styles.avatar, { backgroundColor: m.tint }]}>
+                  <Ionicons name={m.icon} size={44} color={m.color} />
                 </View>
-                <Text style={styles.teamName}>{t.name}</Text>
-                <View style={[styles.rolePill, { backgroundColor: t.tint }]}>
-                  <Ionicons name={t.icon} size={14} color={t.color} />
-                  <Text style={[styles.roleText, { color: t.color }]}>{t.role}</Text>
+                <Text style={styles.teamName}>{m.name}</Text>
+                <View style={[styles.rolePill, { backgroundColor: m.tint }]}>
+                  <Ionicons name={m.icon} size={14} color={m.color} />
+                  <Text style={[styles.roleText, { color: m.color }]}>{t(m.role)}</Text>
                 </View>
-                <Text style={styles.teamBio}>{t.bio}</Text>
+                <Text style={styles.teamBio}>{t(m.bio)}</Text>
               </View>
             ))}
           </View>
@@ -96,16 +95,13 @@ export const NosotrosScreen: React.FC = () => {
             <View style={isWide && { flex: 1.2 }}>
               <View style={[styles.pill, { backgroundColor: D.white }]}>
                 <Ionicons name="location-outline" size={14} color={D.purple} />
-                <Text style={styles.pillText}>Hechos en Neiva</Text>
+                <Text style={styles.pillText}>{t('pubAbMadeIn')}</Text>
               </View>
-              <Text style={styles.bannerTitle}>Desde el Huila para toda Colombia</Text>
-              <Text style={styles.bannerText}>
-                Somos un proyecto joven, hecho con esfuerzo local. Si quieres apoyarnos, colaborar o dar
-                retroalimentación, escríbenos — nos encantará saber de ti.
-              </Text>
+              <Text style={styles.bannerTitle}>{t('pubAbBannerTitle')}</Text>
+              <Text style={styles.bannerText}>{t('pubAbBannerText')}</Text>
               <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate('Register')} style={styles.bannerBtnWrap}>
                 <LinearGradient colors={[D.purpleBtn, D.purpleBtn2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.bannerBtn}>
-                  <Text style={styles.bannerBtnText}>Conócenos</Text>
+                  <Text style={styles.bannerBtnText}>{t('pubAbMeetUs')}</Text>
                   <Ionicons name="arrow-forward" size={18} color={D.white} />
                 </LinearGradient>
               </TouchableOpacity>
@@ -114,7 +110,7 @@ export const NosotrosScreen: React.FC = () => {
               {STATS.map(s => (
                 <View key={s.label} style={styles.statCard}>
                   <Text style={styles.statValue}>{s.value}</Text>
-                  <Text style={styles.statLabel}>{s.label}</Text>
+                  <Text style={styles.statLabel}>{t(s.label)}</Text>
                 </View>
               ))}
             </View>

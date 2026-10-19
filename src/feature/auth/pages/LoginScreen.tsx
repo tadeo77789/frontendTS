@@ -21,13 +21,13 @@ import { useLoginForm } from '../hooks/useLoginForm';
 import { useScrollToInput } from '../../../shared/hooks/useScrollToInput';
 import { GoogleLoginButton } from '../components/GoogleLoginButton';
 import { FacebookLoginButton } from '../components/FacebookLoginButton';
-import { useTranslation } from '../../../app/config/i18n';
+import { useTranslation, type TranslationKey } from '../../../app/config/i18n';
 import { HoverShadow, HoverShadowSoft } from '../../../shared/constants/hoverStyles';
 
-const HERO_STATS = [
-  { value: '+1000', label: 'Señas' },
-  { value: '26', label: 'Letras LSC' },
-  { value: '100%', label: 'Gratis' },
+const HERO_STATS: { value: string; labelKey: TranslationKey }[] = [
+  { value: '+50', labelKey: 'loginStatSigns' },
+  { value: '26', labelKey: 'loginStatLetters' },
+  { value: '100%', labelKey: 'loginStatFree' },
 ];
 
 export const LoginScreen: React.FC = () => {
@@ -57,10 +57,10 @@ export const LoginScreen: React.FC = () => {
       <View style={styles.avatarBox}>
         <Ionicons name="person-outline" size={28} color={D.purple} />
       </View>
-      <Text style={styles.cardTitle}>Bienvenido de nuevo</Text>
-      <Text style={styles.cardSubtitle}>Ingresa a tu cuenta para continuar</Text>
+      <Text style={styles.cardTitle}>{t('welcomeBack')}</Text>
+      <Text style={styles.cardSubtitle}>{t('loginSubtitle')}</Text>
 
-      <Text style={styles.label}>Email</Text>
+      <Text style={styles.label}>{t('email')}</Text>
       <View style={[styles.field, { borderColor: errors.email ? '#F0A9A9' : '#E3DBF7' }]}>
         <Ionicons name="mail-outline" size={19} color={D.purple} />
         <TextInput
@@ -84,7 +84,7 @@ export const LoginScreen: React.FC = () => {
         <View style={styles.errorRow}><Ionicons name="alert-circle-outline" size={14} color="#EF4444" /><Text style={styles.errorText}>{errors.email}</Text></View>
       )}
 
-      <Text style={styles.label}>Contraseña</Text>
+      <Text style={styles.label}>{t('password')}</Text>
       <View style={[styles.field, { borderColor: errors.password ? '#F0A9A9' : '#E3DBF7' }]}>
         <Ionicons name="lock-closed-outline" size={19} color={D.purple} />
         <TextInput
@@ -137,7 +137,7 @@ export const LoginScreen: React.FC = () => {
 
       <View style={styles.dividerRow}>
         <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>o continúa con</Text>
+        <Text style={styles.dividerText}>{t('loginOrContinueWith')}</Text>
         <View style={styles.dividerLine} />
       </View>
 
@@ -179,14 +179,14 @@ export const LoginScreen: React.FC = () => {
         <View style={styles.heroPlate}>
           <Image source={require('../../../assets/images/login.png')} style={styles.heroPlateImg} resizeMode="cover" />
         </View>
-        <Text style={styles.heroTitle}>Comunícate sin barreras</Text>
-        <Text style={styles.heroSub}>Inicia sesión y continúa aprendiendo, traduciendo y conectando con la lengua de señas.</Text>
+        <Text style={styles.heroTitle}>{t('brandTagline')}</Text>
+        <Text style={styles.heroSub}>{t('loginHeroSubtitle')}</Text>
       </View>
       <View style={styles.heroStats}>
         {HERO_STATS.map(s => (
-          <View key={s.label}>
+          <View key={s.labelKey}>
             <Text style={styles.heroStatValue}>{s.value}</Text>
-            <Text style={styles.heroStatLabel}>{s.label}</Text>
+            <Text style={styles.heroStatLabel}>{t(s.labelKey)}</Text>
           </View>
         ))}
       </View>

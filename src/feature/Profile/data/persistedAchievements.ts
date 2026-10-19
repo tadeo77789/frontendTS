@@ -1,128 +1,98 @@
 export type PersistedAchievementMetric =
-  | 'TRANSLATIONS_COMPLETED'
-  | 'SIGNS_LEARNED'
-  | 'ALPHABET_COMPLETED'
-  | 'SESSIONS_COMPLETED';
-
+  | 'TRANSLATIONS_COMPLETED' | 'SIGNS_LEARNED' | 'ALPHABET_COMPLETED'
+  | 'SESSIONS_COMPLETED' | 'CATALOG_REQUIREMENT';
+export const CATEGORIES = ['translation', 'practice', 'vocabulary', 'consistency', 'community'] as const;
+export type AchievementCategory = typeof CATEGORIES[number];
+export interface AchievementLocalization { name: string; description: string; unavailableReason?: string }
 export interface PersistedAchievement {
   id: string;
   code: string;
   name: string;
   description: string;
   metric: PersistedAchievementMetric;
-  targetCount: number;
+  targetCount: number | null;
   points: number;
   iconReference?: string;
   isSecret: boolean;
   isActive: boolean;
+  collection: 'catalog' | 'legacy';
+  availability: 'available' | 'upcoming';
+  category: AchievementCategory | null;
+  level: 'bronze' | 'silver' | 'gold' | null;
+  localizations: Record<string, AchievementLocalization>;
 }
-
 export interface PersistedAchievementProgress {
   achievement: PersistedAchievement;
-  currentCount: number;
+  currentCount: number | null;
   achievedAt: string | null;
 }
-
 export class InvalidAchievementsResponseError extends Error {
-  constructor() {
-    super('La respuesta de logros no cumple el contrato');
-    this.name = 'InvalidAchievementsResponseError';
-  }
+  constructor() { super('La respuesta de logros no cumple el contrato'); this.name = 'InvalidAchievementsResponseError'; }
 }
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isCount = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
+const metrics = ['TRANSLATIONS_COMPLETED', 'SIGNS_LEARNED', 'ALPHABET_COMPLETED', 'SESSIONS_COMPLETED', 'CATALOG_REQUIREMENT'];
+const isDate = (v: unknown): boolean => v === null || (typeof v === 'string'
+  && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(v)
+  && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v);
+const isLocalization = (v: unknown) => isRecord(v) && typeof v.name === 'string'
+  && typeof v.description === 'string' && (v.unavailableReason === undefined || typeof v.unavailableReason === 'string');
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const isMetric = (value: unknown): value is PersistedAchievementMetric =>
-  value === 'TRANSLATIONS_COMPLETED'
-  || value === 'SIGNS_LEARNED'
-  || value === 'ALPHABET_COMPLETED'
-  || value === 'SESSIONS_COMPLETED';
-
-const isNonNegativeInteger = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
-
-// Profile serializa achievedAt como ISO UTC con milisegundos.
-const isAchievedAt = (value: unknown): value is string | null => {
-  if (value === null) return true;
-  if (
-    typeof value !== 'string'
-    || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)
-  ) {
-    return false;
-  }
-
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp)
-    && new Date(timestamp).toISOString() === value;
+/** Accept the old measured-only response during frontend-first deployment.
+ * Explicit but incomplete new metadata is rejected instead of inventing defaults.
+ */
+export const parseAchievementsResponse = (value: unknown): PersistedAchievementProgress[] => {
+  const fail = (): never => { throw new InvalidAchievementsResponseError(); };
+  if (!isRecord(value) || !Array.isArray(value.data)) return fail();
+  const parsed = value.data.map((entry: unknown): PersistedAchievementProgress => {
+    if (!isRecord(entry) || !isRecord(entry.achievement)) return fail();
+    const a = entry.achievement;
+    const old = ['collection', 'availability', 'category', 'level', 'localizations'].every(key => !(key in a));
+    const normalized = old ? { ...a, collection: 'legacy', availability: 'available', category: null, level: null, localizations: {} } : a;
+    if (typeof a.id !== 'string' || !a.id.trim() || typeof a.code !== 'string' || !a.code.trim()
+      || typeof a.name !== 'string' || typeof a.description !== 'string'
+      || typeof a.metric !== 'string' || !metrics.includes(a.metric) || !Number.isSafeInteger(a.points)
+      || (a.iconReference !== undefined && typeof a.iconReference !== 'string')
+      || typeof a.isSecret !== 'boolean' || typeof a.isActive !== 'boolean'
+      || !['catalog','legacy'].includes(String(normalized.collection))
+      || !['available','upcoming'].includes(String(normalized.availability))
+      || !(normalized.category === null || CATEGORIES.includes(normalized.category as AchievementCategory))
+      || !(normalized.level === null || ['bronze','silver','gold'].includes(String(normalized.level)))
+      || !isRecord(normalized.localizations) || !Object.values(normalized.localizations).every(isLocalization)
+      || !isDate(entry.achievedAt)) return fail();
+    if (normalized.collection === 'catalog' && (normalized.category === null || normalized.level === null)) return fail();
+    if (normalized.availability === 'upcoming') {
+      if (a.targetCount !== null || entry.currentCount !== null || entry.achievedAt !== null
+        || normalized.collection !== 'catalog'
+        || !Object.values(normalized.localizations).some(v => isRecord(v) && typeof v.unavailableReason === 'string' && v.unavailableReason.trim())) return fail();
+    } else if (!isCount(a.targetCount) || a.targetCount === 0 || !isCount(entry.currentCount)
+      || a.metric === 'CATALOG_REQUIREMENT') return fail();
+    // Validation above establishes the wire types; records begin as unknown JSON.
+    return { achievement: normalized as unknown as PersistedAchievement,
+      currentCount: entry.currentCount as number | null, achievedAt: entry.achievedAt as string | null };
+  });
+  if (new Set(parsed.map(p => p.achievement.id)).size !== parsed.length
+    || new Set(parsed.map(p => p.achievement.code)).size !== parsed.length) return fail();
+  return parsed;
 };
 
-const isAchievement = (value: unknown): value is PersistedAchievement =>
-  isRecord(value)
-  && typeof value.id === 'string' && value.id.trim().length > 0
-  && typeof value.code === 'string' && value.code.trim().length > 0
-  && typeof value.name === 'string'
-  && typeof value.description === 'string'
-  && isMetric(value.metric)
-  && isNonNegativeInteger(value.targetCount) && value.targetCount > 0
-  && typeof value.points === 'number' && Number.isSafeInteger(value.points)
-  && (value.iconReference === undefined || typeof value.iconReference === 'string')
-  && typeof value.isSecret === 'boolean'
-  && typeof value.isActive === 'boolean';
-
-const isProgress = (value: unknown): value is PersistedAchievementProgress =>
-  isRecord(value)
-  && isAchievement(value.achievement)
-  && isNonNegativeInteger(value.currentCount)
-  && isAchievedAt(value.achievedAt);
-
-/** Valida el sobre completo; un elemento invalido no se convierte en progreso cero. */
-export const parseAchievementsResponse = (
-  value: unknown,
-): PersistedAchievementProgress[] => {
-  if (
-    !isRecord(value)
-    || !Array.isArray(value.data)
-    || !value.data.every(isProgress)
-  ) {
-    throw new InvalidAchievementsResponseError();
-  }
-
-  const ids = new Set(value.data.map(progress => progress.achievement.id));
-  if (ids.size !== value.data.length) {
-    throw new InvalidAchievementsResponseError();
-  }
-
-  return value.data;
+/** achievedAt is authoritative; upcoming entries have no numeric progress. */
+export const persistedProgressOf = (p: PersistedAchievementProgress): { unlocked: boolean; percent: number | null } => {
+  if (p.achievement.availability === 'upcoming') return { unlocked: false, percent: null };
+  const target = p.achievement.targetCount;
+  const percent = isCount(target) && target > 0 && isCount(p.currentCount)
+    ? Math.min(100, Math.round(p.currentCount / target * 100)) : 0;
+  return { unlocked: p.achievedAt !== null, percent };
 };
 
-/** La fecha persistida determina el desbloqueo, nunca el contador. */
-export const persistedProgressOf = (
-  progress: PersistedAchievementProgress,
-): { unlocked: boolean; percent: number } => {
-  const { currentCount, achievedAt, achievement } = progress;
-  const validTarget =
-    isNonNegativeInteger(achievement.targetCount)
-    && achievement.targetCount > 0;
-  const percent = validTarget && isNonNegativeInteger(currentCount)
-    ? Math.min(100, Math.round((currentCount / achievement.targetCount) * 100))
-    : 0;
-
-  return { unlocked: achievedAt !== null, percent };
-};
-
-/** Un catalogo vacio tiene cero progreso, sin dividir entre cero. */
-export const persistedCatalogProgress = (
-  achievements: readonly PersistedAchievementProgress[],
-): { unlocked: number; total: number; percent: number } => {
-  const unlocked = achievements.filter(
-    progress => progress.achievedAt !== null,
-  ).length;
-  const total = achievements.length;
-
-  return {
-    unlocked,
-    total,
-    percent: total > 0 ? Math.round((unlocked / total) * 100) : 0,
-  };
+/** New available catalogue and legacy achievements have separate denominators. */
+export const persistedCatalogProgress = (items: readonly PersistedAchievementProgress[]) => {
+  const catalog = items.filter(p => p.achievement.collection === 'catalog');
+  const available = catalog.filter(p => p.achievement.availability === 'available');
+  const legacy = items.filter(p => p.achievement.collection === 'legacy');
+  const unlocked = available.filter(p => p.achievedAt !== null).length;
+  return { unlocked, total: catalog.length, available: available.length,
+    upcoming: catalog.length - available.length,
+    percent: available.length ? Math.round(unlocked / available.length * 100) : null,
+    legacyTotal: legacy.length, legacyUnlocked: legacy.filter(p => p.achievedAt !== null).length };
 };

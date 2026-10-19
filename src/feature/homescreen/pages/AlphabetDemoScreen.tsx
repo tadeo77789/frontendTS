@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { PublicHeader } from '../../../shared/components/common/PublicHeader';
 import { PublicFooter } from '../../../shared/components/common/PublicFooter';
 import { LandingTheme as D } from '../../../shared/constants/landingTheme';
+import { useTranslation, type TranslationKey } from '../../../app/config/i18n';
 
 const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const PALETTE = [
@@ -17,15 +18,16 @@ const PALETTE = [
   { bg: '#FDE4E4', badge: '#EF4444', faint: '#F3B0B0' },
 ];
 
-const APARTADOS: { icon: keyof typeof Ionicons.glyphMap; title: string; desc: string }[] = [
-  { icon: 'text-outline', title: 'Alfabeto', desc: 'Cada letra con imagen y modelo 3D para ver la configuración de la mano.' },
-  { icon: 'camera-outline', title: 'Traductor', desc: 'Traduce tus señas a texto y voz en tiempo real desde la cámara.' },
-  { icon: 'bar-chart-outline', title: 'Estadísticas', desc: 'Sigue tu progreso, señas aprendidas y actividad.' },
-  { icon: 'time-outline', title: 'Historial', desc: 'Consulta y reutiliza todas tus traducciones anteriores.' },
+const APARTADOS: { icon: keyof typeof Ionicons.glyphMap; title: TranslationKey; desc: TranslationKey }[] = [
+  { icon: 'text-outline', title: 'pubNavAlphabet', desc: 'pubAlAlphabetDesc' },
+  { icon: 'camera-outline', title: 'pubNavTranslator', desc: 'pubFeatTranslatorDesc' },
+  { icon: 'bar-chart-outline', title: 'pubFooterStats', desc: 'pubAlStatsDesc' },
+  { icon: 'time-outline', title: 'pubFooterHistory', desc: 'pubAlHistoryDesc' },
 ];
 
 export const AlphabetDemoScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
   const isMid = width >= 640;
@@ -42,21 +44,18 @@ export const AlphabetDemoScreen: React.FC = () => {
         <LinearGradient colors={['#FBFAFE', '#F6F3FD']} style={styles.heroBg}>
           <View style={styles.heroInner}>
             <Text style={[styles.heroTitle, isWide && styles.heroTitleWide]}>
-              Alfabeto <Text style={{ color: D.purple }}>LSC</Text>
+              {t('pubAlTitle')}<Text style={{ color: D.purple }}>{t('pubAlTitleAccent')}</Text>{t('pubAlTitleEnd')}
             </Text>
-            <Text style={styles.heroSub}>
-              Las {CHARS.length} letras dactilológicas de la Lengua de Señas Colombiana. Inicia sesión para ver la imagen y el modelo 3D
-              de cada letra y practicar.
-            </Text>
+            <Text style={styles.heroSub}>{t('pubAlSubtitle', { n: CHARS.length })}</Text>
             <View style={[styles.heroActions, !isMid && { flexDirection: 'column', alignSelf: 'stretch' }]}>
               <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate('Register')} style={styles.primaryBtnWrap}>
                 <LinearGradient colors={[D.purpleBtn, D.purpleBtn2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryBtn}>
-                  <Text style={styles.primaryBtnText}>Crear cuenta</Text>
+                  <Text style={styles.primaryBtnText}>{t('pubCreateAccount')}</Text>
                   <Ionicons name="arrow-forward" size={18} color={D.white} />
                 </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate('Login')} style={styles.ghostBtn}>
-                <Text style={styles.ghostBtnText}>Iniciar sesión</Text>
+                <Text style={styles.ghostBtnText}>{t('pubLogin')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -86,16 +85,16 @@ export const AlphabetDemoScreen: React.FC = () => {
 
         {/* Apartados */}
         <View style={styles.section}>
-          <Text style={styles.h2}>¿Qué incluye TraduceSeña?</Text>
-          <Text style={styles.h2Sub}>Al iniciar sesión desbloqueas estos apartados</Text>
+          <Text style={styles.h2}>{t('pubAlIncludes')}</Text>
+          <Text style={styles.h2Sub}>{t('pubAlIncludesSub')}</Text>
           <View style={[styles.apGrid, isMid && styles.apGridWide]}>
             {APARTADOS.map(a => (
               <View key={a.title} style={[styles.apCard, isMid && { flex: 1, minWidth: '40%' }]}>
                 <View style={styles.apIcon}>
                   <Ionicons name={a.icon} size={26} color={D.purple} />
                 </View>
-                <Text style={styles.apTitle}>{a.title}</Text>
-                <Text style={styles.apDesc}>{a.desc}</Text>
+                <Text style={styles.apTitle}>{t(a.title)}</Text>
+                <Text style={styles.apDesc}>{t(a.desc)}</Text>
               </View>
             ))}
           </View>
@@ -111,21 +110,19 @@ export const AlphabetDemoScreen: React.FC = () => {
             <View style={styles.modalIcon}>
               <Ionicons name="lock-closed" size={34} color={D.purple} />
             </View>
-            <Text style={styles.modalTitle}>Inicia sesión para practicar</Text>
-            <Text style={styles.modalText}>
-              Con tu cuenta puedes ver la imagen y el modelo 3D de cada letra, repetirlos y seguir tu progreso.
-            </Text>
+            <Text style={styles.modalTitle}>{t('pubAlModalTitle')}</Text>
+            <Text style={styles.modalText}>{t('pubAlModalText')}</Text>
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalGhost} onPress={() => { setOpen(false); navigation.navigate('Login'); }}>
-                <Text style={styles.modalGhostText}>Iniciar sesión</Text>
+                <Text style={styles.modalGhostText}>{t('pubLogin')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalPrimaryWrap} onPress={() => { setOpen(false); navigation.navigate('Register'); }}>
                 <LinearGradient colors={[D.purpleBtn, D.purpleBtn2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalPrimary}>
-                  <Text style={styles.modalPrimaryText}>Crear cuenta</Text>
+                  <Text style={styles.modalPrimaryText}>{t('pubCreateAccount')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-            <Text style={styles.modalHint}>Toca fuera para cerrar</Text>
+            <Text style={styles.modalHint}>{t('pubTapOutsideToClose')}</Text>
           </Pressable>
         </Pressable>
       </Modal>

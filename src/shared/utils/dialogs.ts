@@ -68,4 +68,15 @@ export const showChoice = (opts: ChoiceDialogOptions): Promise<string | null> =>
     Alert.alert(opts.title || '', opts.message || '', buttons);
   });
 
+export interface DialogPalette {
+  background: string;
+  title: string;
+  text: string;
+  primary: string;
+  danger: string;
+}
+
+// Alert nativo usa los colores del sistema; solo la versión web aplica la paleta.
+export const setDialogPalette = (_next: DialogPalette): void => {};
+
 export const dialogsSupported = (): boolean => true;

@@ -26,12 +26,13 @@ interface AchievementDetailModalProps {
 export const AchievementDetailModal: React.FC<AchievementDetailModalProps> = ({ achievement, onClose }) => {
   const C = useColors();
   const { t } = useTranslation();
-  const { progressText, stateText } = useAchievementText();
+  const { progressText, stateText, textOf } = useAchievementText();
   const { width } = useWindowDimensions();
 
   if (!achievement) return null;
 
   const { unlocked, percent } = persistedProgressOf(achievement);
+  const text = textOf(achievement);
   const sheetWidth = Math.min(420, Math.max(280, width - 48));
 
   return (
@@ -42,24 +43,24 @@ export const AchievementDetailModal: React.FC<AchievementDetailModalProps> = ({ 
             <View style={[styles.sheet, { width: sheetWidth, backgroundColor: C.surface, borderColor: C.border }]}>
               <AchievementMedal achievement={achievement} size={88} />
 
-              <View style={[styles.badge, { backgroundColor: C.primaryBg }]}>
-                <Text style={[styles.badgeText, { color: C.primaryDark }]}>
+              <View style={[styles.badge, { backgroundColor: unlocked ? C.primaryBg : C.inputBg }]}>
+                <Text style={[styles.badgeText, { color: unlocked ? C.primaryDark : C.textSecondary }]}>
                   {stateText(achievement)}
                 </Text>
               </View>
 
               {/* Conserva los textos ocultos que devuelve Profile. */}
-              <Text style={[styles.title, { color: C.textPrimary }]}>{achievement.achievement.name}</Text>
-              <Text style={[styles.desc, { color: C.textSecondary }]}>{achievement.achievement.description}</Text>
+              <Text style={[styles.title, { color: C.textPrimary }]}>{text.name}</Text>
+              <Text style={[styles.desc, { color: C.textSecondary }]}>{text.description}</Text>
 
-              <View style={styles.progressRow}>
+              {percent === null ? <Text style={[styles.desc, { color: C.textSecondary }]}>{text.unavailableReason}</Text> : <View style={styles.progressRow}>
                 <AchievementProgressBar
                   percent={percent}
                   track={C.inputBg}
-                  fill={unlocked ? C.primary : C.primaryLight}
+                  fill={unlocked ? C.primary : C.textHint}
                 />
                 <Text style={[styles.progressText, { color: C.primaryDark }]}>{progressText(achievement)}</Text>
-              </View>
+              </View>}
 
               <TouchableOpacity
                 onPress={onClose}

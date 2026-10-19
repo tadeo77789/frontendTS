@@ -6,15 +6,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { PublicHeader } from '../../../shared/components/common/PublicHeader';
 import { PublicFooter } from '../../../shared/components/common/PublicFooter';
 import { LandingTheme as D } from '../../../shared/constants/landingTheme';
+import { useTranslation, type TranslationKey } from '../../../app/config/i18n';
 
-const STEPS: { n: string; icon: keyof typeof Ionicons.glyphMap; title: string; desc: string }[] = [
-  { n: '1', icon: 'videocam-outline', title: 'Activa la cámara', desc: 'Da permiso y ubica tus manos dentro del recuadro para empezar.' },
-  { n: '2', icon: 'scan-outline', title: 'Haz la seña', desc: 'El modelo reconoce la configuración de tus manos en vivo.' },
-  { n: '3', icon: 'volume-high-outline', title: 'Recibe el resultado', desc: 'Obtén el texto y escúchalo en voz alta al instante.' },
+const STEPS: { n: string; icon: keyof typeof Ionicons.glyphMap; title: TranslationKey; desc: TranslationKey }[] = [
+  { n: '1', icon: 'videocam-outline', title: 'pubTrStep1Title', desc: 'pubTrStep1Desc' },
+  { n: '2', icon: 'scan-outline', title: 'pubTrStep2Title', desc: 'pubTrStep2Desc' },
+  { n: '3', icon: 'volume-high-outline', title: 'pubTrStep3Title', desc: 'pubTrStep3Desc' },
 ];
 
 export const TranslatorDemoScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
   const isMid = width >= 640;
@@ -27,21 +29,18 @@ export const TranslatorDemoScreen: React.FC = () => {
         <LinearGradient colors={['#FBFAFE', '#F3EFFB']} style={styles.heroBg}>
           <View style={styles.heroInner}>
             <Text style={[styles.heroTitle, isWide && styles.heroTitleWide]}>
-              Traduce señas a <Text style={{ color: D.purple }}>texto y voz</Text>, en tiempo real
+              {t('pubTrTitle')}<Text style={{ color: D.purple }}>{t('pubTrTitleAccent')}</Text>{t('pubTrTitleEnd')}
             </Text>
-            <Text style={styles.heroSub}>
-              La cámara reconoce tus señas y las convierte en texto y voz al instante. Esta es una
-              demostración del traductor; inicia sesión para usarlo en vivo.
-            </Text>
+            <Text style={styles.heroSub}>{t('pubTrSubtitle')}</Text>
             <View style={[styles.heroActions, !isMid && { flexDirection: 'column', alignSelf: 'stretch' }]}>
               <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate('Register')} style={styles.primaryBtnWrap}>
                 <LinearGradient colors={[D.purpleBtn, D.purpleBtn2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryBtn}>
-                  <Text style={styles.primaryBtnText}>Crear cuenta</Text>
+                  <Text style={styles.primaryBtnText}>{t('pubCreateAccount')}</Text>
                   <Ionicons name="arrow-forward" size={18} color={D.white} />
                 </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate('Login')} style={styles.ghostBtn}>
-                <Text style={styles.ghostBtnText}>Iniciar sesión</Text>
+                <Text style={styles.ghostBtnText}>{t('pubLogin')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -56,7 +55,7 @@ export const TranslatorDemoScreen: React.FC = () => {
                 <View style={styles.demoHeadIcon}>
                   <Ionicons name="videocam-outline" size={20} color="#7C3AED" />
                 </View>
-                <Text style={styles.demoHeadText}>Cámara en vivo</Text>
+                <Text style={styles.demoHeadText}>{t('pubTrCamera')}</Text>
               </View>
               <View style={styles.camBox}>
                 <View style={[styles.corner, styles.cornerTL]} />
@@ -66,8 +65,8 @@ export const TranslatorDemoScreen: React.FC = () => {
                 <View style={styles.camIcon}>
                   <Ionicons name="camera-outline" size={38} color="#7C3AED" />
                 </View>
-                <Text style={styles.camTitle}>La cámara reconoce tus señas</Text>
-                <Text style={styles.camSub}>Vista previa — disponible al iniciar sesión</Text>
+                <Text style={styles.camTitle}>{t('pubTrCameraTitle')}</Text>
+                <Text style={styles.camSub}>{t('pubTrCameraSub')}</Text>
               </View>
             </View>
 
@@ -77,11 +76,11 @@ export const TranslatorDemoScreen: React.FC = () => {
                 <View style={styles.demoHeadIcon}>
                   <Ionicons name="chatbox-ellipses-outline" size={20} color="#7C3AED" />
                 </View>
-                <Text style={styles.demoHeadText}>Traducción</Text>
+                <Text style={styles.demoHeadText}>{t('pubTranslationLabel')}</Text>
               </View>
               <View style={styles.transBox}>
-                <Text style={styles.transText}>Hola, ¿cómo estás?</Text>
-                <Text style={styles.transSub}>Texto y voz al instante</Text>
+                <Text style={styles.transText}>{t('pubSampleSentence')}</Text>
+                <Text style={styles.transSub}>{t('pubTrResultSub')}</Text>
               </View>
             </View>
           </View>
@@ -98,8 +97,8 @@ export const TranslatorDemoScreen: React.FC = () => {
                     <Ionicons name={st.icon} size={21} color={D.purple} />
                   </View>
                 </View>
-                <Text style={styles.stepTitle}>{st.title}</Text>
-                <Text style={styles.stepDesc}>{st.desc}</Text>
+                <Text style={styles.stepTitle}>{t(st.title)}</Text>
+                <Text style={styles.stepDesc}>{t(st.desc)}</Text>
               </View>
             ))}
           </View>

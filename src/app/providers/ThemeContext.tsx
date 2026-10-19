@@ -15,6 +15,7 @@ import {
   GreenColors,
   GreenDarkColors,
 } from '../../shared/constants/colors';
+import { setDialogPalette } from '../../shared/utils/dialogs';
 
 export type ColorAccent = 'purple' | 'green';
 
@@ -252,6 +253,21 @@ export const ThemeProvider: React.FC<{
       mountedRef.current = false;
     };
   }, [hydrateScope]);
+
+  // Las alertas viven fuera del árbol de React; se les pasa la paleta activa.
+  useEffect(() => {
+    const isDarkMode = mode === 'dark';
+    const c = colorAccent === 'green'
+      ? (isDarkMode ? GreenDarkColors : GreenColors)
+      : (isDarkMode ? DarkColors : Colors);
+    setDialogPalette({
+      background: c.surface,
+      title: c.primaryDark,
+      text: c.textPrimary,
+      primary: c.primary,
+      danger: c.danger,
+    });
+  }, [mode, colorAccent]);
 
   const value = useMemo<ThemeContextType>(() => ({
     mode,
