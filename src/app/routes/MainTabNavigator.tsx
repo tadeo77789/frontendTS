@@ -36,6 +36,14 @@ export const MainTabNavigator: React.FC = () => {
 
   const isWide = Platform.OS === 'web' && width >= 1024;
   const hideLabels = width < 480;
+  const tabLabel = (name: string): string => ({
+    Translation: t('tabTranslation'),
+    Alphabet:    t('tabAlphabet'),
+    Stats:       t('tabStats'),
+    History:     t('tabHistory'),
+    Admin:       t('tabAdmin'),
+    Profile:     t('tabProfile'),
+  } as Record<string, string>)[name] || name;
   const tabBarTheme = {
     backgroundColor: C.surface,
     borderTopColor: C.border,
@@ -77,14 +85,9 @@ export const MainTabNavigator: React.FC = () => {
         const [inactive, active] = icons[route.name] || ['ellipse-outline', 'ellipse'];
         return <Ionicons name={(focused ? active : inactive) as any} size={22} color={color} />;
       },
-      tabBarLabel: ({
-        Translation: t('tabTranslation'),
-        Alphabet:    t('tabAlphabet'),
-        Stats:       t('tabStats'),
-        History:     t('tabHistory'),
-        Admin:       t('tabAdmin'),
-        Profile:     t('tabProfile'),
-      } as Record<string, string>)[route.name] || route.name,
+      tabBarLabel: tabLabel(route.name),
+      // Bajo 480 px la pestaña es solo un icono: sin esto el lector de pantalla no la nombra.
+      tabBarAccessibilityLabel: tabLabel(route.name),
     })}
   >
     {adminMode ? (
