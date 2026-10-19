@@ -52,12 +52,17 @@ export const PublicHeader: React.FC<Props> = ({ active }) => {
   // Las páginas públicas solo se ven sin sesión: el idioma se guarda en el dispositivo.
   const { language, setLanguage } = useLanguage();
   const { width } = useWindowDimensions();
-  const isWide = width >= 900;
+  // Anchos medidos con el texto en español (el más largo): por debajo de cada corte
+  // la fila ya no cabe y los botones de la derecha se salían de la pantalla.
+  const showNav = width >= 1024;
+  const fullLang = width >= 1180;
   const isMid = width >= 640;
+  const isNarrow = width < 560;
+  const isTiny = width < 480;
 
   return (
     <View style={styles.header}>
-      <View style={styles.inner}>
+      <View style={[styles.inner, isNarrow && styles.innerNarrow]}>
         <TouchableOpacity style={styles.brand} activeOpacity={0.8} onPress={() => navigation.navigate('Landing')}>
           <View style={styles.brandLogo}>
             <Image
@@ -66,14 +71,16 @@ export const PublicHeader: React.FC<Props> = ({ active }) => {
               resizeMode="contain"
             />
           </View>
-          <View>
-            <Text style={styles.brandName}>TraduceSeña</Text>
-            <Text style={styles.brandTagline}>{t('pubTagline')}</Text>
-          </View>
+          {!isTiny && (
+            <View>
+              <Text style={styles.brandName}>TraduceSeña</Text>
+              {!isNarrow && <Text style={styles.brandTagline}>{t('pubTagline')}</Text>}
+            </View>
+          )}
         </TouchableOpacity>
 
-        {isWide && (
-          <View style={styles.nav}>
+        {showNav && (
+          <View style={[styles.nav, !fullLang && styles.navTight]}>
             {NAV_ITEMS.map(item => (
               <NavItem
                 key={item.key}
@@ -85,21 +92,24 @@ export const PublicHeader: React.FC<Props> = ({ active }) => {
           </View>
         )}
 
-        <View style={styles.actions}>
+        <View style={[styles.actions, isTiny && styles.actionsTight]}>
           <LanguageDropdown
             language={language}
             onSelect={code => { void setLanguage(code); }}
             colors={LANG_COLORS}
-            compact={!isWide}
+            compact={!fullLang}
             accessibilityLabel={t('pubLanguage')}
           />
           <Pressable
             style={({ hovered }: any) => [
               styles.loginBtn,
+              !isMid && styles.loginBtnIcon,
               hovered && styles.loginBtnHover,
               hovered && HoverShadowSoft,
             ]}
             onPress={() => navigation.navigate('Login')}
+            accessibilityRole="button"
+            accessibilityLabel={t('pubLogin')}
           >
             <Ionicons name="person-outline" size={17} color={D.purple} />
             {isMid && <Text style={styles.loginBtnText}>{t('pubLogin')}</Text>}
@@ -108,7 +118,7 @@ export const PublicHeader: React.FC<Props> = ({ active }) => {
             onPress={() => navigation.navigate('Register')}
             style={({ hovered }: any) => [styles.registerWrap, hovered && styles.registerWrapHover]}
           >
-            <LinearGradient colors={[D.purpleBtn, D.purpleBtn2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.registerBtn}>
+            <LinearGradient colors={[D.purpleBtn, D.purpleBtn2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.registerBtn, isTiny && styles.registerBtnTight]}>
               <Text style={styles.registerBtnText}>{t('pubRegister')}</Text>
             </LinearGradient>
           </Pressable>
@@ -136,6 +146,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 20,
   },
+  innerNarrow: { paddingHorizontal: 16, gap: 12 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   brandLogo: { width: 44, height: 44, borderRadius: 13, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   brandLogoImg: { width: 38, height: 38 },
@@ -143,6 +154,7 @@ const styles = StyleSheet.create({
   brandTagline: { fontSize: 11, color: D.hint, fontWeight: '600', marginTop: 3 },
 
   nav: { flexDirection: 'row', alignItems: 'center', gap: 30 },
+  navTight: { gap: 20 },
   navItem: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingBottom: 4 },
   navText: { fontSize: 15, fontWeight: '600', color: D.bodyLight },
   navTextActive: { color: D.purple, fontWeight: '700' },
@@ -150,11 +162,13 @@ const styles = StyleSheet.create({
   navUnderlineHover: { opacity: 0.45 },
 
   actions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  actionsTight: { gap: 8 },
   loginBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     height: 44, paddingHorizontal: 18, borderRadius: 999,
     borderWidth: 1.5, borderColor: D.border, backgroundColor: 'transparent',
   },
+  loginBtnIcon: { width: 44, paddingHorizontal: 0, justifyContent: 'center' },
   loginBtnHover: { borderColor: D.purple, backgroundColor: D.lilacBg },
   loginBtnText: { fontSize: 15, fontWeight: '700', color: D.purple },
   registerWrap: {
@@ -163,5 +177,6 @@ const styles = StyleSheet.create({
   },
   registerWrapHover: { ...HoverShadow, transform: [{ translateY: -2 }] },
   registerBtn: { height: 44, paddingHorizontal: 22, alignItems: 'center', justifyContent: 'center' },
+  registerBtnTight: { paddingHorizontal: 16 },
   registerBtnText: { fontSize: 15, fontWeight: '700', color: D.white },
 });
