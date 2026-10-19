@@ -172,9 +172,9 @@ const styles = StyleSheet.create({
   heroBadgeText: { fontSize: 13, fontWeight: '700' },
   title: { fontSize: 34, fontWeight: '800', letterSpacing: -0.6 },
 
-  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 999 },
+  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 999, maxWidth: '100%' },
   statusDot: { width: 9, height: 9, borderRadius: 5 },
-  statusText: { fontSize: 14, fontWeight: '800' },
+  statusText: { fontSize: 14, fontWeight: '800', flexShrink: 1 },
 
   kpiRow: { gap: 16 },
   kpiRowWide: { flexDirection: 'row' },
