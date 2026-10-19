@@ -19,6 +19,7 @@
     },
     "android": {
       "package": "com.traducsenas.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/images/adaptive-icon.png",
         "backgroundColor": "#EDE9FE"
