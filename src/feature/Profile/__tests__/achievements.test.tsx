@@ -5,7 +5,7 @@ import { AchievementsCard } from '../components/AchievementsCard';
 import { useMyAchievements } from '../hooks/useMyAchievements';
 import { profileAchievementsService } from '../services/profileAchievements.service';
 import { ProfileScreen } from '../pages/ProfileScreen';
-import { catalogue, legacy } from './fixtures';
+import { catalogue, legacy, translationMilestones } from './fixtures';
 
 jest.setTimeout(30000);
 
@@ -71,7 +71,8 @@ it.each([Colors, DarkColors, GreenColors, GreenDarkColors])('keeps pending tiles
   await fireEvent.press(screen.getByRole('button', { name: /Expandir logros|Expand achievements|Développer les succès|Expandir conquistas/ }));
   expect(screen.getByLabelText('FIRST_TRANSLATION · Pendiente')).toHaveStyle({ backgroundColor: colors.backgroundGray });
   expect(screen.getByLabelText('TEN_TRANSLATIONS · Completado')).toHaveStyle({ backgroundColor: colors.primaryBg, borderColor: colors.primary });
-  expect(screen.getAllByRole('progressbar')).toHaveLength(2);
+  expect(screen.getAllByRole('progressbar')).toHaveLength(3);
+  expect(screen.getAllByRole('progressbar')[0].props.accessibilityValue.now).toBe(50);
   expect(screen.getByTestId('achievement-medal-FIRST_TRANSLATION')).toHaveStyle({ backgroundColor: colors.inputBg });
   expect(screen.getByTestId('achievement-medal-TEN_TRANSLATIONS')).toHaveStyle({ backgroundColor: colors.primaryBg });
 });
@@ -209,4 +210,90 @@ it('queries while collapsed and does not query again when toggling the section',
   await fireEvent.press(screen.getByLabelText('Expandir logros'));
   await fireEvent.press(screen.getByLabelText('Contraer logros'));
   expect(getMine).toHaveBeenCalledTimes(calls);
+});
+
+it('shows the three server achievements without announcing unavailable functions', async () => {
+  const items = [legacy(), legacy('TEN_TRANSLATIONS',10), legacy('FIFTY_TRANSLATIONS',50)];
+  items[0].achievedAt = '2026-01-01T00:00:00.000Z'; items[0].currentCount = 1;
+  await render(<AchievementsCard achievements={items} loading={false} error={false} reload={jest.fn()} isWide />);
+  await fireEvent.press(screen.getByLabelText('Expandir logros'));
+  expect(screen.queryByText('Próximamente')).toBeNull();
+  expect(screen.queryByText('Todavía no hay logros medibles en el catálogo nuevo.')).toBeNull();
+  expect(screen.getByLabelText('FIRST_TRANSLATION · Completado')).toBeTruthy();
+  expect(screen.getByLabelText('TEN_TRANSLATIONS · Pendiente')).toBeTruthy();
+  expect(screen.getByLabelText('FIFTY_TRANSLATIONS · Pendiente')).toBeTruthy();
+  expect(screen.getAllByRole('progressbar')).toHaveLength(4);
+});
+it('puts functional historical achievements ahead of catalogue groups', async () => {
+  await render(<AchievementsCard achievements={[...catalogue(), legacy()]} loading={false} error={false} reload={jest.fn()} isWide />);
+  await fireEvent.press(screen.getByLabelText('Expandir logros'));
+  const tiles = screen.getAllByRole('button').filter(p => / · (Pendiente|Próximamente)$/.test(p.props.accessibilityLabel ?? ''));
+  expect(tiles[0].props.accessibilityLabel).toBe('FIRST_TRANSLATION · Pendiente');
+});
+it('conceals secret localizations and reveals them only after unlocking', async () => {
+  const secret = legacy('SECRET',10); secret.achievement.name = '???'; secret.achievement.description = '???';
+  secret.achievement.isSecret = true;
+  secret.achievement.localizations = { es: { name: 'Protected secret', description: 'Protected description' } };
+  const view = await render(<AchievementsCard achievements={[secret]} loading={false} error={false} reload={jest.fn()} isWide />);
+  await fireEvent.press(screen.getByLabelText('Expandir logros'));
+  expect(screen.queryByText('Protected secret')).toBeNull();
+  await view.rerender(<AchievementsCard achievements={[{ ...secret, achievedAt: '2026-01-01T00:00:00.000Z' }]} loading={false} error={false} reload={jest.fn()} isWide />);
+  expect(screen.getByText('Protected secret')).toBeTruthy();
+});
+
+it('counts the three functional achievements in the profile counter', async () => {
+  const first = legacy(); first.currentCount = 1; first.achievedAt = '2026-01-01T00:00:00.000Z';
+  getMine.mockResolvedValue([first, legacy('TEN_TRANSLATIONS',10), legacy('FIFTY_TRANSLATIONS',50)]);
+  await render(<ProfileScreen />);
+  expect(await screen.findByText('1/3')).toBeTruthy();
+});
+
+it.each([Colors, DarkColors, GreenColors, GreenDarkColors])('renders all five pending grey and then completed in color in each palette', async colors => {
+  mockColors = colors;
+  const items = translationMilestones().map(p => ({ ...p, currentCount: p.achievement.targetCount }));
+  const props = { achievements: items, loading: false, error: false, reload: jest.fn(), isWide: true };
+  const view = await render(<AchievementsCard {...props} />);
+  await fireEvent.press(screen.getByLabelText('Expandir logros'));
+  expect(screen.queryByText('Próximamente')).toBeNull();
+  for (const item of items) {
+    expect(screen.getByLabelText(`${item.achievement.name} · Pendiente`)).toHaveStyle({ backgroundColor: colors.backgroundGray });
+    expect(screen.getByTestId(`achievement-medal-${item.achievement.id}`)).toHaveStyle({ backgroundColor: colors.inputBg });
+  }
+  const tiles = screen.getAllByRole('button').filter(p => / · Pendiente$/.test(p.props.accessibilityLabel ?? ''));
+  expect(tiles.map(p => p.props.accessibilityLabel)).toEqual(items.map(p => `${p.achievement.name} · Pendiente`));
+  await view.rerender(<AchievementsCard {...props} achievements={items.map(p => ({ ...p, achievedAt: '2026-01-01T00:00:00.000Z' }))} />);
+  for (const item of items) {
+    expect(screen.getByLabelText(`${item.achievement.name} · Completado`)).toHaveStyle({ backgroundColor: colors.primaryBg, borderColor: colors.primary });
+    expect(screen.getByTestId(`achievement-medal-${item.achievement.id}`)).toHaveStyle({ backgroundColor: colors.primaryBg, borderColor: colors.primary });
+  }
+  expect(screen.getAllByRole('progressbar')[0].props.accessibilityValue.now).toBe(100);
+});
+
+it.each([
+  ['es','100 traducciones','Completa 100 traducciones.','1.000 traducciones','Completa 1.000 traducciones.'],
+  ['en','100 translations','Complete 100 translations.','1,000 translations','Complete 1,000 translations.'],
+  ['fr','100 traductions','Effectue 100 traductions.','1 000 traductions','Effectue 1 000 traductions.'],
+  ['pt','100 traduções','Conclua 100 traduções.','1.000 traduções','Conclua 1.000 traduções.'],
+])('shows completed-translation conditions in %s using server localizations', async (language,hundred,hundredDescription,thousand,thousandDescription) => {
+  mockLanguage = language;
+  await render(<AchievementsCard achievements={translationMilestones()} loading={false} error={false} reload={jest.fn()} isWide />);
+  await fireEvent.press(screen.getByRole('button', { name: /Expandir logros|Expand achievements|Développer les succès|Expandir conquistas/ }));
+  expect(screen.getByText(hundred)).toBeTruthy();
+  expect(screen.getByText(thousand)).toBeTruthy();
+  const hundredTile = screen.getAllByRole('button').find(p => p.props.accessibilityLabel?.startsWith(`${hundred} ·`));
+  await fireEvent.press(hundredTile!);
+  expect(screen.getByText(hundredDescription)).toBeTruthy();
+  const closeText: Record<string,string> = { es: 'Cerrar', en: 'Close', fr: 'Fermer', pt: 'Fechar' };
+  await fireEvent.press(screen.getByText(closeText[language]));
+  const thousandTile = screen.getAllByRole('button').find(p => p.props.accessibilityLabel?.startsWith(`${thousand} ·`));
+  await fireEvent.press(thousandTile!);
+  expect(screen.getByText(thousandDescription)).toBeTruthy();
+});
+
+it('counts all five functional achievements in the profile counter', async () => {
+  const items = translationMilestones();
+  items[0].currentCount = 1; items[0].achievedAt = '2026-01-01T00:00:00.000Z';
+  getMine.mockResolvedValue(items);
+  await render(<ProfileScreen />);
+  expect(await screen.findByText('1/5')).toBeTruthy();
 });

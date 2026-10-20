@@ -14,7 +14,7 @@ describe('catalogue contract', () => {
   ])('uses simple upcoming fallback copy in each language', (locale, message) => {
     expect((locale as typeof es).achievementUnavailableReason).toBe(message);
   });
-  it('has 24 unique upcoming entries, no numeric progress and separate legacy totals', () => {
+  it('has 24 unique upcoming entries, no numeric progress and includes functional historical achievements in totals', () => {
     const items = catalogue();
     expect(items).toHaveLength(24);
     expect(new Set(items.map(p => p.achievement.code)).size).toBe(24);
@@ -22,7 +22,7 @@ describe('catalogue contract', () => {
     expect(items.every(p => persistedProgressOf(p).percent === null)).toBe(true);
     const old = legacy(); old.currentCount = 1; old.achievedAt = '2026-01-01T00:00:00.000Z';
     expect(persistedCatalogProgress([...items, old, legacy('TEN_TRANSLATIONS', 10), legacy('FIFTY_TRANSLATIONS', 50)]))
-      .toEqual({ total: 24, available: 0, upcoming: 24, unlocked: 0, percent: null, legacyTotal: 3, legacyUnlocked: 1 });
+      .toEqual({ total: 27, available: 3, upcoming: 24, unlocked: 1, percent: 33, legacyTotal: 3, legacyUnlocked: 1 });
   });
   it('uses achievedAt, not target attainment, as unlock authority', () => {
     const old = legacy(); old.currentCount = 1;
