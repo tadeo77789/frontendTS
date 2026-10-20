@@ -28,7 +28,7 @@ Construida con **Expo + React Native + TypeScript**, funciona desde una sola bas
 | Navegación | React Navigation (stacks + bottom tabs) |
 | Visión por computador | MediaPipe Hands · TensorFlow.js · clasificador KNN propio |
 | Voz | `expo-speech` |
-| Cámara y media | `expo-camera` · `expo-av` · `expo-image-picker` |
+| Cámara y media | `expo-camera` · `expo-image-picker` |
 | Almacenamiento | AsyncStorage · `expo-secure-store` |
 | HTTP | Axios |
 | Web / despliegue | Metro (bundler web) · Docker · Nginx |

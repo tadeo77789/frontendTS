@@ -17,7 +17,6 @@ Contiene la integración con servicios del dispositivo y servicios externos de t
 | Servicio | Propósito |
 |---|---|
 | **expo-camera** | Captura de video en tiempo real para reconocimiento de señas |
-| **expo-av** | Grabación y reproducción de audio |
 | **expo-notifications** | Notificaciones push en dispositivos Android e iOS |
 | **FCM / APNs** | Entrega de notificaciones push (Firebase para Android, Apple para iOS) |
 | **OAuth (Google/Facebook)** | Inicio de sesión con redes sociales |
