@@ -1,3 +1,7 @@
+import es from '../../../app/config/i18n/locales/es';
+import en from '../../../app/config/i18n/locales/en';
+import fr from '../../../app/config/i18n/locales/fr';
+import pt from '../../../app/config/i18n/locales/pt';
 import { parseAchievementsResponse, type PersistedAchievementProgress } from '../data/persistedAchievements';
 export const legacy = (code = 'FIRST_TRANSLATION', target = 1): PersistedAchievementProgress => ({
   achievement: { id: code, code, name: code, description: code, metric: 'TRANSLATIONS_COMPLETED', targetCount: target,
@@ -11,3 +15,20 @@ export const catalogue = (): PersistedAchievementProgress[] => parseAchievements
     localizations: { es: { name: code, description: `Requirement: ${code}`, unavailableReason: 'Este logro estará disponible en una próxima actualización.' } } },
   currentCount: null, achievedAt: null,
 })) });
+
+/** Actual server catalogue after 006; the 24-entry fixture above models the old server only. */
+export const translationMilestones = (): PersistedAchievementProgress[] => [
+  legacy(), legacy('TEN_TRANSLATIONS',10), legacy('FIFTY_TRANSLATIONS',50),
+  ...(['hundredSigns','thousandSigns'] as const).map((code,index) => {
+    const localizations = Object.fromEntries(Object.entries({es,en,fr,pt}).map(([language,locale]) => [language, {
+      name: index === 0 ? locale.achHundredSignsName : locale.achThousandSignsName,
+      description: index === 0 ? locale.achHundredSignsDesc : locale.achThousandSignsDesc,
+    }]));
+    return { ...legacy(code,index === 0 ? 100 : 1000), achievement: {
+      ...legacy(code,index === 0 ? 100 : 1000).achievement,
+      name: localizations.es.name, description: localizations.es.description,
+      collection: 'catalog' as const, category: 'translation' as const,
+      level: index === 0 ? 'silver' as const : 'gold' as const, points: 0, localizations,
+    } };
+  }),
+];
