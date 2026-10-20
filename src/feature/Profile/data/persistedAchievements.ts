@@ -85,14 +85,13 @@ export const persistedProgressOf = (p: PersistedAchievementProgress): { unlocked
   return { unlocked: p.achievedAt !== null, percent };
 };
 
-/** New available catalogue and legacy achievements have separate denominators. */
+/** All server-published available achievements contribute, including historical ones. */
 export const persistedCatalogProgress = (items: readonly PersistedAchievementProgress[]) => {
-  const catalog = items.filter(p => p.achievement.collection === 'catalog');
-  const available = catalog.filter(p => p.achievement.availability === 'available');
+  const available = items.filter(p => p.achievement.isActive && p.achievement.availability === 'available');
   const legacy = items.filter(p => p.achievement.collection === 'legacy');
   const unlocked = available.filter(p => p.achievedAt !== null).length;
-  return { unlocked, total: catalog.length, available: available.length,
-    upcoming: catalog.length - available.length,
+  return { unlocked, total: items.length, available: available.length,
+    upcoming: items.filter(p => p.achievement.availability === 'upcoming').length,
     percent: available.length ? Math.round(unlocked / available.length * 100) : null,
     legacyTotal: legacy.length, legacyUnlocked: legacy.filter(p => p.achievedAt !== null).length };
 };
