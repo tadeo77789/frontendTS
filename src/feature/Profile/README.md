@@ -1,5 +1,25 @@
 # Catálogo de logros obtenibles
 
+## Catálogo funcional vigente (007)
+
+La API v1 conserva los cinco hitos de traducciones. La API v2 añade 16 reglas
+medidas: cinco tiempos activos, dos lecturas de voz completadas, tres niveles de
+una misma palabra, 20 palabras distintas, consultas de 10/27 letras, ambos modos,
+cinco días distintos en America/Bogota y cinco categorías. Son 21 reglas obtenibles
+con los productores nuevos y la migración 007 del backend; no hay tarjetas nuevas
+upcoming. Las metas de 50/100 palabras distintas se excluyen: el modelo empaquetado
+contiene 43 palabras simples, además de frases. Los puntos nuevos son cero.
+
+El traductor envía confirmaciones con modo y sesión; las poses estáticas necesitan
+soltarse antes de confirmar otra vez la misma palabra. La lectura existente usa
+onDone para completar y detención/error para cancelar. El tiempo envía latidos sin
+duraciones: el servidor limita cada intervalo a 10 segundos y exige una traducción
+confirmada en los últimos 15 segundos. Pestaña oculta, pérdida de foco y AppState en
+segundo plano detienen los latidos y pausan el intervalo. El alfabeto cuenta detalles
+cargados de LETTER_A…LETTER_Z y LETTER_NN (LSC v1), nunca aprendizaje.
+
+Las secciones siguientes conservan el contexto de versiones anteriores.
+
 ## Comportamiento actual
 
 El servidor publica únicamente reglas activas, disponibles y medidas. Actualmente
