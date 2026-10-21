@@ -1,5 +1,8 @@
+import { useIsFocused } from '@react-navigation/native';
+import { useAchievementActivity } from '../../../shared/hooks/useAchievementActivity';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
+  AppState,
   View,
   Text,
   StyleSheet,
@@ -46,6 +49,8 @@ const DARK_ACCENTS = [
 type ViewerState = 'loading' | 'ready' | 'error';
 
 export const AlphabetScreen: React.FC = () => {
+  const { record: recordActivity } = useAchievementActivity();
+  const isFocused = useIsFocused();
   const { width, height } = useWindowDimensions();
   const C = useColors();
   const { isDark } = useTheme();
@@ -62,6 +67,28 @@ export const AlphabetScreen: React.FC = () => {
   const [sheetOpen,   setSheetOpen]   = useState(false);
   // Cambiarla remonta el visor: es el "reintentar" cuando falla la carga.
   const [viewerKey,   setViewerKey]   = useState(0);
+
+  useEffect(() => {
+    if (!isFocused || !sheetOpen || !selected || viewerState !== 'ready') return;
+    const visit = () => {
+      if (AppState.currentState !== 'active') return;
+      if (Platform.OS === 'web' && (document.visibilityState !== 'visible' || !document.hasFocus())) return;
+      void recordActivity({ kind: 'letter', code: selected.code }).catch(() => undefined);
+    };
+    visit();
+    const subscription = AppState.addEventListener('change', visit);
+    if (Platform.OS === 'web') {
+      document.addEventListener('visibilitychange', visit);
+      window.addEventListener('focus', visit);
+    }
+    return () => {
+      subscription.remove();
+      if (Platform.OS === 'web') {
+        document.removeEventListener('visibilitychange', visit);
+        window.removeEventListener('focus', visit);
+      }
+    };
+  }, [isFocused, sheetOpen, selected?.code, viewerState, recordActivity]);
 
   // En movil 5 columnas dejaban tarjetas de ~58px donde no se distinguia la
   // mano: bajamos a 4 (3 en pantallas muy angostas) y ajustamos separacion y
@@ -115,6 +142,7 @@ export const AlphabetScreen: React.FC = () => {
     const nextIdx = direction === 'next'
       ? (idx + 1) % letters.length
       : (idx - 1 + letters.length) % letters.length;
+    setViewerState('loading');
     setSelected(letters[nextIdx]);
   }, [selected, letters]);
 
@@ -292,7 +320,7 @@ export const AlphabetScreen: React.FC = () => {
                   solo se le manda el modelo nuevo. */}
               <View style={[styles.viewerWrap, { height: VIEWER_H, backgroundColor: selAccent.bg }]}>
                 <LetterViewer
-                  key={viewerKey}
+                  key={`${selected.code}-${viewerKey}`}
                   ref={viewerRef}
                   model={selected.model}
                   letter={selected.letter}

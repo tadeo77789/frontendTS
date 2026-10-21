@@ -8,12 +8,14 @@
  * o pase el tiempo de espera.
  */
 
+import { useAchievementActivity } from '../../../shared/hooks/useAchievementActivity';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { gestureEngine } from '../services/vision';
 import type { GestureRecognition } from '../services/vision';
 import { translationsService } from '../services/translations.service';
 
 export interface UseGestureAgentOptions {
+  achievementContext?: { token: string | null; sessionId: string; eligible: boolean; isCurrent?: () => boolean };
   /** Confianza minima para tener en cuenta un frame. */
   minScore?: number;
   /** Frames consecutivos con la misma sena antes de confirmar. */
@@ -34,6 +36,7 @@ export interface ConfirmedGesture {
   at: number;
   /** false mientras el POST esta en vuelo o si fallo. */
   saved: boolean;
+  translationId?: number;
 }
 
 export type GestureAgentStatus = 'idle' | 'loading' | 'searching' | 'holding' | 'error';
@@ -62,6 +65,8 @@ const UI_TICK_MS = 100;
 export const useGestureAgent = (
   options: UseGestureAgentOptions = {},
 ): UseGestureAgentResult => {
+  const { context: fallbackContext } = useAchievementActivity();
+  const achievementContext = options.achievementContext ?? fallbackContext;
   const {
     minScore = 0.7,
     holdFrames = 10,
@@ -86,6 +91,7 @@ export const useGestureAgent = (
   const firstSeenAtRef = useRef(0);
   const lastEmittedRef = useRef<{ word: string; at: number } | null>(null);
   const runningRef = useRef(false);
+  const releasedRef = useRef(true);
 
   const clearCandidate = useCallback(() => {
     candidateRef.current = null;
@@ -97,16 +103,19 @@ export const useGestureAgent = (
     async (entry: ConfirmedGesture) => {
       if (!persist) return;
       try {
-        await translationsService.save({
+        const saved = await translationsService.save({
           inputText: entry.categoryName,
           outputText: entry.word,
           type: 'sena_texto',
+          mode: 'words',
           confidence: Number(entry.score.toFixed(3)),
           source: 'mediapipe',
-        });
-        setConfirmed(prev => prev.map(c => (c.id === entry.id ? { ...c, saved: true } : c)));
+        }, achievementContext);
+        if (achievementContext.isCurrent?.() === false) return;
+        setConfirmed(prev => prev.map(c => (c.id === entry.id ? { ...c, saved: true, translationId: saved.translationId } : c)));
         setSaveError(null);
       } catch (err) {
+        if (achievementContext.isCurrent?.() === false) return;
         const isUnauthorized =
           (err as { response?: { status?: number } })?.response?.status === 401;
         setSaveError(
@@ -116,13 +125,13 @@ export const useGestureAgent = (
         );
       }
     },
-    [persist],
+    [persist, achievementContext],
   );
 
   const confirmGesture = useCallback(
     (recognition: GestureRecognition, now: number) => {
       const entry: ConfirmedGesture = {
-        id: `${now}-${recognition.categoryName}`,
+        id: `${achievementContext.sessionId}-${now}-${recognition.categoryName}`,
         categoryName: recognition.categoryName,
         word: recognition.word,
         score: recognition.score,
@@ -131,6 +140,7 @@ export const useGestureAgent = (
       };
 
       lastEmittedRef.current = { word: recognition.word, at: now };
+      releasedRef.current = false;
       clearCandidate();
       // La ventana del motor todavia contiene la sena recien confirmada: si no
       // se vacia, la vuelve a reconocer en cada frame y la palabra se repite
@@ -149,6 +159,7 @@ export const useGestureAgent = (
       const now = Date.now();
 
       if (!result || result.score < minScore) {
+        releasedRef.current = true;
         clearCandidate();
         return;
       }
@@ -163,6 +174,10 @@ export const useGestureAgent = (
         confirmGesture(result, now);
         return;
       }
+
+      // A static pose needs a release before it can confirm the same word again.
+      // Complete-sign engines already delimit separate physical gestures above.
+      if (!releasedRef.current && lastEmittedRef.current?.word === result.word) return;
 
       if (candidateRef.current?.word === result.word) {
         frameCountRef.current += 1;
@@ -238,6 +253,15 @@ export const useGestureAgent = (
   }, [isRunning, handleFrame]);
 
   useEffect(() => () => gestureEngine.stop(), []);
+
+  useEffect(() => {
+    runningRef.current = false;
+    setIsRunning(false);
+    setConfirmed([]);
+    lastEmittedRef.current = null;
+    releasedRef.current = true;
+    clearCandidate();
+  }, [achievementContext.sessionId, clearCandidate]);
 
   const start = useCallback(() => {
     clearCandidate();
