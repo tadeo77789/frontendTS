@@ -3,7 +3,7 @@ import en from '../../../app/config/i18n/locales/en';
 import fr from '../../../app/config/i18n/locales/fr';
 import pt from '../../../app/config/i18n/locales/pt';
 import { parseAchievementsResponse, persistedCatalogProgress, persistedProgressOf, InvalidAchievementsResponseError } from '../data/persistedAchievements';
-import { catalogue, legacy } from './fixtures';
+import { catalogue, legacy, functionalAchievements } from './fixtures';
 
 describe('catalogue contract', () => {
   it.each([
@@ -51,4 +51,12 @@ describe('catalogue contract', () => {
   it('does not divide by an empty measurable catalogue', () => {
     expect(persistedCatalogProgress([]).percent).toBeNull();
   });
+});
+
+it('accepts the 21 functional v2 rules without upcoming cards or impossible word targets',()=>{
+ const items=functionalAchievements();
+ expect(items).toHaveLength(21);
+ expect(persistedCatalogProgress(items)).toMatchObject({available:21,upcoming:0,unlocked:0});
+ expect(items.filter(p=>p.achievement.metric==='DISTINCT_WORDS').map(p=>p.achievement.targetCount)).toEqual([20]);
+ expect(items.slice(5).every(p=>p.achievement.points===0)).toBe(true);
 });

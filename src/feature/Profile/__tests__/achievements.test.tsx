@@ -5,7 +5,7 @@ import { AchievementsCard } from '../components/AchievementsCard';
 import { useMyAchievements } from '../hooks/useMyAchievements';
 import { profileAchievementsService } from '../services/profileAchievements.service';
 import { ProfileScreen } from '../pages/ProfileScreen';
-import { catalogue, legacy, translationMilestones } from './fixtures';
+import { catalogue, legacy, translationMilestones, functionalAchievements } from './fixtures';
 
 jest.setTimeout(30000);
 
@@ -296,4 +296,16 @@ it('counts all five functional achievements in the profile counter', async () =>
   getMine.mockResolvedValue(items);
   await render(<ProfileScreen />);
   expect(await screen.findByText('1/5')).toBeTruthy();
+});
+
+it('renders all 21 measured rules pending in grey and completed in color without announcements',async()=>{
+ const items=functionalAchievements();
+ const props={achievements:items,loading:false,error:false,reload:jest.fn(),isWide:true};
+ const view=await render(<AchievementsCard {...props}/>);
+ await fireEvent.press(screen.getByLabelText('Expandir logros'));
+ for(const button of screen.getAllByRole('button').filter(p=>/^Ver más/.test(p.props.accessibilityLabel??'')))await fireEvent.press(button);
+ expect(screen.queryByText('Próximamente')).toBeNull();
+ for(const item of items)expect(screen.getByLabelText(`${item.achievement.name} · Pendiente`)).toHaveStyle({backgroundColor:Colors.backgroundGray});
+ await view.rerender(<AchievementsCard {...props} achievements={items.map(p=>({...p,currentCount:p.achievement.targetCount,achievedAt:'2026-10-21T12:00:00.000Z'}))}/>);
+ for(const item of items)expect(screen.getByLabelText(`${item.achievement.name} · Completado`)).toHaveStyle({backgroundColor:Colors.primaryBg});
 });

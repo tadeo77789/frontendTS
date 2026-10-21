@@ -1,4 +1,5 @@
 export type PersistedAchievementMetric =
+  | 'ACTIVE_SECONDS' | 'VOICE_COMPLETED' | 'FAVORITE_WORD' | 'DISTINCT_WORDS' | 'LETTERS_VIEWED' | 'BOTH_MODES' | 'TRANSLATION_DAYS' | 'WORD_CATEGORIES'
   | 'TRANSLATIONS_COMPLETED' | 'SIGNS_LEARNED' | 'ALPHABET_COMPLETED'
   | 'SESSIONS_COMPLETED' | 'CATALOG_REQUIREMENT';
 export const CATEGORIES = ['translation', 'practice', 'vocabulary', 'consistency', 'community'] as const;
@@ -31,7 +32,7 @@ export class InvalidAchievementsResponseError extends Error {
 }
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isCount = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
-const metrics = ['TRANSLATIONS_COMPLETED', 'SIGNS_LEARNED', 'ALPHABET_COMPLETED', 'SESSIONS_COMPLETED', 'CATALOG_REQUIREMENT'];
+const metrics = ['ACTIVE_SECONDS','VOICE_COMPLETED','FAVORITE_WORD','DISTINCT_WORDS','LETTERS_VIEWED','BOTH_MODES','TRANSLATION_DAYS','WORD_CATEGORIES','TRANSLATIONS_COMPLETED', 'SIGNS_LEARNED', 'ALPHABET_COMPLETED', 'SESSIONS_COMPLETED', 'CATALOG_REQUIREMENT'];
 const isDate = (v: unknown): boolean => v === null || (typeof v === 'string'
   && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(v)
   && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v);

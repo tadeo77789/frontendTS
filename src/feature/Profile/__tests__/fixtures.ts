@@ -32,3 +32,22 @@ export const translationMilestones = (): PersistedAchievementProgress[] => [
     } };
   }),
 ];
+
+/** Catalogue after 007: unavailable 50/100 distinct-word targets are absent. */
+export const functionalAchievements = (): PersistedAchievementProgress[] => {
+  const definitions = [
+    ...[600,3600,18000,36000,144000].map(n=>[`activeSeconds${n}`,'ACTIVE_SECONDS',n,'translation'] as const),
+    ...[1,25].map(n=>[`voiceCompleted${n}`,'VOICE_COMPLETED',n,'translation'] as const),
+    ...[10,25,50].map(n=>[`favoriteWord${n}`,'FAVORITE_WORD',n,'vocabulary'] as const),
+    ['distinctWords20','DISTINCT_WORDS',20,'vocabulary'],
+    ['lettersViewed10','LETTERS_VIEWED',10,'vocabulary'],
+    ['alphabetViewed','LETTERS_VIEWED',27,'vocabulary'],
+    ['bothModes','BOTH_MODES',10,'translation'],
+    ['fiveTranslationDays','TRANSLATION_DAYS',5,'consistency'],
+    ['fiveWordCategories','WORD_CATEGORIES',5,'vocabulary'],
+  ] as const;
+  return parseAchievementsResponse({ data: [...translationMilestones(), ...definitions.map(([code,metric,targetCount,category])=>({
+    ...legacy(String(code),Number(targetCount)),achievement:{...legacy(String(code),Number(targetCount)).achievement,
+      collection:'catalog',category,metric,level:'bronze',points:0},
+  }))] });
+};
