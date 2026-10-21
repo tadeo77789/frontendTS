@@ -7,6 +7,8 @@ export interface SaveTranslationInput {
   inputText: string;
   outputText: string;
   type: TipoTraduccion;
+  mode?: 'letters' | 'words';
+  sessionId?: string;
   confidence?: number;
   source?: 'mediapipe' | 'knn' | 'mock' | 'manual' | 'motion' | 'geometric';
 }
@@ -34,12 +36,13 @@ export interface SavedTranslation {
 
 export const translationsService = {
 
-  async save(input: SaveTranslationInput): Promise<SavedTranslation> {
+  async save(input: SaveTranslationInput, context?: { token: string | null; sessionId: string; eligible: boolean }): Promise<SavedTranslation> {
     const userId = await getCurrentUserId();
     const { data } = await api.post(ENDPOINTS.translate, {
       ...input,
       user_id: userId,
-    });
+      sessionId: context?.eligible ? context.sessionId : undefined,
+    }, context ? { headers: { Authorization: `Bearer ${context.token ?? ''}` } } : undefined);
     return data?.data as SavedTranslation;
   },
 

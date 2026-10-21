@@ -1,4 +1,8 @@
+import { useIsFocused } from '@react-navigation/native';
+import { beginVoicePlayback } from '../services/voicePlayback';
+import { useActiveTranslationTime } from '../../../shared/hooks/useActiveTranslationTime';
 
+import { useAchievementActivity } from '../../../shared/hooks/useAchievementActivity';
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   View,
@@ -48,6 +52,10 @@ const SPEECH_LANG: Record<string, string> = {
 type Engine = 'palabras' | 'abecedario';
 
 export const TranslationScreen: React.FC = () => {
+  const { context: achievementContext, record: recordActivity } = useAchievementActivity();
+  const isFocused = useIsFocused();
+  const [savedLetters, setSavedLetters] = useState<{ id: number; text: string } | null>(null);
+  const playbackRef = useRef<ReturnType<typeof beginVoicePlayback> | null>(null);
   const { width, height } = useWindowDimensions();
   const isDesktop = width >= 1024;
 
@@ -72,7 +80,7 @@ export const TranslationScreen: React.FC = () => {
   } = useSignAgent(cameraRef, { intervalMs: 1500, minConfidence: 0.7, confirmFrames: 2 });
 
   // Agente de palabras: lee el <video> directo, estabiliza y guarda cada sena.
-  const gesture = useGestureAgent();
+  const gesture = useGestureAgent({ achievementContext });
   const { start: gestureStart, stop: gestureStop, reset: gestureReset } = gesture;
 
   const TIPS = [
@@ -110,16 +118,18 @@ export const TranslationScreen: React.FC = () => {
     const transcript = agentTranscript.trim();
     if (!transcript) return;
     try {
-      await translationsService.save({
+      const saved = await translationsService.save({
         inputText: transcript,
         outputText: transcript,
         type: 'sena_texto',
+        mode: 'letters',
         confidence: agentLastResult?.confidence,
         source: agentLastResult?.source ?? 'mediapipe',
-      });
+      }, achievementContext);
+      if (achievementContext.isCurrent()) setSavedLetters({ id: saved.translationId, text: transcript });
     } catch {
     }
-  }, [agentTranscript, agentLastResult]);
+  }, [agentTranscript, agentLastResult, achievementContext]);
 
   const handleAction = useCallback(async () => {
     if (!isActive) {
@@ -179,26 +189,33 @@ export const TranslationScreen: React.FC = () => {
   // El mismo boton lee el texto o, si ya esta sonando, lo detiene.
   const [speaking, setSpeaking] = useState(false);
 
+  const cancelSpeech = useCallback(() => {
+    playbackRef.current?.cancel();
+    playbackRef.current = null;
+    Speech.stop();
+    setSpeaking(false);
+  }, []);
+
   const toggleSpeech = useCallback((textToSpeak: string) => {
-    if (speaking) {
-      Speech.stop();
-      setSpeaking(false);
-      return;
-    }
+    if (playbackRef.current || speaking) { cancelSpeech(); return; }
     const value = textToSpeak.trim();
     if (!value) return;
-    Speech.stop();
     setSpeaking(true);
-    const done = () => setSpeaking(false);
-    Speech.speak(value, {
-      language: SPEECH_LANG[language] ?? 'es-ES',
-      onDone: done,
-      onStopped: done,
-      onError: done,
-    });
-  }, [language, speaking]);
+    const translationId = usingGestures
+      ? gesture.lastConfirmed?.translationId
+      : savedLetters?.text === value ? savedLetters.id : undefined;
+    playbackRef.current = beginVoicePlayback({ text: value, language: SPEECH_LANG[language] ?? 'es-ES',
+      translationId, record: recordActivity, speak: Speech.speak, stop: Speech.stop,
+      onFinish: () => { playbackRef.current = null; setSpeaking(false); } });
+  }, [language, speaking, cancelSpeech, usingGestures, gesture.lastConfirmed, savedLetters, recordActivity]);
 
-  useEffect(() => () => { agentStop(); Speech.stop(); }, [agentStop]);
+  useEffect(() => () => { agentStop(); cancelSpeech(); }, [agentStop, cancelSpeech]);
+  useEffect(() => {
+    setSavedLetters(null); cancelSpeech(); setIsActive(false);
+    agentStop(); agentReset(); gestureStop(); gestureReset();
+  }, [achievementContext.sessionId, cancelSpeech, agentStop, agentReset, gestureStop, gestureReset]);
+
+  useActiveTranslationTime(isFocused && isActive && achievementContext.eligible, recordActivity, cancelSpeech);
 
   // Las plantillas de palabras viven en el servidor: se bajan al abrir la
   // pantalla. Si falla (sin red o sin backend), se sigue con las locales.
