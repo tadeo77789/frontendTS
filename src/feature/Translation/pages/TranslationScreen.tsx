@@ -23,6 +23,7 @@ import { useTranslation } from '../../../app/config/i18n';
 import { useTrackSectionView } from '../../../shared/hooks/useTrackSectionView';
 import { useSignAgent } from '../../../feature/Translation/hooks/useSignAgent';
 import { useGestureAgent } from '../hooks/useGestureAgent';
+import { WordEngineView } from '../components/WordEngineView';
 import { isSimulatedRecognition, isGenericGestureEngine, getGestureCounts, getLastWordMatch, wordEnginePerf, wordPrediction, wordState, wordVocabulary } from '../services/vision';
 import type { WordMatchDebug } from '../services/vision';
 import { translationsService } from '../services/translations.service';
@@ -371,8 +372,11 @@ export const TranslationScreen: React.FC = () => {
                 )}
 
                 <View style={[styles.cameraInner, { height: cameraHeight, backgroundColor: C.backgroundGray, borderColor: C.border }]}>
+                  {/* En Android/iOS el modo palabras corre en un WebView que ya trae su camara. */}
                   {isActive && cameraGranted && (
-                    <CameraView ref={cameraRef} style={styles.cameraFill} facing="front" animateShutter={false} />
+                    usingGestures && Platform.OS !== 'web'
+                      ? <WordEngineView style={styles.cameraFill} />
+                      : <CameraView ref={cameraRef} style={styles.cameraFill} facing="front" animateShutter={false} />
                   )}
 
                   <View style={[styles.corner, styles.cornerTL]} />

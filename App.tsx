@@ -10,6 +10,7 @@ import { ThemeProvider, useTheme } from './src/app/providers/ThemeContext';
 import { LanguageProvider } from './src/app/providers/LanguageContext';
 import { AppNavigator } from './src/app/routes/AppNavigator';
 import { PreferencesProvider } from './src/app/providers/PreferencesContext';
+import { isWordEngineEmbed, WordEngineEmbed } from './src/feature/Translation/embed/WordEngineEmbed';
 
 // En web, la ventana emergente de Facebook vuelve a la app con el token: esto
 // se lo entrega a la ventana principal y la cierra.
@@ -26,6 +27,10 @@ function AppContent() {
 }
 
 export default function App() {
+  // Dentro del WebView de la app nativa solo hace falta el motor de palabras:
+  // sin sesion, navegacion ni tema.
+  if (isWordEngineEmbed()) return <WordEngineEmbed />;
+
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>

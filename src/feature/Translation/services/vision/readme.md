@@ -6,7 +6,7 @@ La pantalla de traducción expone un selector con dos motores independientes:
 
 | Motor | Qué reconoce | Archivos | Plataformas |
 |---|---|---|---|
-| **Palabras** (por defecto) | 7 gestos pre-entrenados de MediaPipe → palabra completa | `gestureProvider*.ts` + `gestureDictionary.ts` | Solo web |
+| **Palabras** (por defecto) | Modelo LSC propio (o 7 gestos de MediaPipe si no está) → palabra completa | `wordEngine*.ts`, `modelWordEngine.web.ts`, `gestureProvider*.ts` | Web · móvil vía WebView |
 | **Abecedario** | A–Z de LSC letra por letra, con KNN y señas en movimiento | `mediapipeProvider*.ts` + `classifier.ts` y compañía | Web (completo) · nativo (fallback) |
 
 El resto de este documento describe el motor **Abecedario**; el motor
@@ -198,10 +198,21 @@ https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recog
 Para trabajar sin internet, descargarlo a `src/web/models/gesture_recognizer.task`
 y poner `GESTURE_MODEL_URL = '/models/gesture_recognizer.task'`.
 
-## Limitación en móvil
+## En móvil: puente por WebView
 
-`@mediapipe/tasks-vision` es una librería **web**. Expo Go no trae binding de
-MediaPipe Tasks, así que en iOS/Android `gestureEngine.isSupported` es `false`
-y la pantalla muestra el aviso en vez de fallar. Habilitarlo en nativo exige
-un dev-client con un módulo nativo de MediaPipe Tasks (Android/iOS), que está
-fuera del alcance de esta demo.
+`@mediapipe/tasks-vision` es una librería **web** (WASM + `<video>`) y React
+Native no la puede correr. En vez de duplicar el motor, en Android/iOS la
+pantalla monta `components/WordEngineView.tsx`, un WebView que abre la web
+desplegada en modo embebido (`WORD_ENGINE_EMBED_URL`, `?embed=word-engine`):
+
+1. `App.tsx` detecta `?embed=word-engine` y pinta solo `embed/WordEngineEmbed.web.tsx`,
+   que pide la cámara, corre `wordEngine.web.ts` y manda cada resultado con
+   `window.ReactNativeWebView.postMessage`.
+2. La versión nativa de `wordEngine.ts` recibe esos mensajes y los expone con
+   el mismo contrato `GestureEngine`, así que `useGestureAgent` y la pantalla no
+   cambian. El guardado (`POST /translations`) lo hace la app con su token.
+3. El protocolo (`WordEngineMessage`, `WordEngineCommand`) está en `wordEngineTypes.ts`.
+
+En este modo la pantalla no monta `CameraView`: dos consumidores de la cámara a
+la vez fallan en Android. Requiere internet y que la web desplegada incluya el
+modo embebido. El modo **Abecedario** sigue sin motor real en móvil.

@@ -111,5 +111,14 @@ export const MEDIAPIPE_VISION_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tas
  */
 export const WORD_MODEL_URL = '/models/lsc/model.json';
 
+/**
+ * Web desplegada. En Android/iOS el modo "palabras" la abre en un WebView en
+ * modo embebido, porque MediaPipe solo corre en navegador (ver
+ * `WordEngineView`). EXPO_PUBLIC_WEB_URL la cambia para probar otro
+ * despliegue; tiene que ser https, o el WebView no da la camara.
+ */
+export const WEB_APP_URL = process.env.EXPO_PUBLIC_WEB_URL || 'https://traducesenas.tech';
+export const WORD_ENGINE_EMBED_URL = `${WEB_APP_URL}/?embed=word-engine`;
+
 export const GESTURE_MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task';
