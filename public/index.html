@@ -4,21 +4,24 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <meta name="description" content="Traduce Lengua de Señas Colombiana a texto en tiempo real." />
-    <meta name="theme-color" content="#9B77E6" />
+    <!-- description, theme-color y favicon los pone Expo desde app.json (web). -->
+    <!-- Instalable desde "Agregar a pantalla de inicio": en iPhone es la
+         alternativa al APK, que solo existe para Android. -->
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Traduce Señas" />
-    <link rel="icon" type="image/png" href="/images/favicon.png" />
-    <link rel="apple-touch-icon" href="/images/favicon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <title>Traduce Señas</title>
     <style>
       *, *::before, *::after { box-sizing: border-box; }
       html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
-      #root { display: flex; flex-direction: column; height: 100%; }
+      #root { display: flex; flex-direction: column; height: 100%; flex: 1; }
     </style>
   </head>
   <body>
+    <noscript>Activa JavaScript para usar Traduce Señas.</noscript>
     <div id="root"></div>
   </body>
 </html>

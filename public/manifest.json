@@ -1,0 +1,16 @@
+{
+  "name": "Traduce Señas",
+  "short_name": "Traduce Señas",
+  "description": "Traduce Lengua de Señas Colombiana a texto en tiempo real.",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#7C3AED",
+  "background_color": "#EDE9FE",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

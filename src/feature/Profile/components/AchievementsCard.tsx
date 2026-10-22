@@ -37,9 +37,8 @@ export const AchievementsCard: React.FC<Props> = ({ achievements, loading, error
   const summary = persistedCatalogProgress(items);
   const open = sectionExpanded && selection?.session === session ? items.find(p => p.achievement.id === selection.id) ?? null : null;
   const tileWidth = width >= 900 ? '23%' : width >= 600 ? '31%' : '47%';
-  const groups = [...CATEGORIES.map(category => ({ key: category, label: t(labels[category]),
-    items: items.filter(p => p.achievement.collection === 'catalog' && p.achievement.category === category) })),
-    { key: 'legacy', label: t('achievementLegacy'), items: items.filter(p => p.achievement.collection === 'legacy') }];
+  const groups = [{ key: 'legacy', label: t('achievementLegacy'), items: items.filter(p => p.achievement.collection === 'legacy') }, ...CATEGORIES.map(category => ({ key: category, label: t(labels[category]),
+    items: items.filter(p => p.achievement.collection === 'catalog' && p.achievement.category === category) }))];
   return (
     <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
       <TouchableOpacity accessibilityRole="button"
@@ -59,10 +58,8 @@ export const AchievementsCard: React.FC<Props> = ({ achievements, loading, error
         : !ready ? <Text style={{ color: C.textSecondary }}>{t('achievementsUnavailable')}</Text>
         : items.length === 0 ? <Text style={{ color: C.textSecondary }}>{t('achievementsCatalogEmpty')}</Text>
         : <>
-          <Text style={{ color: C.textSecondary }}>{t('achievementCatalogSummary', { total: summary.total, available: summary.available, upcoming: summary.upcoming })}</Text>
-          <Text style={{ color: C.textSecondary }}>{summary.available > 0 ? t('achievementAvailableSummary', { unlocked: summary.unlocked, total: summary.available }) : t('achievementNoneAvailable')}</Text>
+          <Text style={{ color: C.textSecondary }}>{t('achievementAvailableSummary', { unlocked: summary.unlocked, total: summary.available })}</Text>
           {summary.percent !== null && <View style={styles.progress}><AchievementProgressBar percent={summary.percent} track={C.inputBg} fill={C.primary} /></View>}
-          <Text style={{ color: C.textSecondary }}>{t('achievementLegacySummary', { unlocked: summary.legacyUnlocked, total: summary.legacyTotal })}</Text>
           {groups.filter(group => group.items.length > 0).map(group => {
             const expandable = group.key !== 'legacy' && group.items.length > 2;
             const expanded = expandedCategories[group.key] === true;

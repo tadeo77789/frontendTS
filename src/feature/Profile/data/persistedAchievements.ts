@@ -1,4 +1,5 @@
 export type PersistedAchievementMetric =
+  | 'ACTIVE_SECONDS' | 'VOICE_COMPLETED' | 'FAVORITE_WORD' | 'DISTINCT_WORDS' | 'LETTERS_VIEWED' | 'BOTH_MODES' | 'TRANSLATION_DAYS' | 'WORD_CATEGORIES'
   | 'TRANSLATIONS_COMPLETED' | 'SIGNS_LEARNED' | 'ALPHABET_COMPLETED'
   | 'SESSIONS_COMPLETED' | 'CATALOG_REQUIREMENT';
 export const CATEGORIES = ['translation', 'practice', 'vocabulary', 'consistency', 'community'] as const;
@@ -31,7 +32,7 @@ export class InvalidAchievementsResponseError extends Error {
 }
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isCount = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
-const metrics = ['TRANSLATIONS_COMPLETED', 'SIGNS_LEARNED', 'ALPHABET_COMPLETED', 'SESSIONS_COMPLETED', 'CATALOG_REQUIREMENT'];
+const metrics = ['ACTIVE_SECONDS','VOICE_COMPLETED','FAVORITE_WORD','DISTINCT_WORDS','LETTERS_VIEWED','BOTH_MODES','TRANSLATION_DAYS','WORD_CATEGORIES','TRANSLATIONS_COMPLETED', 'SIGNS_LEARNED', 'ALPHABET_COMPLETED', 'SESSIONS_COMPLETED', 'CATALOG_REQUIREMENT'];
 const isDate = (v: unknown): boolean => v === null || (typeof v === 'string'
   && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(v)
   && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v);
@@ -85,14 +86,13 @@ export const persistedProgressOf = (p: PersistedAchievementProgress): { unlocked
   return { unlocked: p.achievedAt !== null, percent };
 };
 
-/** New available catalogue and legacy achievements have separate denominators. */
+/** All server-published available achievements contribute, including historical ones. */
 export const persistedCatalogProgress = (items: readonly PersistedAchievementProgress[]) => {
-  const catalog = items.filter(p => p.achievement.collection === 'catalog');
-  const available = catalog.filter(p => p.achievement.availability === 'available');
+  const available = items.filter(p => p.achievement.isActive && p.achievement.availability === 'available');
   const legacy = items.filter(p => p.achievement.collection === 'legacy');
   const unlocked = available.filter(p => p.achievedAt !== null).length;
-  return { unlocked, total: catalog.length, available: available.length,
-    upcoming: catalog.length - available.length,
+  return { unlocked, total: items.length, available: available.length,
+    upcoming: items.filter(p => p.achievement.availability === 'upcoming').length,
     percent: available.length ? Math.round(unlocked / available.length * 100) : null,
     legacyTotal: legacy.length, legacyUnlocked: legacy.filter(p => p.achievedAt !== null).length };
 };

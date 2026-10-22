@@ -3,7 +3,7 @@ import en from '../../../app/config/i18n/locales/en';
 import fr from '../../../app/config/i18n/locales/fr';
 import pt from '../../../app/config/i18n/locales/pt';
 import { parseAchievementsResponse, persistedCatalogProgress, persistedProgressOf, InvalidAchievementsResponseError } from '../data/persistedAchievements';
-import { catalogue, legacy } from './fixtures';
+import { catalogue, legacy, functionalAchievements } from './fixtures';
 
 describe('catalogue contract', () => {
   it.each([
@@ -14,7 +14,7 @@ describe('catalogue contract', () => {
   ])('uses simple upcoming fallback copy in each language', (locale, message) => {
     expect((locale as typeof es).achievementUnavailableReason).toBe(message);
   });
-  it('has 24 unique upcoming entries, no numeric progress and separate legacy totals', () => {
+  it('has 24 unique upcoming entries, no numeric progress and includes functional historical achievements in totals', () => {
     const items = catalogue();
     expect(items).toHaveLength(24);
     expect(new Set(items.map(p => p.achievement.code)).size).toBe(24);
@@ -22,7 +22,7 @@ describe('catalogue contract', () => {
     expect(items.every(p => persistedProgressOf(p).percent === null)).toBe(true);
     const old = legacy(); old.currentCount = 1; old.achievedAt = '2026-01-01T00:00:00.000Z';
     expect(persistedCatalogProgress([...items, old, legacy('TEN_TRANSLATIONS', 10), legacy('FIFTY_TRANSLATIONS', 50)]))
-      .toEqual({ total: 24, available: 0, upcoming: 24, unlocked: 0, percent: null, legacyTotal: 3, legacyUnlocked: 1 });
+      .toEqual({ total: 27, available: 3, upcoming: 24, unlocked: 1, percent: 33, legacyTotal: 3, legacyUnlocked: 1 });
   });
   it('uses achievedAt, not target attainment, as unlock authority', () => {
     const old = legacy(); old.currentCount = 1;
@@ -51,4 +51,12 @@ describe('catalogue contract', () => {
   it('does not divide by an empty measurable catalogue', () => {
     expect(persistedCatalogProgress([]).percent).toBeNull();
   });
+});
+
+it('accepts the 21 functional v2 rules without upcoming cards or impossible word targets',()=>{
+ const items=functionalAchievements();
+ expect(items).toHaveLength(21);
+ expect(persistedCatalogProgress(items)).toMatchObject({available:21,upcoming:0,unlocked:0});
+ expect(items.filter(p=>p.achievement.metric==='DISTINCT_WORDS').map(p=>p.achievement.targetCount)).toEqual([20]);
+ expect(items.slice(5).every(p=>p.achievement.points===0)).toBe(true);
 });
