@@ -11,7 +11,9 @@ import {
   useWindowDimensions,
   TextInput,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { MainTabParams } from '../../../app/routes/MainTabNavigator';
 import { AppHeader } from '../../../shared/components/common/AppHeader';
 import { Colors } from '../../../shared/constants/colors';
 import { useColors, useTheme } from '../../../app/providers/ThemeContext';
@@ -55,6 +57,7 @@ export const HistoryScreen: React.FC = () => {
   const C = useColors();
   const { isDark } = useTheme();
   const { t } = useTranslation();
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabParams, 'History'>>();
   useTrackSectionView('HISTORY');
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,9 +107,10 @@ export const HistoryScreen: React.FC = () => {
     }
   }, [t]);
 
-  const handleReuse = useCallback((item: HistoryItem) => {
-    showAlert({ title: t('historyReuseTitle'), message: `${t('historyReuseMsg')}\n\n"${item.texto_entrada}"` });
-  }, [t]);
+  const handleReuse = useCallback(async (item: HistoryItem) => {
+    await showAlert({ title: t('historyReuseTitle'), message: `${t('historyReuseMsg')}\n\n"${item.texto_entrada}"` });
+    navigation.navigate('Translation');
+  }, [t, navigation]);
 
   const renderItem: ListRenderItem<HistoryItem> = useCallback(({ item }) => {
     const config = TIPO_CONFIG[item.tipo] ?? TIPO_CONFIG['texto_sena'];
