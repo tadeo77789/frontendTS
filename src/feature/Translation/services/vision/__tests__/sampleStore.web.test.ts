@@ -54,16 +54,16 @@ describe('sampleStore.web: errores de IndexedDB', () => {
 
   it('si no se puede abrir la base, rechaza con un Error', async () => {
     installIndexedDb(() => failingRequest());
-    await expect(contarPorGlosa()).rejects.toThrow('No se pudo abrir IndexedDB');
+    await expect(contarPorGlosa()).rejects.toThrow('IndexedDB: error en la solicitud');
   });
 
   it('si falla una lectura, rechaza con un Error', async () => {
     installIndexedDb(openingWith(fakeDb('request')));
-    await expect(contarPorGlosa()).rejects.toThrow('Fallo la operacion en IndexedDB');
+    await expect(contarPorGlosa()).rejects.toThrow('IndexedDB: error en la solicitud');
   });
 
   it('si falla el borrado, rechaza con un Error', async () => {
     installIndexedDb(openingWith(fakeDb('transaction')));
-    await expect(borrarGlosa('hola')).rejects.toThrow('Fallo el borrado en IndexedDB');
+    await expect(borrarGlosa('hola')).rejects.toThrow('IndexedDB: error en la transaccion');
   });
 });
