@@ -10,23 +10,6 @@
     "ios": "expo start --ios",
     "web": "expo start --web"
   },
-  "jest": {
-    "preset": "jest-expo",
-    "setupFiles": [
-      "<rootDir>/jest.setup.js"
-    ],
-    "testMatch": [
-      "<rootDir>/src/**/__tests__/**/*.test.ts?(x)"
-    ],
-    "collectCoverageFrom": [
-      "src/**/*.{ts,tsx}",
-      "!src/**/__tests__/**",
-      "!src/**/*.d.ts"
-    ],
-    "moduleNameMapper": {
-      "^expo-modules-core(/.*)?$": "<rootDir>/node_modules/expo/node_modules/expo-modules-core$1"
-    }
-  },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.15",
     "@expo/vector-icons": "^15.0.3",
