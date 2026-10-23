@@ -1,4 +1,5 @@
 import React from 'react';
+import { AchievementUnlockAlerts } from './src/shared/components/AchievementUnlockAlerts';
 import { StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -22,6 +23,7 @@ function AppContent() {
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <AppNavigator />
+      <AchievementUnlockAlerts />
     </>
   );
 }
