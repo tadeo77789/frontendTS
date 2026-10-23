@@ -38,7 +38,7 @@ const abrir = (): Promise<IDBDatabase> =>
       }
     };
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onerror = () => reject(req.error ?? new Error('No se pudo abrir IndexedDB'));
   });
 
 const conStore = async <T>(
@@ -50,7 +50,7 @@ const conStore = async <T>(
     const tx = db.transaction(STORE, modo);
     const req = fn(tx.objectStore(STORE));
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onerror = () => reject(req.error ?? new Error('Fallo la operacion en IndexedDB'));
     tx.oncomplete = () => db.close();
   });
 };
@@ -88,7 +88,7 @@ export const borrarGlosa = async (glosa: string): Promise<void> => {
       db.close();
       resolve();
     };
-    tx.onerror = () => reject(tx.error);
+    tx.onerror = () => reject(tx.error ?? new Error('Fallo el borrado en IndexedDB'));
   });
 };
 

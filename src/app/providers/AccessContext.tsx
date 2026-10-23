@@ -53,14 +53,14 @@ export const AccessProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setState(next);
     if (next.error && !unauthorized && !alerted.current) {
       alerted.current = true;
-      showAlert({ message: tRef.current('accessLoadError'), icon: 'warning' });
+      void showAlert({ message: tRef.current('accessLoadError'), icon: 'warning' });
     }
   }, []);
 
   // Una sola carga por token (inicio de sesión o rehidratación); se limpia al cerrar sesión.
   useEffect(() => {
     if (isAuthenticated && token) {
-      load(token);
+      void load(token);
     } else {
       requestId.current++;
       alerted.current = false;

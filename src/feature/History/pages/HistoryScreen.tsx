@@ -73,7 +73,7 @@ export const HistoryScreen: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      (async () => {
+      void (async () => {
         try {
           const rows = await translationsService.list({ limit: 100 });
           if (active) {
