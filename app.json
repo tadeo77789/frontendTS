@@ -2,7 +2,7 @@
   "expo": {
     "name": "Traduce Señas",
     "slug": "traduce-senas",
-    "version": "1.0.2",
+    "version": "1.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./src/assets/images/app-icon.png",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.traducsenas.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/images/adaptive-icon.png",
         "backgroundColor": "#EDE9FE"
