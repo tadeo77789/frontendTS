@@ -376,6 +376,8 @@ const fr: typeof es = {
   historyReuseBtn: 'Réutiliser',
   historyDeleteBtn: 'Supprimer',
   historyDeleteError: "Impossible de supprimer l'enregistrement. Réessayez.",
+  historyLoadError: "Impossible de charger l'historique. Vérifiez votre connexion.",
+  historyRetry: 'Réessayer',
 
   kpiTranslations: 'Traductions',
   kpiActiveUsers: "Utilisateurs actifs (30 jours)",

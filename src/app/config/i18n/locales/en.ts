@@ -376,6 +376,8 @@ const en: typeof es = {
   historyReuseBtn: 'Reuse',
   historyDeleteBtn: 'Delete',
   historyDeleteError: 'Could not delete the record. Please try again.',
+  historyLoadError: 'Could not load your history. Check your connection.',
+  historyRetry: 'Retry',
 
   kpiTranslations: 'Translations',
   kpiActiveUsers: "Active users (30 days)",
