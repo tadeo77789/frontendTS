@@ -69,4 +69,5 @@ jobs:
           grep -q '<div id="root"' index.html
           curl -fsS -o /dev/null http://localhost:8080/ruta/de/la/spa
           test "$(docker exec web id -u)" != "0"
+          curl -fsSI http://localhost:8080/ | grep -qi '^content-security-policy'
           docker rm -f web
