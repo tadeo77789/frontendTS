@@ -27,6 +27,7 @@ import {
 import { MEDIAPIPE_VISION_CDN, WORD_MODEL_URL } from '../../../../app/config/api.config';
 import type { GestureEngine, GestureRecognition } from './gestureProvider';
 import type { EnginePerf, Prediction } from './wordEngineTypes';
+import { matchWordTemplate, templateConfidence } from './wordTemplateMatcher';
 
 const MODULE_URL = `${MEDIAPIPE_VISION_CDN}/vision_bundle.mjs`;
 const WASM_BASE = `${MEDIAPIPE_VISION_CDN}/wasm`;
@@ -112,6 +113,20 @@ export const tuning = {
    * reentrenar con una clase "nada"; entonces esta lista queda vacia.
    */
   suppressed: ['por favor'] as string[],
+  /**
+   * Distancia DTW maxima para aceptar una palabra agregada en el admin
+   * (wordTemplateMatcher.ts). Medido sobre las 434 muestras de dataset.npz,
+   * con 5 tomas de una persona como plantillas:
+   *
+   *                    misma persona   otra persona   palabra ajena
+   *     umbral 2.5          44%             7%              0%
+   *     umbral 3.0          59%            33%              6%
+   *
+   * "palabra ajena" es el error que importa: una sena conocida que se roba
+   * la plantilla. Con 2.5 no pasa. Si las palabras agregadas casi nunca
+   * salen, subirlo con lscTune({ templateMaxDistance: 3 }).
+   */
+  templateMaxDistance: 2.5,
 };
 
 export type Tuning = typeof tuning;
@@ -415,6 +430,25 @@ const classify = async (sena: Float32Array[]): Promise<GestureRecognition | null
   // Toda la sena a 30 frames, dure lo que dure: es como se entreno.
   const sequence = resampleWindow(sena);
   if (!sequence) return null;
+
+  // Primero las palabras agregadas en el admin. El modelo no puede decir
+  // "no la conozco": ante *triste* elige la glosa que mas se le parezca, a
+  // veces con mucha confianza. Por eso la plantilla, si se parece lo
+  // suficiente, gana; el umbral esta medido para no robarle senas al modelo.
+  const plantilla = matchWordTemplate(sequence);
+  if (plantilla && plantilla.distance <= tuning.templateMaxDistance) {
+    const score = templateConfidence(plantilla.distance, tuning.templateMaxDistance);
+    lastPrediction = { word: plantilla.label, score, accepted: true, at: Date.now() };
+    traza(
+      `sena de ${sena.length} frames (~${duracion}s) -> ${plantilla.label} ` +
+        `(plantilla, distancia ${plantilla.distance.toFixed(2)}) · aceptada`,
+    );
+    state = 'quieto';
+    return { categoryName: plantilla.label, word: plantilla.label, score };
+  }
+  if (plantilla) {
+    traza(`plantilla mas cercana: ${plantilla.label} a ${plantilla.distance.toFixed(2)} (> ${tuning.templateMaxDistance})`);
+  }
 
   const tf = await loadTf();
   const tensor = (tf as { tensor: (d: Float32Array, s: number[]) => unknown }).tensor(

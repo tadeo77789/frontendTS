@@ -14,6 +14,7 @@ import { GESTURE_CATEGORIES, GESTURE_DICTIONARY } from './gestureDictionary';
 import { enginePerf, engineState, getLastPrediction, isModelAvailable, modelWordEngine, setSampleSink } from './modelWordEngine.web';
 import type { EngineState } from './modelWordEngine.web';
 import type { EnginePerf, Prediction } from './wordEngineTypes';
+import { loadWordTemplates } from '../wordTemplates.service';
 
 let active: GestureEngine | null = null;
 
@@ -65,6 +66,9 @@ export const gestureEngine: GestureEngine = {
 
   async start(onResult: (result: GestureRecognition | null) => void) {
     active = (await isModelAvailable()) ? modelWordEngine : legacyEngine;
+    // Las palabras agregadas en el admin se bajan aqui y no en cada pantalla,
+    // asi tambien las recibe la web embebida del APK. Sin red, sigue el modelo solo.
+    if (active === modelWordEngine) void loadWordTemplates().catch(() => undefined);
     await active.start(onResult);
   },
 

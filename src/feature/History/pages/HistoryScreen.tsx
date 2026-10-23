@@ -61,6 +61,9 @@ export const HistoryScreen: React.FC = () => {
   useTrackSectionView('HISTORY');
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  // Un fallo de red no es un historial vacio: se muestra el error con reintento.
+  const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [query, setQuery] = useState<string>('');
 
   const filtered = items.filter((p) =>
@@ -73,16 +76,25 @@ export const HistoryScreen: React.FC = () => {
       (async () => {
         try {
           const rows = await translationsService.list({ limit: 100 });
-          if (active) setItems(rows.map(mapSavedTranslation));
+          if (active) {
+            setItems(rows.map(mapSavedTranslation));
+            setFailed(false);
+          }
         } catch {
-          if (active) setItems([]);
+          if (active) setFailed(true);
         } finally {
           if (active) setLoading(false);
         }
       })();
       return () => { active = false; };
-    }, []),
+    }, [reloadKey]),
   );
+
+  const retry = useCallback(() => {
+    setLoading(true);
+    setFailed(false);
+    setReloadKey(k => k + 1);
+  }, []);
 
   const TIPO_CONFIG: Record<string, TipoConfig> = {
     sena_texto: { label: t('historySenaTexto'), icon: 'hand-left', color: '#8B5CF6', darkColor: '#A78BFA' },
@@ -179,6 +191,14 @@ export const HistoryScreen: React.FC = () => {
         {loading ? (
           <View style={styles.empty}>
             <ActivityIndicator size="large" color={C.primary} />
+          </View>
+        ) : failed && items.length === 0 ? (
+          <View style={styles.empty}>
+            <Ionicons name="cloud-offline-outline" size={40} color={C.textHint} />
+            <Text style={[styles.emptyText, { color: C.textSecondary }]}>{t('historyLoadError')}</Text>
+            <TouchableOpacity onPress={retry} style={[styles.retryBtn, { backgroundColor: C.primary }]}>
+              <Text style={styles.retryText}>{t('historyRetry')}</Text>
+            </TouchableOpacity>
           </View>
         ) : filtered.length === 0 ? (
           <View style={styles.empty}>
@@ -279,4 +299,6 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary },
   emptyText: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', maxWidth: 300, lineHeight: 22 },
+  retryBtn: { paddingVertical: 10, paddingHorizontal: 22, borderRadius: 999 },
+  retryText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

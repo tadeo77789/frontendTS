@@ -4,6 +4,10 @@ Aplicación multiplataforma que traduce **Lengua de Señas Colombiana (LSC) a te
 
 Construida con **Expo + React Native + TypeScript**, funciona desde una sola base de código en **Android, iOS y Web**.
 
+- **Producción:** <https://traducesenas.tech>
+- **APK de Android:** <https://tadeo77789.github.io/traducesenas-download/>
+- **Backend:** [mauro-1508/backendTS](https://github.com/mauro-1508/backendTS) · **Documentación:** [code-sena/trans-sl-docs](https://github.com/code-sena/trans-sl-docs)
+
 ---
 
 ## ¿Qué hace?
@@ -13,7 +17,7 @@ Construida con **Expo + React Native + TypeScript**, funciona desde una sola bas
 - **Historial** — guarda y consulta las traducciones realizadas.
 - **Estadísticas** — métricas de uso y progreso del usuario.
 - **Cuentas de usuario** — registro, inicio de sesión, verificación por código y recuperación de contraseña.
-- **Panel de administración** — gestión y entrenamiento del modelo de reconocimiento (captura de muestras, importación/exportación de datos de entrenamiento).
+- **Panel de administración** — captura de muestras en el dispositivo, importación/exportación de muestras y sincronización de las plantillas de movimiento con el backend (`/api/sign-templates`). Las muestras no se suben al servidor y no hay entrenamiento de modelo desde la app.
 - **Multi-idioma** — interfaz en español, inglés, francés y portugués.
 - **Tema claro / oscuro** — con detección automática de la preferencia del sistema.
 
@@ -23,10 +27,11 @@ Construida con **Expo + React Native + TypeScript**, funciona desde una sola bas
 
 | Área | Tecnología |
 |---|---|
-| Framework | Expo `~54` · React Native `0.81` · React `19` |
-| Lenguaje | TypeScript `~5.9` |
-| Navegación | React Navigation (stacks + bottom tabs) |
-| Visión por computador | MediaPipe Hands · TensorFlow.js · clasificador KNN propio |
+| Framework | Expo `~57` · React Native `0.86` · React `19.2` · react-native-web `0.21` |
+| Lenguaje | TypeScript `~6.0` |
+| Navegación | React Navigation 6 (stacks + bottom tabs) |
+| Visión por computador | MediaPipe Tasks Vision `0.10.14` · TensorFlow.js `4` (modelo de palabras) · clasificadores KNN y DTW propios |
+| Pruebas | Jest + `jest-expo` |
 | Voz | `expo-speech` |
 | Cámara y media | `expo-camera` · `expo-image-picker` |
 | Almacenamiento | AsyncStorage · `expo-secure-store` |
@@ -77,7 +82,10 @@ El reconocimiento vive en `src/feature/Translation/services/vision/` y está des
 - **`tfjsProvider`** — inferencia con TensorFlow.js.
 - **`mockProvider`** — datos simulados para desarrollo y pruebas sin cámara.
 
-Sobre los puntos de referencia (landmarks) de la mano se aplican normalización, un **clasificador KNN** para señas estáticas y un **clasificador de movimiento** basado en plantillas de secuencias para señas dinámicas.
+La traducción tiene dos motores:
+
+- **Palabras** (por defecto) — modelo TensorFlow.js propio de 54 señas LSC en `public/models/lsc/`, alimentado con los landmarks de manos y pose (`wordEngine`). En Android e iOS corre dentro de un WebView.
+- **Abecedario** — sobre los landmarks de la mano se aplican normalización, un **clasificador KNN** para señas estáticas y un **clasificador de movimiento** (DTW) basado en plantillas de secuencias para señas dinámicas.
 
 ---
 
@@ -86,7 +94,7 @@ Sobre los puntos de referencia (landmarks) de la mano se aplican normalización,
 - **Node.js 20** o superior
 - **npm**
 - App **Expo Go** (para probar en un dispositivo físico) o un emulador de Android / simulador de iOS
-- Un backend expuesto en `/api` — la configuración de endpoints está en `src/app/config/api.config.ts`
+- Un backend expuesto en `/api`. Por defecto la app usa el de producción (`https://traducesenas.tech/api`); para usar el [backend](https://github.com/mauro-1508/backendTS) local, crea un `.env` con `EXPO_PUBLIC_API_URL=http://localhost:8080/api` y reinicia Expo. El resto de variables `EXPO_PUBLIC_*` (Google, Facebook, APK) están explicadas en `src/app/config/api.config.ts`
 
 ---
 
@@ -113,6 +121,8 @@ npm start
 | `npm run android` | Ejecuta la app en un emulador o dispositivo Android |
 | `npm run ios` | Ejecuta la app en un simulador de iOS |
 | `npm run web` | Ejecuta la app en el navegador |
+| `npm test` | Ejecuta las pruebas (Jest) |
+| `npm run typecheck` | Revisa los tipos con TypeScript |
 
 ---
 
@@ -133,13 +143,18 @@ La aplicación queda disponible en `http://localhost:8080`.
 
 | Rama | Contenido |
 |---|---|
-| `main` | Únicamente esta documentación del proyecto |
-| `develop` | Código fuente completo de la aplicación |
+| `main` | Versión publicada en producción; cada versión lleva su tag (`vX.Y.Z`) y su Release |
+| `develop` | Integración del trabajo en curso |
+| `feat/*`, `fix/*`, `chore/*` | Una rama por tarea, con PR hacia `develop` |
 
-Todo el desarrollo se realiza sobre **`develop`**.
+El desarrollo se hace en ramas de tarea que se fusionan en **`develop`**; las versiones pasan de `develop` a `main`. La versión de la app es `expo.version` en `app.json`, y `android.versionCode` sube en cada APK.
 
 ---
 
-## Autor
+## Equipo
 
-**Luis Duarte** — [@tadeo77789](https://github.com/tadeo77789)
+- **Luis Alejandro Duarte Aldana** — [@tadeo77789](https://github.com/tadeo77789)
+- **Juan Mauricio Suaza Solórzano** — [@mauro-1508](https://github.com/mauro-1508)
+- **Juan Camilo Fierro Esquivel**
+
+Proyecto de formación SENA, ficha ADSO 3145556.
