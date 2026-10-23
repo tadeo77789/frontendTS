@@ -26,6 +26,7 @@ import { useTranslation } from '../config/i18n';
 import { pendingAuthFlow } from '../../feature/auth/services/pendingAuthFlow';
 import { passwordResetFlow } from '../../feature/auth/services/passwordResetFlow';
 import { buildRegisterBody } from '../../feature/auth/services/auth.service';
+import { TERMS_VERSION } from '../config/legal.config';
 import { showAlert } from '../../shared/utils/dialogs';
 
 export class AuthOperationCancelledError extends Error {
@@ -65,6 +66,10 @@ const mapBackendUser = (
     termino_acept: matchingExtras?.termino_acept ?? true,
   };
 };
+
+/** Consentimiento (Ley 1581) del login social: solo se envia cuando la persona lo acepto. */
+const socialConsent = (acceptedTerms: boolean): Record<string, string | boolean> =>
+  acceptedTerms ? { acceptedTerms: true, termsVersion: TERMS_VERSION } : {};
 
 const parseStoredUser = (raw: string | null): User | null => {
   if (!raw) return null;
@@ -109,8 +114,9 @@ interface AuthContextType extends AuthState {
   sessionGeneration: number;
   isSessionCurrent: (generation: number) => boolean;
   login: (payload: LoginPayload) => Promise<void>;
-  loginWithFacebook: (accessToken: string) => Promise<void>;
-  loginWithGoogle: (idToken: string) => Promise<void>;
+  /** acceptedTerms solo hace falta si la cuenta es nueva (el backend responde TERMS_REQUIRED). */
+  loginWithFacebook: (accessToken: string, acceptedTerms?: boolean) => Promise<void>;
+  loginWithGoogle: (idToken: string, acceptedTerms?: boolean) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<RegisterResult>;
   logout: () => Promise<void>;
 }
@@ -364,7 +370,7 @@ export const AuthProvider: React.FC<{
 
   const requestLogin = useCallback(async (
     endpoint: string,
-    body: Record<string, string>,
+    body: Record<string, string | boolean>,
   ): Promise<void> => {
     const generation = beginSessionChange(false);
     const controller = new AbortController();
@@ -421,15 +427,17 @@ export const AuthProvider: React.FC<{
 
   const loginWithFacebook = useCallback((
     accessToken: string,
+    acceptedTerms = false,
   ): Promise<void> =>
-    requestLogin(ENDPOINTS.facebookLogin, { accessToken }),
+    requestLogin(ENDPOINTS.facebookLogin, { accessToken, ...socialConsent(acceptedTerms) }),
   [requestLogin]);
 
   // El backend verifica el ID token con Google y responde igual que /auth/login.
   const loginWithGoogle = useCallback((
     idToken: string,
+    acceptedTerms = false,
   ): Promise<void> =>
-    requestLogin(ENDPOINTS.googleLogin, { idToken }),
+    requestLogin(ENDPOINTS.googleLogin, { idToken, ...socialConsent(acceptedTerms) }),
   [requestLogin]);
 
   const register = useCallback(async (

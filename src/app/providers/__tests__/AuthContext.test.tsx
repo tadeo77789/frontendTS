@@ -160,6 +160,18 @@ describe('AuthContext: login, registro y logout', () => {
     expect(result.current.isAuthenticated).toBe(true);
   });
 
+  it('login social con consentimiento envia acceptedTerms y la version de los terminos', async () => {
+    post.mockResolvedValue({ data: { data: { token: 't', user: BACKEND_USER } } });
+    const { result } = await renderAuth();
+
+    await act(() => result.current.loginWithGoogle('id-token', true));
+    expect(post).toHaveBeenLastCalledWith('/auth/google',
+      { idToken: 'id-token', acceptedTerms: true, termsVersion: expect.any(String) }, expect.anything());
+    await act(() => result.current.loginWithFacebook('fb-token', true));
+    expect(post).toHaveBeenLastCalledWith('/auth/facebook',
+      { accessToken: 'fb-token', acceptedTerms: true, termsVersion: expect.any(String) }, expect.anything());
+  });
+
   it('registro envia el consentimiento e informa si se envio el correo', async () => {
     post.mockResolvedValueOnce({ data: { data: { verification_email_sent: true } } });
     const { result } = await renderAuth();
