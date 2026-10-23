@@ -266,3 +266,45 @@ Resultados ejecutados sobre los archivos reconstruidos (2026-10-20):
 - git diff --check: aprobado en ambos worktrees. Checkouts originales limpios;
   índices sin cambios; sin git add, commits ni push. No se ejecutó exportación
   web ni revisión visual en navegador/dispositivo en esta reconstrucción.
+
+
+### Avisos de desbloqueo dentro de la app (Parte A)
+
+`AchievementUnlockAlerts`, montado globalmente en `App`, reutiliza `/notifications`
+y `/achievements?catalogVersion=2` con el token de origen. Al activar una sesión
+habilitada toma como referencia los IDs con `achievedAt`; esos logros nunca se
+anuncian. Cada 20 segundos en primer plano consulta como máximo 100 avisos no
+leídos y confirma su referencia contra el catálogo autenticado. Exige aviso
+`IN_APP`, `ACHIEVEMENT`, `SENT`, activo y `achievedAt` no nulo: alcanzar el contador
+no basta. No hay WebSocket, push ni migración nueva; las 21 reglas se conservan.
+
+La cola deduplica por logro y muestra una tarjeta cada vez, con medalla existente,
+nombre localizado, cierre accesible, tema actual y entrada por opacidad que omite
+la animación con movimiento reducido. No usa modal ni captura el área exterior.
+Solo marca el aviso leído después del montaje de su tarjeta; crear una
+notificación (`notified_at` en backend) no significa que se haya mostrado.
+
+Deshabilitar avisos, guardar preferencias, cambiar token/generación o dejar de ser
+elegible desmonta la cola. Se descartan respuestas tardías y se abortan solicitudes.
+Al volver de segundo plano/web oculto o tras un error de conexión se limpia la cola
+y se toma una referencia nueva. Esto evita ráfagas históricas al regresar o
+reactivar notificaciones, a costa de perder los avisos de ese intervalo o durante la carga de referencia (el progreso
+sigue visible en Perfil). La latencia normal es hasta 20 segundos más red/eventos.
+La capacidad 100 excede los 21 desbloqueos actuales; revisar paginación si el canal
+incorpora muchos otros tipos de notificaciones.
+
+Entrega de mejor esfuerzo, sin garantía exactamente una vez: dos dispositivos
+activos pueden presentar el mismo aviso antes de su confirmación; un fallo al
+marcar leído no provoca reintentos visuales en la sesión. Una recarga establece
+otra referencia y no reproduce logros ya logrados. Un PATCH que el servidor ya
+aceptó no puede deshacerse al cerrar sesión. No se reserva ni se marca entregada
+una tarjeta que todavía está esperando en la cola.
+
+Validación manual pendiente: con notificaciones habilitadas, abrir la app antes
+de cruzar una meta en Traducción/Alfabeto y esperar la consulta; cruzar varias,
+cerrar una y comprobar el orden. Repetir en ES/EN/FR/PT, temas claro/oscuro,
+lector de pantalla y movimiento reducido. Probar cámara/navegación, secreto antes
+y después del desbloqueo, cuenta administradora, logout/cambio de token mientras
+hay solicitudes, ocultar la app y cortar/restablecer red. Entrar con logros
+históricos y reactivar avisos no debe producir una ráfaga. Las pruebas automatizadas
+usan servicios simulados; no sustituyen esta comprobación en dispositivos.
