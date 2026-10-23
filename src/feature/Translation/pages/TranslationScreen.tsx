@@ -32,6 +32,7 @@ import { isSimulatedRecognition, isGenericGestureEngine, getGestureCounts, getLa
 import type { WordMatchDebug } from '../services/vision';
 import { translationsService } from '../services/translations.service';
 import { downloadMotionTemplates } from '../services/signTemplates.service';
+import { loadWordTemplates } from '../services/wordTemplates.service';
 import { groupVocabulary } from '../data/vocabularyCategories';
 import { copyToClipboard } from '../../../shared/utils/clipboard';
 import { showSuccess, showError } from '../../../shared/utils/dialogs';
@@ -219,13 +220,18 @@ export const TranslationScreen: React.FC = () => {
 
   // Las plantillas de palabras viven en el servidor: se bajan al abrir la
   // pantalla. Si falla (sin red o sin backend), se sigue con las locales.
+  // Las del modelo propio (kind 'word') solo se listan aqui: el motor las
+  // carga por su cuenta al arrancar.
   useEffect(() => {
-    void downloadMotionTemplates('replace')
-      .catch(() => undefined)
-      .then(() => getGestureCounts())
-      .then(counts => {
+    void Promise.all([
+      downloadMotionTemplates('replace')
+        .catch(() => undefined)
+        .then(() => getGestureCounts()),
+      loadWordTemplates().catch(() => [] as string[]),
+    ])
+      .then(([counts, words]) => {
         setTemplateCount(Object.values(counts).reduce((a, b) => a + b, 0));
-        setAddedWords(Object.keys(counts));
+        setAddedWords([...Object.keys(counts), ...words]);
       })
       .catch(() => undefined);
   }, []);

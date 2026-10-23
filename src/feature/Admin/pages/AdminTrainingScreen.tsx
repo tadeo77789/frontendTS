@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
+  Platform,
   useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,12 +24,17 @@ import {
   recordSample,
   getSampleCounts,
   clearTrainingData,
-  beginGestureCapture,
-  recordGesture,
-  getGestureCounts,
-  clearGestureLabel,
+  gestureEngine,
+  setSampleSink,
+  wordState,
 } from '../../../feature/Translation/services/vision';
-import { downloadMotionTemplates, uploadMotionTemplates } from '../../Translation/services/signTemplates.service';
+import { wordTakeStore } from '../../Translation/services/vision/wordTakeStore';
+import {
+  deleteWordTemplates,
+  fetchWordTemplates,
+  loadWordTemplates,
+  uploadWordTakes,
+} from '../../Translation/services/wordTemplates.service';
 import { showInfo, showError, showConfirm } from '../../../shared/utils/dialogs';
 import type { AdminStackParams } from '../../../app/routes/AdminStackNavigator';
 
@@ -51,6 +57,17 @@ const SECTIONS: { key: Section; labelKey: TranslationKey; icon: React.ComponentP
 
 /** Tomas de una palabra para darla por aprendida. */
 const TAKES_PER_WORD = 5;
+
+/** Si en este tiempo no llega una sena completa, la toma se da por perdida. */
+const TAKE_TIMEOUT_MS = 10_000;
+
+/** Fraccion minima de frames con mano, la misma que exige el motor al traducir. */
+const MIN_HAND_RATIO = 0.6;
+
+/** Las palabras se graban con el motor del modelo propio, que corre en el navegador. */
+const WORDS_SUPPORTED = Platform.OS === 'web';
+
+type WordEngineStatus = 'loading' | 'quieto' | 'senando' | 'analizando';
 
 const ProgressMeter: React.FC<{ percent: number; track: string; fill: string }> = ({ percent, track, fill }) => (
   <View style={[styles.meterTrack, { backgroundColor: track }]}>
@@ -78,22 +95,77 @@ export const AdminTrainingScreen: React.FC = () => {
   const [isActive, setIsActive] = useState(false);
   const [sampleCounts, setSampleCounts] = useState<Record<string, number>>({});
   const [gestureWord, setGestureWord] = useState('');
-  const [gestureCounts, setGestureCounts] = useState<Record<string, number>>({});
+  /** Tomas grabadas en este dispositivo que aun no se suben. */
+  const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
+  /** Tomas que ya estan en el servidor y usa la traduccion. */
+  const [serverCounts, setServerCounts] = useState<Record<string, number>>({});
   const [recordingGesture, setRecordingGesture] = useState(false);
+  const [wordStatus, setWordStatus] = useState<WordEngineStatus>('loading');
   const [syncing, setSyncing] = useState(false);
   // La caja de la palabra queda al final de la pagina: al abrirse el teclado
   // tapaba el campo y no se veia lo que se escribia.
   const { scrollRef, handleInputFocus } = useScrollToInput(140);
 
+  /** Palabra que espera su toma; el motor la entrega cuando termina la sena. */
+  const armedLabelRef = useRef<string | null>(null);
+  const armTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const refreshCounts = useCallback(async () => {
     setSampleCounts(await getSampleCounts());
-    setGestureCounts(await getGestureCounts());
+    setPendingCounts(await wordTakeStore.countByLabel());
+    try {
+      const counts: Record<string, number> = {};
+      for (const tpl of await fetchWordTemplates()) counts[tpl.label] = (counts[tpl.label] ?? 0) + 1;
+      setServerCounts(counts);
+    } catch {
+      // Sin red se siguen mostrando las tomas locales.
+    }
   }, []);
 
   useEffect(() => { refreshCounts(); }, [refreshCounts]);
-  useEffect(() => () => { agentStop(); }, [agentStop]);
+
+  const disarmTake = useCallback(() => {
+    armedLabelRef.current = null;
+    if (armTimerRef.current) clearTimeout(armTimerRef.current);
+    armTimerRef.current = null;
+    setRecordingGesture(false);
+  }, []);
+
+  // El motor entrega cada sena ya recortada y remuestreada a 30 frames: lo
+  // mismo que vera al traducir. Se lee por ref porque el sink se registra una
+  // sola vez al encender la camara.
+  const onTake = useCallback((sena: Float32Array[]) => {
+    const label = armedLabelRef.current;
+    if (!label) return;
+    disarmTake();
+
+    const withHand = sena.filter(f => f[126] > 0.5 || f[127] > 0.5).length;
+    if (withHand / sena.length < MIN_HAND_RATIO) {
+      showError(t('trainNoHand'));
+      return;
+    }
+    void wordTakeStore
+      .add(label, sena)
+      .then(refreshCounts)
+      .then(() => showInfo(t('trainGestureSaved').replace('{label}', label)))
+      .catch(() => showError(t('genericError')));
+  }, [disarmTake, refreshCounts, t]);
+  const onTakeRef = useRef(onTake);
+  onTakeRef.current = onTake;
+
+  const stopWordEngine = useCallback(() => {
+    disarmTake();
+    setSampleSink(null);
+    gestureEngine.stop();
+  }, [disarmTake]);
+
+  useEffect(() => () => { agentStop(); stopWordEngine(); }, [agentStop, stopWordEngine]);
 
   const startCamera = useCallback(async () => {
+    if (section === 'words' && !WORDS_SUPPORTED) {
+      showInfo(t('trainWordsWebOnly'), t('trainGestureTitle'));
+      return;
+    }
     if (!permission?.granted) {
       const res = await requestPermission();
       if (!res.granted) {
@@ -102,13 +174,41 @@ export const AdminTrainingScreen: React.FC = () => {
       }
     }
     setIsActive(true);
-    agentStart();
-  }, [permission, requestPermission, t, agentStart]);
+    if (section === 'alphabet') {
+      agentStart();
+      return;
+    }
+    setWordStatus('loading');
+    setSampleSink(sena => onTakeRef.current(sena));
+    try {
+      await gestureEngine.start(() => {});
+      setWordStatus('quieto');
+    } catch {
+      stopWordEngine();
+      setIsActive(false);
+      showError(t('agentError'));
+    }
+  }, [section, permission, requestPermission, t, agentStart, stopWordEngine]);
 
   const stopCamera = useCallback(() => {
     agentStop();
+    stopWordEngine();
     setIsActive(false);
-  }, [agentStop]);
+  }, [agentStop, stopWordEngine]);
+
+  // Cada seccion usa su propio motor: al cambiar de pestaña se apaga la camara.
+  const changeSection = useCallback((next: Section) => {
+    if (next === section) return;
+    stopCamera();
+    setSection(next);
+  }, [section, stopCamera]);
+
+  const wordEngineLoading = wordStatus === 'loading';
+  useEffect(() => {
+    if (!isActive || section !== 'words' || wordEngineLoading) return;
+    const id = setInterval(() => setWordStatus(wordState()), 200);
+    return () => clearInterval(id);
+  }, [isActive, section, wordEngineLoading]);
 
   const handleRecordSample = useCallback(async (label: string) => {
     const features = agentLastResult?.features;
@@ -120,38 +220,27 @@ export const AdminTrainingScreen: React.FC = () => {
     await refreshCounts();
   }, [t, refreshCounts, agentLastResult]);
 
-  const GESTURE_CAPTURE_MS = 2400;
-
-  const handleRecordGesture = useCallback(async () => {
-    const label = gestureWord.trim().toUpperCase();
+  // En minusculas, como las glosas del modelo: asi "Triste" y "triste" son la misma palabra.
+  const handleRecordGesture = useCallback(() => {
+    const label = gestureWord.trim().toLowerCase();
     if (!label) {
       showInfo(t('trainGestureNeedLabel'), t('trainGestureTitle'));
       return;
     }
-    if (!isActive) {
+    if (!isActive || wordEngineLoading) {
       showInfo(t('tapStartCamera'), t('trainGestureTitle'));
       return;
     }
+    // Se descarta lo que el motor llevara a medias: la toma es la proxima sena.
+    gestureEngine.reset?.();
+    armedLabelRef.current = label;
     setRecordingGesture(true);
-    beginGestureCapture();
-    await new Promise(resolve => setTimeout(resolve, GESTURE_CAPTURE_MS));
-    let ok: boolean;
-    try {
-      ok = await recordGesture(label);
-    } catch {
-      // No se pudo leer lo guardado: no se graba para no pisar las plantillas existentes.
-      showError(t('genericError'));
-      return;
-    } finally {
-      setRecordingGesture(false);
-    }
-    if (!ok) {
+    armTimerRef.current = setTimeout(() => {
+      if (!armedLabelRef.current) return;
+      disarmTake();
       showError(t('trainGestureNoMotion'));
-      return;
-    }
-    await refreshCounts();
-    showInfo(t('trainGestureSaved').replace('{label}', label));
-  }, [gestureWord, isActive, t, refreshCounts]);
+    }, TAKE_TIMEOUT_MS);
+  }, [gestureWord, isActive, wordEngineLoading, t, disarmTake]);
 
   const handleDeleteGesture = useCallback(async (label: string) => {
     const ok = await showConfirm({
@@ -164,33 +253,36 @@ export const AdminTrainingScreen: React.FC = () => {
     });
     if (!ok) return;
     try {
-      await clearGestureLabel(label);
+      await wordTakeStore.removeLabel(label);
+      if (serverCounts[label]) await deleteWordTemplates(label);
     } catch {
       showError(t('genericError'));
       return;
     }
     await refreshCounts();
-  }, [t, refreshCounts]);
+  }, [t, refreshCounts, serverCounts]);
 
-  // Sincronizacion de plantillas de palabras con el backend.
+  // Las tomas suben al servidor y desde ahi las usa la traduccion en todos
+  // los dispositivos, incluido el APK.
   const handleUploadTemplates = useCallback(async () => {
     setSyncing(true);
     try {
-      const n = await uploadMotionTemplates();
+      const n = await uploadWordTakes();
       showInfo(n === 0 ? t('syncEmpty') : t('syncUploaded').replace('{n}', String(n)));
+      await refreshCounts();
     } catch {
       showError(t('syncFailed'));
     } finally {
       setSyncing(false);
     }
-  }, [t]);
+  }, [t, refreshCounts]);
 
   const handleDownloadTemplates = useCallback(async () => {
     setSyncing(true);
     try {
-      const n = await downloadMotionTemplates('replace');
-      showInfo(n === 0 ? t('syncEmpty') : t('syncDownloaded').replace('{n}', String(n)));
+      const labels = await loadWordTemplates();
       await refreshCounts();
+      showInfo(labels.length === 0 ? t('syncEmpty') : t('syncDownloaded').replace('{n}', String(labels.length)));
     } catch {
       showError(t('syncFailed'));
     } finally {
@@ -233,7 +325,11 @@ export const AdminTrainingScreen: React.FC = () => {
   const lettersTrained = ALPHABET_LSC.filter(letter => (sampleCounts[letter] ?? 0) > 0).length;
   const alphabetPercent = Math.round((lettersTrained / ALPHABET_LSC.length) * 100);
 
-  const wordEntries = Object.entries(gestureCounts);
+  const wordLabels = [...new Set([...Object.keys(serverCounts), ...Object.keys(pendingCounts)])].sort();
+  const wordEntries: [string, number][] = wordLabels.map(label => [
+    label,
+    (serverCounts[label] ?? 0) + (pendingCounts[label] ?? 0),
+  ]);
   const totalTakes = wordEntries.reduce((sum, [, count]) => sum + count, 0);
   const wordsComplete = wordEntries.filter(([, count]) => count >= TAKES_PER_WORD).length;
   // Avanza toma a toma en vez de saltar de 0 a 100 cuando se completa una
@@ -269,6 +365,14 @@ export const AdminTrainingScreen: React.FC = () => {
     error: t('agentError'),
   };
 
+  const WORD_STATUS_LABEL: Record<WordEngineStatus, string> = {
+    loading: t('trainWordLoading'),
+    quieto: recordingGesture ? t('trainWordWaiting') : t('trainWordReady'),
+    senando: t('trainWordSigning'),
+    analizando: t('trainWordSigning'),
+  };
+  const statusLabel = isWords ? WORD_STATUS_LABEL[wordStatus] : STATUS_LABEL[agentStatus];
+
   return (
     <View style={[styles.root, { backgroundColor: C.backgroundGray }]}>
       <AppHeader showBack onBack={() => navigation.goBack()} />
@@ -300,7 +404,7 @@ export const AdminTrainingScreen: React.FC = () => {
               return (
                 <TouchableOpacity
                   key={tab.key}
-                  onPress={() => setSection(tab.key)}
+                  onPress={() => changeSection(tab.key)}
                   activeOpacity={0.85}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
@@ -346,12 +450,14 @@ export const AdminTrainingScreen: React.FC = () => {
                   {isActive && (
                     <View style={styles.capturingBadge}>
                       <View style={styles.recDot} />
-                      <Text style={styles.capturingText}>{STATUS_LABEL[agentStatus]}</Text>
+                      <Text style={styles.capturingText}>{statusLabel}</Text>
                     </View>
                   )}
-                  <View style={styles.lastBox}>
-                    <Text style={styles.lastBoxText}>{agentLastResult?.text || '—'}</Text>
-                  </View>
+                  {!isWords && (
+                    <View style={styles.lastBox}>
+                      <Text style={styles.lastBoxText}>{agentLastResult?.text || '—'}</Text>
+                    </View>
+                  )}
                 </View>
 
                 <TouchableOpacity onPress={isActive ? stopCamera : startCamera} activeOpacity={0.9} style={styles.actionWrap}>
@@ -396,7 +502,7 @@ export const AdminTrainingScreen: React.FC = () => {
                         value={gestureWord}
                         onChangeText={setGestureWord}
                         onFocus={handleInputFocus}
-                        autoCapitalize="characters"
+                        autoCapitalize="none"
                         editable={!recordingGesture}
                       />
                       {/* Solo se bloquea mientras graba: si la camara esta apagada o
@@ -429,6 +535,14 @@ export const AdminTrainingScreen: React.FC = () => {
                               <Text style={[styles.gestureChipTakes, { color: C.textSecondary }]}>
                                 {t('trainWordTakes', { count, target: TAKES_PER_WORD })}
                               </Text>
+                              {(pendingCounts[label] ?? 0) > 0 && (
+                                <View style={styles.pendingBadge}>
+                                  <Ionicons name="cloud-upload-outline" size={13} color={C.textSecondary} />
+                                  <Text style={[styles.gestureChipTakes, { color: C.textSecondary }]}>
+                                    {t('trainWordPending', { n: pendingCounts[label] })}
+                                  </Text>
+                                </View>
+                              )}
                               <TouchableOpacity onPress={() => handleDeleteGesture(label)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
                                 <Ionicons name="close-circle" size={16} color="#EF4444" />
                               </TouchableOpacity>
@@ -580,6 +694,7 @@ const styles = StyleSheet.create({
   gestureChip: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1 },
   gestureChipText: { fontSize: 13, fontWeight: '800' },
   gestureChipTakes: { fontSize: 12, fontWeight: '700' },
+  pendingBadge: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   emptyText: { fontSize: 13, fontWeight: '600', lineHeight: 20, marginTop: 14 },
 
   syncRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
