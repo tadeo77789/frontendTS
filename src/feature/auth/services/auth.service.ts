@@ -1,5 +1,19 @@
 import { api } from '../../../shared/services/api.client';
 import { ENDPOINTS } from '../../../app/config/api.config';
+import { TERMS_VERSION } from '../../../app/config/legal.config';
+import type { RegisterPayload } from '../../../shared/types';
+
+/**
+ * Body de POST /auth/register. El backend rechaza el registro (400) sin acceptedTerms=true;
+ * se envia la version de los terminos que vio la persona para dejar constancia del consentimiento.
+ */
+export const buildRegisterBody = (payload: RegisterPayload) => ({
+  name: payload.nombre,
+  email: payload.email,
+  password: payload.password,
+  acceptedTerms: payload.termino_acept,
+  termsVersion: TERMS_VERSION,
+});
 
 /** Confirma el correo con el código de 6 dígitos. Lanza el error de axios (usar normalizeApiError). */
 export const verifyEmail = async (email: string, code: string, password: string): Promise<void> => {
