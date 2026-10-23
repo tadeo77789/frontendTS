@@ -25,6 +25,7 @@ import { ENDPOINTS } from '../config/api.config';
 import { useTranslation } from '../config/i18n';
 import { pendingAuthFlow } from '../../feature/auth/services/pendingAuthFlow';
 import { passwordResetFlow } from '../../feature/auth/services/passwordResetFlow';
+import { buildRegisterBody } from '../../feature/auth/services/auth.service';
 import { showAlert } from '../../shared/utils/dialogs';
 
 export class AuthOperationCancelledError extends Error {
@@ -434,11 +435,7 @@ export const AuthProvider: React.FC<{
   const register = useCallback(async (
     payload: RegisterPayload,
   ): Promise<RegisterResult> => {
-    const { data } = await api.post(ENDPOINTS.register, {
-      name: payload.nombre,
-      email: payload.email,
-      password: payload.password,
-    });
+    const { data } = await api.post(ENDPOINTS.register, buildRegisterBody(payload));
 
     return {
       email: payload.email,
