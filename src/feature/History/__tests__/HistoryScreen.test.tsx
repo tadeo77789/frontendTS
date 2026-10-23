@@ -4,6 +4,9 @@ import { Colors } from '../../../shared/constants/colors';
 import { HistoryScreen } from '../pages/HistoryScreen';
 import { translationsService } from '../../Translation/services/translations.service';
 
+// El primer render de la pantalla supera los 5 s por defecto en CI con cobertura.
+jest.setTimeout(30000);
+
 const mockColors = Colors;
 jest.mock('../../../app/providers/ThemeContext', () => ({ useColors: () => mockColors, useTheme: () => ({ isDark: false }) }));
 jest.mock('../../../app/config/i18n', () => {
