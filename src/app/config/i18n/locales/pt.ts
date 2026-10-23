@@ -376,6 +376,8 @@ const pt: typeof es = {
   historyReuseBtn: 'Reutilizar',
   historyDeleteBtn: 'Excluir',
   historyDeleteError: 'Não foi possível excluir o registro. Tente novamente.',
+  historyLoadError: 'Não foi possível carregar o histórico. Verifique sua conexão.',
+  historyRetry: 'Tentar novamente',
 
   kpiTranslations: 'Traduções',
   kpiActiveUsers: "Usuários ativos (30 dias)",

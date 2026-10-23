@@ -375,6 +375,8 @@ const es = {
   historyReuseBtn: 'Reusar',
   historyDeleteBtn: 'Eliminar',
   historyDeleteError: 'No se pudo eliminar el registro. Intenta de nuevo.',
+  historyLoadError: 'No se pudo cargar el historial. Revisa tu conexión.',
+  historyRetry: 'Reintentar',
 
   kpiTranslations: 'Traducciones',
   kpiActiveUsers: "Usuarios activos (30 días)",
