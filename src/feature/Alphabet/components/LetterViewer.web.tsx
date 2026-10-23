@@ -32,7 +32,8 @@ export const LetterViewer = forwardRef<LetterViewerHandle, LetterViewerProps>(fu
       if (msg.type === 'LOAD') pending.current = msg;
       return;
     }
-    win.postMessage(JSON.stringify(msg), '*');
+    // El iframe srcDoc hereda el origen de la app: se le habla solo a ese origen.
+    win.postMessage(JSON.stringify(msg), window.location.origin);
   }, []);
 
   useImperativeHandle(ref, () => ({
@@ -42,7 +43,7 @@ export const LetterViewer = forwardRef<LetterViewerHandle, LetterViewerProps>(fu
 
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
-      if (e.source !== frameRef.current?.contentWindow) return;
+      if (e.origin !== window.location.origin || e.source !== frameRef.current?.contentWindow) return;
       let msg: ViewerOutbound;
       try { msg = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch { return; }
       if (msg?.source !== VIEWER_SOURCE) return;

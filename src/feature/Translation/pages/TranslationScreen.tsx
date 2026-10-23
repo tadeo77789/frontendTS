@@ -135,7 +135,7 @@ export const TranslationScreen: React.FC = () => {
   const handleAction = useCallback(async () => {
     if (!isActive) {
       if (isSimulatedRecognition && !usingGestures) {
-        showError(t('recognitionUnavailableMobile'));
+        void showError(t('recognitionUnavailableMobile'));
         return;
       }
       if (!permission?.granted) {
@@ -181,9 +181,9 @@ export const TranslationScreen: React.FC = () => {
   const handleCopy = useCallback(async (textToCopy: string) => {
     const copied = await copyToClipboard(textToCopy);
     if (copied) {
-      showSuccess(t('copiedToClipboard'), t('copied'));
+      void showSuccess(t('copiedToClipboard'), t('copied'));
     } else {
-      showError(t('copyFailed'));
+      void showError(t('copyFailed'));
     }
   }, [t]);
 
@@ -193,7 +193,7 @@ export const TranslationScreen: React.FC = () => {
   const cancelSpeech = useCallback(() => {
     playbackRef.current?.cancel();
     playbackRef.current = null;
-    Speech.stop();
+    void Speech.stop();
     setSpeaking(false);
   }, []);
 
@@ -426,7 +426,7 @@ export const TranslationScreen: React.FC = () => {
                     </View>
                   )}
 
-                  {!usingGestures && isActive && agentPendingLetter && (
+                  {!usingGestures && isActive && !!agentPendingLetter && (
                     <View style={styles.pendingBubble}>
                       <Text style={styles.pendingLetterText}>{agentPendingLetter}</Text>
                       <View style={styles.pendingProgressTrack}>

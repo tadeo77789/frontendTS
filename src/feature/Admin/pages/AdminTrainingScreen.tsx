@@ -122,7 +122,7 @@ export const AdminTrainingScreen: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => { refreshCounts(); }, [refreshCounts]);
+  useEffect(() => { void refreshCounts(); }, [refreshCounts]);
 
   const disarmTake = useCallback(() => {
     armedLabelRef.current = null;
@@ -141,7 +141,7 @@ export const AdminTrainingScreen: React.FC = () => {
 
     const withHand = sena.filter(f => f[126] > 0.5 || f[127] > 0.5).length;
     if (withHand / sena.length < MIN_HAND_RATIO) {
-      showError(t('trainNoHand'));
+      void showError(t('trainNoHand'));
       return;
     }
     void wordTakeStore
@@ -163,13 +163,13 @@ export const AdminTrainingScreen: React.FC = () => {
 
   const startCamera = useCallback(async () => {
     if (section === 'words' && !WORDS_SUPPORTED) {
-      showInfo(t('trainWordsWebOnly'), t('trainGestureTitle'));
+      void showInfo(t('trainWordsWebOnly'), t('trainGestureTitle'));
       return;
     }
     if (!permission?.granted) {
       const res = await requestPermission();
       if (!res.granted) {
-        showError(t('cameraPermissionMsg'), t('cameraPermissionTitle'));
+        void showError(t('cameraPermissionMsg'), t('cameraPermissionTitle'));
         return;
       }
     }
@@ -186,7 +186,7 @@ export const AdminTrainingScreen: React.FC = () => {
     } catch {
       stopWordEngine();
       setIsActive(false);
-      showError(t('agentError'));
+      void showError(t('agentError'));
     }
   }, [section, permission, requestPermission, t, agentStart, stopWordEngine]);
 
@@ -213,7 +213,7 @@ export const AdminTrainingScreen: React.FC = () => {
   const handleRecordSample = useCallback(async (label: string) => {
     const features = agentLastResult?.features;
     if (!features || features.length === 0) {
-      showInfo(t('trainNoHand'));
+      void showInfo(t('trainNoHand'));
       return;
     }
     await recordSample(label, features);
@@ -224,11 +224,11 @@ export const AdminTrainingScreen: React.FC = () => {
   const handleRecordGesture = useCallback(() => {
     const label = gestureWord.trim().toLowerCase();
     if (!label) {
-      showInfo(t('trainGestureNeedLabel'), t('trainGestureTitle'));
+      void showInfo(t('trainGestureNeedLabel'), t('trainGestureTitle'));
       return;
     }
     if (!isActive || wordEngineLoading) {
-      showInfo(t('tapStartCamera'), t('trainGestureTitle'));
+      void showInfo(t('tapStartCamera'), t('trainGestureTitle'));
       return;
     }
     // Se descarta lo que el motor llevara a medias: la toma es la proxima sena.
@@ -238,7 +238,7 @@ export const AdminTrainingScreen: React.FC = () => {
     armTimerRef.current = setTimeout(() => {
       if (!armedLabelRef.current) return;
       disarmTake();
-      showError(t('trainGestureNoMotion'));
+      void showError(t('trainGestureNoMotion'));
     }, TAKE_TIMEOUT_MS);
   }, [gestureWord, isActive, wordEngineLoading, t, disarmTake]);
 
@@ -256,7 +256,7 @@ export const AdminTrainingScreen: React.FC = () => {
       await wordTakeStore.removeLabel(label);
       if (serverCounts[label]) await deleteWordTemplates(label);
     } catch {
-      showError(t('genericError'));
+      void showError(t('genericError'));
       return;
     }
     await refreshCounts();
@@ -268,10 +268,10 @@ export const AdminTrainingScreen: React.FC = () => {
     setSyncing(true);
     try {
       const n = await uploadWordTakes();
-      showInfo(n === 0 ? t('syncEmpty') : t('syncUploaded').replace('{n}', String(n)));
+      void showInfo(n === 0 ? t('syncEmpty') : t('syncUploaded').replace('{n}', String(n)));
       await refreshCounts();
     } catch {
-      showError(t('syncFailed'));
+      void showError(t('syncFailed'));
     } finally {
       setSyncing(false);
     }
@@ -282,9 +282,9 @@ export const AdminTrainingScreen: React.FC = () => {
     try {
       const labels = await loadWordTemplates();
       await refreshCounts();
-      showInfo(labels.length === 0 ? t('syncEmpty') : t('syncDownloaded').replace('{n}', String(labels.length)));
+      void showInfo(labels.length === 0 ? t('syncEmpty') : t('syncDownloaded').replace('{n}', String(labels.length)));
     } catch {
-      showError(t('syncFailed'));
+      void showError(t('syncFailed'));
     } finally {
       setSyncing(false);
     }
@@ -325,7 +325,7 @@ export const AdminTrainingScreen: React.FC = () => {
   const lettersTrained = ALPHABET_LSC.filter(letter => (sampleCounts[letter] ?? 0) > 0).length;
   const alphabetPercent = Math.round((lettersTrained / ALPHABET_LSC.length) * 100);
 
-  const wordLabels = [...new Set([...Object.keys(serverCounts), ...Object.keys(pendingCounts)])].sort();
+  const wordLabels = [...new Set([...Object.keys(serverCounts), ...Object.keys(pendingCounts)])].sort((a, b) => a.localeCompare(b, 'es'));
   const wordEntries: [string, number][] = wordLabels.map(label => [
     label,
     (serverCounts[label] ?? 0) + (pendingCounts[label] ?? 0),

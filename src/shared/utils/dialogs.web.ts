@@ -151,7 +151,7 @@ export const showChoice = async (opts: ChoiceDialogOptions): Promise<string | nu
     .join('');
 
   return new Promise<string | null>(resolve => {
-    Swal.fire({
+    void Swal.fire({
       title: opts.title || '',
       text: opts.message || '',
       icon: opts.icon ?? 'question',

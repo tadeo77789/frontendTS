@@ -1,6 +1,8 @@
 # constants — Constantes Globales
 
-Define los valores fijos reutilizables en toda la aplicación: colores, tamaños, textos e tokens de diseño avanzados.
+Define los valores fijos reutilizables en toda la aplicación: colores, tamaños y tokens de diseño avanzados.
+
+Los textos visibles de la app viven en `app/config/i18n/locales/`.
 
 ## Archivos
 
@@ -8,7 +10,6 @@ Define los valores fijos reutilizables en toda la aplicación: colores, tamaños
 |---|---|
 | `colors.ts` | Paleta de colores completa del diseño (basada en el mockup oficial) |
 | `sizes.ts` | Tamaños de fuentes, espaciados, radios de borde y alturas de componentes |
-| `strings.ts` | Todos los textos visibles en la app centralizados para fácil traducción |
 | `theme.ts` | Tokens de diseño avanzados: `Spacing`, `FontSize`, `BorderRadius`, `Shadows`, `ZIndex`, `ComponentSizes`, `Animation` |
 
 ## Detalle de `colors.ts`
@@ -57,10 +58,6 @@ Evita importar `Colors` directamente para no filtrar morado cuando el usuario es
 ## Detalle de `sizes.ts`
 
 Espaciados (`xs` a `xxl`), tipografía (`fontXs` a `fontDisplay`), radios de borde y dimensiones de componentes estándar como inputs (52px) y botones (52px).
-
-## Detalle de `strings.ts`
-
-Centraliza más de 80 textos de la interfaz agrupados por sección: auth, tabs, traducción, léxico, historial, perfil, notificaciones, errores y acciones.
 
 ## Detalle de `theme.ts`
 

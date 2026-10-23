@@ -138,10 +138,10 @@ export const ModelSamplesScreen: React.FC = () => {
   const exportar = useCallback(async () => {
     const n = await descargarMuestras();
     if (n === 0) {
-      showInfo('Todavia no hay nada grabado.');
+      void showInfo('Todavia no hay nada grabado.');
       return;
     }
-    showInfo(
+    void showInfo(
       `Se descargaron mis_muestras.json y mis_muestras.bin con ${n} repeticiones. ` +
         'Subelos a Colab para reajustar el modelo.',
       'Listo',
