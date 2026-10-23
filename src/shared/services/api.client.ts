@@ -40,7 +40,9 @@ const isApiRequest = (config: InternalAxiosRequestConfig): boolean => {
     const origin = Platform.OS === 'web' ? (globalThis as { location?: { href: string } }).location?.href : undefined;
     const base = new URL(API_BASE_URL, origin);
     const target = new URL(axios.getUri(config), base.href.endsWith('/') ? base.href : `${base.href}/`);
-    const prefix = base.pathname.replace(/\/+$/, '');
+    // Sin regex: `/\/+$/` tiene coste super-lineal con muchas barras finales (Sonar S8786).
+    let prefix = base.pathname;
+    while (prefix.endsWith('/')) prefix = prefix.slice(0, -1);
     return target.origin === base.origin && (target.pathname === prefix || target.pathname.startsWith(`${prefix}/`));
   } catch {
     return false;
