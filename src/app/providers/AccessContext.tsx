@@ -53,7 +53,7 @@ export const AccessProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setState(next);
     if (next.error && !unauthorized && !alerted.current) {
       alerted.current = true;
-      showAlert({ message: tRef.current('accessLoadError'), icon: 'warning' });
+      void showAlert({ message: tRef.current('accessLoadError'), icon: 'warning' });
     }
   }, []);
 
