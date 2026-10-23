@@ -19,10 +19,15 @@ jobs:
     name: Typecheck, test and web build
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Vacio si el secreto no existe (o en PR desde forks): entonces se omite SonarCloud.
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+          # SonarCloud necesita el historial completo para saber que codigo es nuevo.
+          fetch-depth: 0
 
       # Misma version de Node que el Dockerfile.
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -34,7 +39,13 @@ jobs:
 
       - run: npm run typecheck
 
-      - run: npm test -- --ci
+      # --coverage deja coverage/lcov.info para SonarCloud.
+      - run: npm test -- --ci --coverage
 
       # Mismo comando que el Dockerfile; falla si el bundle web no compila.
       - run: npx expo export --platform web --output-dir dist
+
+      # Configuracion en sonar-project.properties.
+      - name: SonarCloud scan
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
