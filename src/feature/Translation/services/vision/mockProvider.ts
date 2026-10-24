@@ -15,7 +15,8 @@ const hashFrame = (base64: string): number => {
   const sample = base64.length > 256 ? base64.slice(0, 128) + base64.slice(-128) : base64;
   let h = 5381;
   for (let i = 0; i < sample.length; i++) {
-    h = ((h << 5) + h + sample.charCodeAt(i)) | 0;
+    // `>>> 0` envuelve el hash djb2 a 32 bits sin signo (Math.trunc no envolveria y llegaria a Infinity).
+    h = ((h << 5) + h + sample.charCodeAt(i)) >>> 0;
   }
   return Math.abs(h);
 };

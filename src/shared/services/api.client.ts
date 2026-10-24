@@ -40,7 +40,9 @@ const isApiRequest = (config: InternalAxiosRequestConfig): boolean => {
     const origin = Platform.OS === 'web' ? (globalThis as { location?: { href: string } }).location?.href : undefined;
     const base = new URL(API_BASE_URL, origin);
     const target = new URL(axios.getUri(config), base.href.endsWith('/') ? base.href : `${base.href}/`);
-    const prefix = base.pathname.replace(/\/+$/, '');
+    // Sin regex: `/\/+$/` tiene coste super-lineal con muchas barras finales (Sonar S8786).
+    let prefix = base.pathname;
+    while (prefix.endsWith('/')) prefix = prefix.slice(0, -1);
     return target.origin === base.origin && (target.pathname === prefix || target.pathname.startsWith(`${prefix}/`));
   } catch {
     return false;
@@ -96,7 +98,7 @@ api.interceptors.response.use(
 export type ApiErrorCode =
   | 'VALIDATION_ERROR' | 'PERMISSION_ERROR' | 'NOT_FOUND' | 'ROLE_IN_USE' | 'LAST_ADMIN'
   | 'ROLE_REQUIRED' | 'ROLE_PROTECTED' | 'INVALID_CODE' | 'EMAIL_NOT_VERIFIED' | 'ACCOUNT_BLOCKED'
-  | 'INVALID_CREDENTIALS' | 'INVALID_PASSWORD' | 'EMAIL_ALREADY_EXISTS' | 'FACEBOOK_EMAIL_REQUIRED' | 'UNAUTHORIZED' | 'NETWORK' | 'SERVER' | 'UNKNOWN';
+  | 'INVALID_CREDENTIALS' | 'INVALID_PASSWORD' | 'EMAIL_ALREADY_EXISTS' | 'FACEBOOK_EMAIL_REQUIRED' | 'TERMS_REQUIRED' | 'UNAUTHORIZED' | 'NETWORK' | 'SERVER' | 'UNKNOWN';
 
 export interface NormalizedApiError {
   status?: number;
@@ -106,6 +108,7 @@ export interface NormalizedApiError {
 const KNOWN_CODES: ApiErrorCode[] = [
   'VALIDATION_ERROR', 'PERMISSION_ERROR', 'NOT_FOUND', 'ROLE_IN_USE', 'LAST_ADMIN', 'ROLE_REQUIRED', 'ROLE_PROTECTED',
   'INVALID_CODE', 'EMAIL_NOT_VERIFIED', 'ACCOUNT_BLOCKED', 'INVALID_CREDENTIALS', 'INVALID_PASSWORD', 'EMAIL_ALREADY_EXISTS', 'FACEBOOK_EMAIL_REQUIRED',
+  'TERMS_REQUIRED',
 ];
 
 /** Reduce un error de axios a {status, code}; nunca incluye cuerpos ni mensajes del servidor. */

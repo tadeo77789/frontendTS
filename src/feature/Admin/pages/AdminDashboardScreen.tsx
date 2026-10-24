@@ -43,7 +43,7 @@ export const AdminDashboardScreen: React.FC = () => {
     setGestureCounts(await getGestureCounts());
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { void refresh(); }, [refresh]);
 
   useEffect(() => {
     const unsub = navigation.addListener('focus', refresh);
