@@ -12,7 +12,7 @@ test('registro con consentimiento, verificación y login', async ({ page }) => {
 
   // Sin aceptar los términos el formulario no se envía.
   await page.getByText('Registrarse', { exact: true }).last().click();
-  await expect(page.getByText('Verifica tu identidad')).toHaveCount(0);
+  await expect(page.getByText('Debes aceptar los términos')).toBeVisible();
 
   // Clic al inicio de la frase: el enlace de los términos abre otra pantalla.
   await page.getByText(/^Acepto los/).click({ position: { x: 5, y: 8 } });
@@ -21,7 +21,8 @@ test('registro con consentimiento, verificación y login', async ({ page }) => {
   // En el CI no hay SMTP: la app avisa que no envió el código y abre la verificación.
   await expect(page.locator('.swal2-popup')).toContainText('No pudimos enviar el código');
   await page.locator('.swal2-confirm').click();
-  await expect(page.getByText('Verifica tu identidad')).toBeVisible();
+  await expect(page.getByText('Confirma tu correo')).toBeVisible();
+  await expect(page.getByText(email, { exact: false })).toBeVisible();
 
   activateAccount(email);
   await loginFromLanding(page, email);
