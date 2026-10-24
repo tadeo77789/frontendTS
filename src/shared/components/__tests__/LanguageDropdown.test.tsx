@@ -2,6 +2,9 @@ import React from 'react';
 import { render, fireEvent, screen } from '@testing-library/react-native';
 import { LanguageDropdown } from '../common/LanguageDropdown';
 
+// El primer render tarda con la suite completa y --coverage; 5 s no alcanzan.
+jest.setTimeout(30000);
+
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
 jest.mock('@react-native-async-storage/async-storage', () => ({ getItem: jest.fn(), setItem: jest.fn() }));
 
