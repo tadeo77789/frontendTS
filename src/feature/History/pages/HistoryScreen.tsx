@@ -152,6 +152,8 @@ export const HistoryScreen: React.FC = () => {
           <TouchableOpacity
             style={styles.deleteBtn}
             onPress={() => handleDelete(item.id_traduccion)}
+            accessibilityRole="button"
+            accessibilityLabel={t('historyDeleteBtn')}
           >
             <Ionicons name="trash-outline" size={17} color={C.danger} />
           </TouchableOpacity>
