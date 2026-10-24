@@ -56,16 +56,41 @@ describe('templateStore', () => {
     await expect(store.add('A', features())).resolves.toBeUndefined();
   });
 
-  // Defecto: si la lectura falla, la caché queda vacía y el siguiente add sobrescribe lo
-  // guardado. motionTemplateStore ya no tiene este problema (lanza y reintenta).
-  it.failing('si no se puede leer, add no pisa las plantillas guardadas', async () => {
+  it('si no se puede leer, add falla y no pisa las plantillas guardadas', async () => {
     await AsyncStorage.setItem(KEY, JSON.stringify({ templates: [saved('A'), saved('B')] }));
     const store = freshStore();
     jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('sin acceso'));
 
-    await store.add('C', features()).catch(() => undefined);
+    await expect(store.add('C', features())).rejects.toThrow('sin acceso');
 
     expect(JSON.parse((await AsyncStorage.getItem(KEY))!).templates).toHaveLength(2);
+  });
+
+  it('si no se puede leer, getAll y countByLabel devuelven vacío y la siguiente lectura reintenta', async () => {
+    await AsyncStorage.setItem(KEY, JSON.stringify({ templates: [saved('A')] }));
+    const store = freshStore();
+    jest.spyOn(AsyncStorage, 'getItem')
+      .mockRejectedValueOnce(new Error('sin acceso'))
+      .mockRejectedValueOnce(new Error('sin acceso'));
+
+    expect(await store.getAll()).toEqual([]);
+    expect(await store.countByLabel()).toEqual({});
+    expect((await store.getAll()).map(t => t.label)).toEqual(['A']);
+  });
+
+  it('si no se puede leer, importar combinando falla y reemplazando funciona', async () => {
+    await AsyncStorage.setItem(KEY, JSON.stringify({ templates: [saved('A')] }));
+    const json = JSON.stringify({ templates: [saved('B')] });
+    const store = freshStore();
+    jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('sin acceso'));
+
+    await expect(store.importJSON(json, 'merge')).rejects.toThrow('sin acceso');
+    expect(JSON.parse((await AsyncStorage.getItem(KEY))!).templates).toHaveLength(1);
+
+    const other = freshStore();
+    jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('sin acceso'));
+    await expect(other.importJSON(json, 'replace')).resolves.toBe(1);
+    expect((await other.getAll()).map(t => t.label)).toEqual(['B']);
   });
 });
 
