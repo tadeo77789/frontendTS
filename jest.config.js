@@ -15,5 +15,6 @@ module.exports = {
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/__tests__/**', '!src/**/*.d.ts'],
   moduleNameMapper: {
     '^expo-modules-core(/.*)?$': `${expoModulesCoreDir}$1`,
+    '\\.glb$': '<rootDir>/jest.assetMock.js',
   },
 };
