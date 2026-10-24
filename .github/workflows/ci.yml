@@ -103,7 +103,6 @@ jobs:
             echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)"
             echo "MONGO_ROOT_PASSWORD=$(openssl rand -hex 16)"
             echo "RABBITMQ_PASSWORD=$(openssl rand -hex 16)"
-            echo "CORS_ORIGINS=$E2E_BASE_URL"
           } > .env
           docker compose up -d --build --wait --wait-timeout 600
 
@@ -114,9 +113,8 @@ jobs:
 
       - run: npm ci
 
+      # Build de produccion: usa /api relativo; e2e/server.mjs lo reenvia al gateway.
       - run: npx expo export --platform web --output-dir dist
-        env:
-          EXPO_PUBLIC_API_URL: ${{ env.E2E_API_URL }}
 
       - run: npx playwright install --with-deps chromium
 
