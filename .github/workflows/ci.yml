@@ -1,4 +1,4 @@
-# Comprueba cada PR y cada push a develop/main: tipos, pruebas y build web.
+# Comprueba cada PR y cada push a develop/main: tipos, pruebas, build web, imagen Docker y E2E.
 name: CI
 
 on:
@@ -71,3 +71,65 @@ jobs:
           test "$(docker exec web id -u)" != "0"
           curl -fsSI http://localhost:8080/ | grep -qi '^content-security-policy'
           docker rm -f web
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      E2E_BASE_URL: http://localhost:4173
+      E2E_API_URL: http://localhost:8080/api
+      E2E_BACKEND_DIR: ${{ github.workspace }}/backendTS
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      # Backend publico; main es lo que corre en produccion.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: mauro-1508/backendTS
+          ref: main
+          path: backendTS
+          persist-credentials: false
+
+      # Secretos de un solo uso, generados en cada ejecucion. Sin SMTP: el registro
+      # responde que no envio el codigo y la prueba activa la cuenta en la base.
+      - name: Start backend
+        working-directory: backendTS
+        run: |
+          {
+            echo "JWT_SECRET=$(openssl rand -hex 32)"
+            echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)"
+            echo "MONGO_ROOT_PASSWORD=$(openssl rand -hex 16)"
+            echo "RABBITMQ_PASSWORD=$(openssl rand -hex 16)"
+          } > .env
+          docker compose up -d --build --wait --wait-timeout 600
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Build de produccion: usa /api relativo; e2e/server.mjs lo reenvia al gateway.
+      - run: npx expo export --platform web --output-dir dist
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: npm run e2e
+
+      - name: Backend logs
+        if: failure()
+        working-directory: backendTS
+        run: docker compose logs --no-color --tail 200 api-gateway iam-service recognition-service
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Google from 'expo-auth-session/providers/google';
-import { showError } from '../../../shared/utils/dialogs';
+import { showConfirm, showError } from '../../../shared/utils/dialogs';
+import { signInWithSocialConsent } from '../services/socialConsent';
 import { isAuthOperationCancelled, useAuth } from '../../../app/providers/AuthContext';
 import { useTranslation } from '../../../app/config/i18n';
 import { normalizeApiError } from '../../../shared/services/api.client';
@@ -62,7 +63,16 @@ export function useGoogleLogin() {
       return;
     }
     setLoading(true);
-    loginWithGoogle(idToken)
+    // Cuenta nueva: el backend pide el consentimiento (TERMS_REQUIRED) y se reintenta con el mismo token.
+    signInWithSocialConsent(
+      acceptedTerms => loginWithGoogle(idToken, acceptedTerms),
+      () => showConfirm({
+        title: t('socialTermsTitle'),
+        message: t('socialTermsMessage'),
+        confirmText: t('socialTermsAccept'),
+        cancelText: t('cancel'),
+      }),
+    )
       .catch((error) => {
         // Sesion sustituida (logout u otro login a mitad): no es un error del usuario.
         if (!mountedRef.current || isAuthOperationCancelled(error)) return;
