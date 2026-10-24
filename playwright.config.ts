@@ -25,8 +25,8 @@ export default defineConfig({
     },
   },
   webServer: {
-    // Sin linking la URL siempre es "/", así que basta un servidor estático.
-    command: 'python3 -m http.server 4173 -d dist',
+    // Sirve dist/ y reenvía /api al gateway (como Caddy en producción).
+    command: 'node e2e/server.mjs',
     url: baseURL,
     reuseExistingServer: true,
   },

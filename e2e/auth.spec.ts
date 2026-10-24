@@ -19,7 +19,7 @@ test('registro con consentimiento, verificación y login', async ({ page }) => {
   await page.getByText('Registrarse', { exact: true }).last().click();
 
   // En el CI no hay SMTP: la app avisa que no envió el código y abre la verificación.
-  await expect(page.locator('.swal2-popup')).toBeVisible();
+  await expect(page.locator('.swal2-popup')).toContainText('No pudimos enviar el código');
   await page.locator('.swal2-confirm').click();
   await expect(page.getByText('Verifica tu identidad')).toBeVisible();
 
@@ -34,6 +34,6 @@ test('login con contraseña equivocada muestra el error y no entra', async ({ pa
   await page.getByPlaceholder('••••••••').fill(PASSWORD);
   await page.getByText('Ingresar', { exact: true }).last().click();
 
-  await expect(page.locator('.swal2-popup')).toBeVisible();
+  await expect(page.locator('.swal2-popup')).toContainText('Correo o contraseña incorrectos');
   await expect(page.getByLabel('Historial', { exact: true })).toHaveCount(0);
 });
