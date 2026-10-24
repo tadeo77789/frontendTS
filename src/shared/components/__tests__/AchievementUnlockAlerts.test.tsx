@@ -1,9 +1,18 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { AppState } from 'react-native';
-import { AchievementUnlockAlerts } from '../AchievementUnlockAlerts';
+import { AppState, StyleSheet } from 'react-native';
+import { AchievementUnlockAlerts, achievementAlertPosition } from '../AchievementUnlockAlerts';
 import { api } from '../../services/api.client';
 import { profileAchievementsService } from '../../../feature/Profile/services/profileAchievements.service';
+let mockWidth = 390;
+let mockOS = 'ios';
+jest.mock('react-native', () => {
+ const actual = jest.requireActual('react-native');
+ const mocked = Object.create(actual);
+ Object.defineProperty(mocked, 'Platform', { value: { ...actual.Platform, get OS() { return mockOS; } } });
+ Object.defineProperty(mocked, 'useWindowDimensions', { value: () => ({ width: mockWidth, height: 900, scale: 1, fontScale: 1 }) });
+ return mocked;
+});
 let mockEnabled = true;
 let mockAdmin = false;
 let mockToken = 'a';
@@ -14,7 +23,7 @@ jest.mock('../../../app/providers/AccessContext', () => ({ useAccess: () => ({ p
 jest.mock('../../../app/providers/PreferencesContext', () => ({ usePreferences: () => ({ preferences: { notificationsEnabled: mockEnabled }, loading: false, saving: false, error: null }) }));
 jest.mock('../../../app/providers/ThemeContext', () => ({ useColors: () => ({ surface: 'white', primary: 'blue', textPrimary: 'black' }) }));
 jest.mock('../../../app/config/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0 }) }));
+jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 24, bottom: 34, left: 20, right: 16 }) }));
 jest.mock('../../../feature/Profile/hooks/useAchievementText', () => ({ useAchievementText: () => ({ textOf: (p: any) => ({ name: p.achievement.name }) }) }));
 jest.mock('../../../feature/Profile/components/AchievementMedal', () => ({ AchievementMedal: () => null }));
 jest.mock('../../../feature/Profile/services/profileAchievements.service', () => ({ profileAchievementsService: { getMine: jest.fn() } }));
@@ -23,7 +32,8 @@ const progress = (id: string, achievedAt: string | null = '2026-10-23T12:00:00.0
 const notification = (id: string) => ({ id: `notification-${id}`, referenceId: id, referenceType: 'ACHIEVEMENT', channel: 'IN_APP', status: 'SENT' });
 const tick = async () => { await act(async () => { jest.advanceTimersByTime(20000); }); };
 beforeEach(() => {
- jest.useFakeTimers(); jest.clearAllMocks(); mockEnabled = true; mockAdmin = false; mockToken = 'a'; mockGeneration = 1;
+ jest.useFakeTimers(); jest.clearAllMocks(); mockWidth = 390; mockOS = 'ios';
+ jest.spyOn(AppState, 'addEventListener').mockReturnValue({ remove: jest.fn() }); mockEnabled = true; mockAdmin = false; mockToken = 'a'; mockGeneration = 1;
  Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'active' });
  (profileAchievementsService.getMine as jest.Mock).mockResolvedValue([]);
  (api.get as jest.Mock).mockResolvedValue({ data: { data: [] } });
@@ -113,4 +123,21 @@ it('resuming after background establishes a baseline and does not replay the int
  (api.get as jest.Mock).mockResolvedValue({ data: { data: [notification('away')] } });
  await tick(); expect(api.patch).not.toHaveBeenCalled();
  listener.mockRestore();
+});
+
+it.each([
+ [1280, true, 34, 'flex-end'],
+ [390, false, 102, 'center'],
+ [800, false, 120, 'center'],
+])('reserves navigation and safe areas at %s px', (width, wide, bottom, alignItems) => {
+ expect(achievementAlertPosition(Number(width), { bottom: 34, left: 20, right: 16 }, Boolean(wide)))
+   .toEqual({ bottom, left: 20, right: 16, alignItems });
+});
+it('applies the mobile position to the visible overlay', async () => {
+ await render(<AchievementUnlockAlerts />);
+ (profileAchievementsService.getMine as jest.Mock).mockResolvedValue([progress('one')]);
+ (api.get as jest.Mock).mockResolvedValue({ data: { data: [notification('one')] } });
+ await tick();
+ expect(StyleSheet.flatten(screen.getByTestId('achievement-alert-overlay').props.style))
+   .toEqual(expect.objectContaining({ bottom: 102, left: 20, right: 16, alignItems: 'center' }));
 });
