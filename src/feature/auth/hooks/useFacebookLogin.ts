@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Facebook from 'expo-auth-session/providers/facebook';
-import { showError } from '../../../shared/utils/dialogs';
+import { showConfirm, showError } from '../../../shared/utils/dialogs';
+import { signInWithSocialConsent } from '../services/socialConsent';
 import {
   useAuth,
   isAuthOperationCancelled,
@@ -54,7 +55,16 @@ export function useFacebookLogin() {
 
     setLoading(true);
 
-    loginWithFacebook(accessToken)
+    // Cuenta nueva: el backend pide el consentimiento (TERMS_REQUIRED) y se reintenta con el mismo token.
+    signInWithSocialConsent(
+      acceptedTerms => loginWithFacebook(accessToken, acceptedTerms),
+      () => showConfirm({
+        title: t('socialTermsTitle'),
+        message: t('socialTermsMessage'),
+        confirmText: t('socialTermsAccept'),
+        cancelText: t('cancel'),
+      }),
+    )
       .catch(error => {
         if (!mountedRef.current || isAuthOperationCancelled(error)) return;
 
