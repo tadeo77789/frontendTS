@@ -4,7 +4,7 @@ import { useAuth } from '../../app/providers/AuthContext';
 import { useAccess } from '../../app/providers/AccessContext';
 import { api } from '../services/api.client';
 
-/** Requests retain the originating token/session even when authentication changes in flight. */
+/** Las solicitudes conservan el token y la sesión de origen aunque cambie la autenticación en curso. */
 export const useAchievementActivity = () => {
   const { token, sessionGeneration, isSessionCurrent } = useAuth();
   const { permissions, isLoading, error } = useAccess();
