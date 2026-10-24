@@ -19,27 +19,39 @@ interface TemplatesPayload {
 let cache: SignTemplate[] | null = null;
 let loadPromise: Promise<SignTemplate[]> | null = null;
 
+// Si AsyncStorage falla al leer, lanza y no cachea nada: la siguiente llamada reintenta,
+// y las escrituras no pisan lo guardado con una lista vacia. Un JSON corrupto si se
+// descarta (cache vacia), porque no se puede recuperar. Igual que motionTemplateStore.
 const load = async (): Promise<SignTemplate[]> => {
   if (cache) return cache;
   if (loadPromise) return loadPromise;
 
-  loadPromise = (async () => {
+  const p = (async () => {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        cache = [];
-        return cache;
-      }
-      const parsed = JSON.parse(raw) as TemplatesPayload;
-      cache = Array.isArray(parsed.templates) ? parsed.templates : [];
-      return cache;
+      const parsed = raw ? (JSON.parse(raw) as TemplatesPayload) : null;
+      cache = parsed && Array.isArray(parsed.templates) ? parsed.templates : [];
     } catch {
       cache = [];
-      return cache;
     }
+    return cache;
   })();
+  loadPromise = p;
+  p.catch(() => {
+    if (loadPromise === p) loadPromise = null;
+  });
 
-  return loadPromise;
+  return p;
+};
+
+// Para lecturas que no deben romper la pantalla (conteos, reconocimiento):
+// si no se puede leer, devuelve una lista vacia sin cachearla.
+const loadOrEmpty = async (): Promise<SignTemplate[]> => {
+  try {
+    return await load();
+  } catch {
+    return [];
+  }
 };
 
 const persist = async (): Promise<void> => {
@@ -55,11 +67,11 @@ const persist = async (): Promise<void> => {
 export const templateStore = {
 
   async getAll(): Promise<SignTemplate[]> {
-    return load();
+    return loadOrEmpty();
   },
 
   async countByLabel(): Promise<Record<string, number>> {
-    const all = await load();
+    const all = await loadOrEmpty();
     const counts: Record<string, number> = {};
     for (const tpl of all) {
       counts[tpl.label] = (counts[tpl.label] ?? 0) + 1;
@@ -86,6 +98,8 @@ export const templateStore = {
   },
 
   async clear(): Promise<void> {
+    // Espera una lectura en curso para que, al terminar, no devuelva lo borrado a la cache.
+    await loadOrEmpty();
     cache = [];
     await persist();
   },
@@ -134,7 +148,10 @@ export const templateStore = {
       throw new Error('No se encontraron plantillas válidas en el archivo');
     }
 
-    await load();
+    // Combinar necesita lo guardado y falla si no se puede leer. Reemplazar no lo necesita,
+    // pero espera cualquier lectura en curso para que no pise lo importado al terminar.
+    if (mode === 'merge') await load();
+    else await loadOrEmpty();
     if (mode === 'replace' || !cache) {
       cache = incoming;
     } else {
