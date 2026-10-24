@@ -10,6 +10,7 @@ import { ThemeProvider, useTheme } from './src/app/providers/ThemeContext';
 import { LanguageProvider } from './src/app/providers/LanguageContext';
 import { AppNavigator } from './src/app/routes/AppNavigator';
 import { PreferencesProvider } from './src/app/providers/PreferencesContext';
+import { AchievementUnlockAlerts } from './src/shared/components/AchievementUnlockAlerts';
 import { isWordEngineEmbed, WordEngineEmbed } from './src/feature/Translation/embed/WordEngineEmbed';
 
 // En web, la ventana emergente de Facebook vuelve a la app con el token: esto
@@ -22,6 +23,7 @@ function AppContent() {
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <AppNavigator />
+      <AchievementUnlockAlerts />
     </>
   );
 }
