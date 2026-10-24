@@ -216,7 +216,13 @@ export const AdminTrainingScreen: React.FC = () => {
       void showInfo(t('trainNoHand'));
       return;
     }
-    await recordSample(label, features);
+    try {
+      await recordSample(label, features);
+    } catch {
+      // No se pudo leer el almacenamiento: no se guarda para no pisar las muestras anteriores.
+      void showError(t('genericError'));
+      return;
+    }
     await refreshCounts();
   }, [t, refreshCounts, agentLastResult]);
 
