@@ -387,6 +387,10 @@ const fr: typeof es = {
   historyDeleteError: "Impossible de supprimer l'enregistrement. Réessayez.",
   historyLoadError: "Impossible de charger l'historique. Vérifiez votre connexion.",
   historyRetry: 'Réessayer',
+  historyWordCount: '{n} mots',
+  historyShowWords: 'Voir les mots',
+  historyConfirmDeleteSession: 'Voulez-vous supprimer cette session ? Ses {n} mots seront supprimés.',
+  historyRetentionNote: 'Les traductions sont conservées 30 jours puis supprimées.',
 
   kpiTranslations: 'Traductions',
   kpiActiveUsers: "Utilisateurs actifs (30 jours)",
