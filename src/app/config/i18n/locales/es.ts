@@ -1,4 +1,16 @@
 const es = {
+  dailyChallengeTitle: "Reto del día",
+  dailyChallengeName: "Traducciones guardadas: {count}",
+  dailyChallengeDescription: "Guarda y confirma {count} traducciones hoy. Cada traducción guardada cuenta una vez; una frase no cuenta por palabras.",
+  dailyChallengeError: "No se pudo cargar el reto.",
+  dailyChallengeRetry: "Reintentar",
+  dailyChallengeEmpty: "No hay retos activos para hoy.",
+  dailyChallengeProgress: "{current} de {target} traducciones",
+  dailyChallengePoints: "{points} puntos al completar",
+  dailyChallengeRewarded: "{points} puntos otorgados",
+  dailyChallengeCompleted: "Completado",
+  dailyChallengePending: "En progreso",
+
 
   appName: 'TraduceSeña',
   appTagline: 'Lengua de Señas Colombiana',
