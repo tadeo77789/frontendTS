@@ -158,3 +158,34 @@ El desarrollo se hace en ramas de tarea que se fusionan en **`develop`**; las ve
 - **Juan Camilo Fierro Esquivel**
 
 Proyecto de formación SENA, ficha ADSO 3145556.
+
+
+## Reto del día
+
+La pestaña principal de Traducción incorpora `DailyChallengeCard`, con nombre, condición de
+traducción guardada y confirmada, progreso accesible, puntos previstos/otorgados y estado.
+Respeta tema y ES/EN/FR/PT; maneja carga, error, reintento y ausencia de retos.
+Visitantes y usuarios excluidos por `users.manage` no consultan el endpoint privado.
+La carga espera a resolver permisos y deniega consultas si falla esa resolución.
+
+`dailyChallenge.service.ts` usa el cliente con API_BASE_URL y ENDPOINTS.dailyChallenge
+(`/profile/challenges/today`), token explícito, AbortSignal y validación del contrato success/data.
+El servidor concede el progreso y los puntos; el cliente solo consulta la proyección.
+
+Después de confirmar el guardado HTTP, translationsService emite una señal local exclusivamente
+para la sesión de origen vigente. El hook vuelve a consultar a los 0,8/2,5/6/12 segundos desde
+el último guardado para tolerar la entrega eventual de TranslationProduced. Otro guardado
+reinicia esa ventana; no hay polling continuo. Navegación, cambios de sesión, desmontaje y
+logout cancelan peticiones y temporizadores; las respuestas también se verifican por usuario,
+token y generación. Recuperar foco o volver del segundo plano consulta de nuevo.
+Un temporizador único renueva el día a medianoche de Bogotá; no se muestra el dato de ayer.
+Si el evento tarda más de 12 segundos, recuperar foco o reintentar vuelve a consultar.
+
+No modifica el toast de logros: las notificaciones CHALLENGE_COMPLETED se guardan en Profile,
+pero no se presentan mediante ese lector. La validación visual final de Parte A sigue pendiente.
+
+Pruebas específicas: dailyChallenge.service.test.ts, useDailyChallenge.test.ts,
+DailyChallengeCard.test.tsx y translations.service.test.ts. Usan transporte y plataforma simulados;
+no sustituyen PostgreSQL/RabbitMQ ni verificación en navegador/dispositivo real.
+Ejecutar `npm run typecheck`, `npm test -- --runInBand` y el build de CI
+`npx expo export --platform web --output-dir <directorio-nuevo-de-prueba>` con Node >=20.
