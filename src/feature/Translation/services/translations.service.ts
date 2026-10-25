@@ -1,4 +1,5 @@
 
+import { translationSaved } from '../../../shared/services/translationSaved';
 import { api, getCurrentUserId } from '../../../shared/services/api.client';
 import { ENDPOINTS } from '../../../app/config/api.config';
 import type { TipoTraduccion } from '../../../shared/types';
@@ -36,14 +37,18 @@ export interface SavedTranslation {
 
 export const translationsService = {
 
-  async save(input: SaveTranslationInput, context?: { token: string | null; sessionId: string; eligible: boolean }): Promise<SavedTranslation> {
+  async save(input: SaveTranslationInput, context?: { token: string | null; sessionId: string; eligible: boolean; isCurrent?: () => boolean }): Promise<SavedTranslation> {
     const userId = await getCurrentUserId();
     const { data } = await api.post(ENDPOINTS.translate, {
       ...input,
       user_id: userId,
       sessionId: context?.eligible ? context.sessionId : undefined,
     }, context ? { headers: { Authorization: `Bearer ${context.token ?? ''}` } } : undefined);
-    return data?.data as SavedTranslation;
+    const saved = data?.data as SavedTranslation;
+    if (saved?.translationId && saved.userId !== null && context?.token && context.eligible && context.isCurrent?.()) {
+      translationSaved.emit({ userId: saved.userId, token: context.token });
+    }
+    return saved;
   },
 
   async list(opts: { limit?: number; offset?: number } = {}): Promise<SavedTranslation[]> {
