@@ -28,7 +28,8 @@ describe('linking', () => {
     ['/admin/muestras', 'ModelSamples'],
     ['/perfil', 'ProfileMain'],
     ['/perfil/terminos', 'Terms'],
-    ['/cambiar-contrasena', 'ChangePassword'],
+    ['/seguridad', 'ChangePassword'],
+    ['/restablecer', 'NewPassword'],
   ])('%s abre %s', (path, screen) => {
     expect(leafName(path)).toBe(screen);
   });

@@ -21,7 +21,7 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
       Register: 'registro',
       ForgotPassword: 'recuperar',
       VerifyCode: 'verificar',
-      NewPassword: 'nueva-contrasena',
+      NewPassword: 'restablecer',
       Terms: 'terminos',
       PrivacyPolicy: 'privacidad',
 
@@ -50,7 +50,7 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
           },
         },
       },
-      ChangePassword: 'cambiar-contrasena',
+      ChangePassword: 'seguridad',
     },
   },
 };
