@@ -56,6 +56,8 @@ export const ENDPOINTS = {
   facebookLogin: '/auth/facebook',
   googleLogin: '/auth/google',
   achievements: '/achievements',
+  notifications: '/notifications',
+  notificationRead: (id: string) => `/notifications/${encodeURIComponent(id)}/read`,
 
   me: '/users/me',
   mePassword: '/users/me/password',

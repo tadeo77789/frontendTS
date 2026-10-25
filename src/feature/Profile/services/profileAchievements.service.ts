@@ -12,7 +12,7 @@ export const profileAchievementsService = {
     signal: AbortSignal,
   ): Promise<PersistedAchievementProgress[]> {
     const res = await api.get<unknown>(ENDPOINTS.achievements, {
-      // Old servers safely ignore this query and keep returning only legacy achievements.
+      // Los servidores antiguos ignoran esta consulta y siguen devolviendo solo los logros anteriores.
       params: { catalogVersion: 2 },
       headers: { Authorization: `Bearer ${token}` },
       signal,

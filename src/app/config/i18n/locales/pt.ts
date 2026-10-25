@@ -387,6 +387,10 @@ const pt: typeof es = {
   historyDeleteError: 'Não foi possível excluir o registro. Tente novamente.',
   historyLoadError: 'Não foi possível carregar o histórico. Verifique sua conexão.',
   historyRetry: 'Tentar novamente',
+  historyWordCount: '{n} palavras',
+  historyShowWords: 'Ver palavras',
+  historyConfirmDeleteSession: 'Deseja excluir esta sessão do histórico? Suas {n} palavras serão excluídas.',
+  historyRetentionNote: 'As traduções ficam salvas por 30 dias e depois são excluídas.',
 
   kpiTranslations: 'Traduções',
   kpiActiveUsers: "Usuários ativos (30 dias)",

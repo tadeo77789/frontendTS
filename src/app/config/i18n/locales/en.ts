@@ -387,6 +387,10 @@ const en: typeof es = {
   historyDeleteError: 'Could not delete the record. Please try again.',
   historyLoadError: 'Could not load your history. Check your connection.',
   historyRetry: 'Retry',
+  historyWordCount: '{n} words',
+  historyShowWords: 'Show words',
+  historyConfirmDeleteSession: 'Do you want to delete this session? Its {n} words will be deleted.',
+  historyRetentionNote: 'Translations are kept for 30 days and then deleted.',
 
   kpiTranslations: 'Translations',
   kpiActiveUsers: "Active users (30 days)",
