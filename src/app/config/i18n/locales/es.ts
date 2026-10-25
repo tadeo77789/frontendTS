@@ -386,6 +386,10 @@ const es = {
   historyDeleteError: 'No se pudo eliminar el registro. Intenta de nuevo.',
   historyLoadError: 'No se pudo cargar el historial. Revisa tu conexión.',
   historyRetry: 'Reintentar',
+  historyWordCount: '{n} palabras',
+  historyShowWords: 'Ver palabras',
+  historyConfirmDeleteSession: '¿Deseas eliminar esta sesión del historial? Se borrarán sus {n} palabras.',
+  historyRetentionNote: 'Las traducciones se guardan 30 días y luego se borran.',
 
   kpiTranslations: 'Traducciones',
   kpiActiveUsers: "Usuarios activos (30 días)",

@@ -40,6 +40,26 @@ it('shows an error with retry instead of an empty history when loading fails', a
   expect(screen.queryByText('No se pudo cargar el historial. Revisa tu conexión.')).toBeNull();
 });
 
+it('shows the words of one session in a single card and deletes them together', async () => {
+  const { showConfirm } = jest.requireMock('../../../shared/utils/dialogs');
+  showConfirm.mockResolvedValueOnce(true);
+  (translationsService.remove as jest.Mock).mockResolvedValue(undefined);
+  list.mockResolvedValueOnce([
+    { ...row, translationId: 9, inputText: 'COMO', outputText: 'COMO', confidence: '0.850', createdAt: '2026-10-20T15:01:00.000Z' },
+    { ...row, translationId: 8, inputText: 'HOLA', outputText: 'HOLA', confidence: '0.920', createdAt: '2026-10-20T15:00:00.000Z' },
+  ]);
+  await render(<HistoryScreen />);
+
+  expect(await screen.findByText('HOLA COMO')).toBeTruthy();
+  await fireEvent.press(screen.getByText('Ver palabras'));
+  expect(screen.getByText('92%')).toBeTruthy();
+
+  await fireEvent.press(screen.getByLabelText('Eliminar'));
+  expect(await screen.findByText('Sin traducciones')).toBeTruthy();
+  expect(translationsService.remove).toHaveBeenCalledWith(9);
+  expect(translationsService.remove).toHaveBeenCalledWith(8);
+});
+
 it('keeps the empty state for a history that loaded with no rows', async () => {
   list.mockResolvedValueOnce([]);
   await render(<HistoryScreen />);

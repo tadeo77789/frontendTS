@@ -10,6 +10,9 @@ import {
   ListRenderItem,
   useWindowDimensions,
   TextInput,
+  Modal,
+  Pressable,
+  ScrollView,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -18,28 +21,13 @@ import { AppHeader } from '../../../shared/components/common/AppHeader';
 import { Colors } from '../../../shared/constants/colors';
 import { useColors, useTheme } from '../../../app/providers/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import { Traduccion } from '../../../shared/types';
 import { useTranslation } from '../../../app/config/i18n';
 import { useTrackSectionView } from '../../../shared/hooks/useTrackSectionView';
-import { translationsService, type SavedTranslation } from '../../../feature/Translation/services/translations.service';
+import { translationsService } from '../../../feature/Translation/services/translations.service';
 import { showAlert, showConfirm } from '../../../shared/utils/dialogs';
+import { groupHistory, type HistoryGroup } from '../services/groupHistory';
 
-type HistoryItem = Traduccion & { hora: string };
-
-const mapSavedTranslation = (row: SavedTranslation): HistoryItem => {
-  const date = new Date(row.createdAt);
-  return {
-    id_traduccion: row.translationId,
-    // Los textos se dejan siempre como cadena: una fila incompleta no puede
-    // tumbar la pantalla, que es lo que pasaba al filtrar con toLowerCase().
-    texto_entrada: row.inputText ?? '',
-    texto_traducido: row.outputText ?? '',
-    tipo: row.type,
-    fecha_traduccion: date.toLocaleDateString(),
-    hora: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    is_deleted: row.isDeleted,
-  };
-};
+const formatTime = (date: Date): string => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 type TipoConfig = {
   label: string;
@@ -48,7 +36,7 @@ type TipoConfig = {
   darkColor: string;
 };
 
-const keyExtractor = (item: HistoryItem) => String(item.id_traduccion);
+const keyExtractor = (item: HistoryGroup) => item.key;
 
 export const HistoryScreen: React.FC = () => {
   const { width } = useWindowDimensions();
@@ -59,7 +47,10 @@ export const HistoryScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<BottomTabNavigationProp<MainTabParams, 'History'>>();
   useTrackSectionView('HISTORY');
-  const [items, setItems] = useState<HistoryItem[]>([]);
+  // El modo Palabras guarda una fila por palabra: aqui se agrupan por sesion.
+  const [items, setItems] = useState<HistoryGroup[]>([]);
+  // Sesion abierta en el modal con todas sus palabras.
+  const [detail, setDetail] = useState<HistoryGroup | null>(null);
   const [loading, setLoading] = useState(true);
   // Un fallo de red no es un historial vacio: se muestra el error con reintento.
   const [failed, setFailed] = useState(false);
@@ -67,7 +58,7 @@ export const HistoryScreen: React.FC = () => {
   const [query, setQuery] = useState<string>('');
 
   const filtered = items.filter((p) =>
-    (p.texto_entrada ?? '').toLowerCase().includes(query.toLowerCase())
+    p.phrase.toLowerCase().includes(query.toLowerCase())
   );
 
   useFocusEffect(
@@ -77,7 +68,7 @@ export const HistoryScreen: React.FC = () => {
         try {
           const rows = await translationsService.list({ limit: 100 });
           if (active) {
-            setItems(rows.map(mapSavedTranslation));
+            setItems(groupHistory(rows));
             setFailed(false);
           }
         } catch {
@@ -102,31 +93,41 @@ export const HistoryScreen: React.FC = () => {
     voz_sena:   { label: t('historyVozSena'),   icon: 'mic',       color: '#059669', darkColor: '#34D399' },
   };
 
-  const handleDelete = useCallback(async (id: number) => {
+  const handleDelete = useCallback(async (group: HistoryGroup) => {
     const ok = await showConfirm({
       title: t('historyDeleteTitle'),
-      message: t('historyConfirmDelete'),
+      message: group.ids.length > 1 ? t('historyConfirmDeleteSession', { n: group.ids.length }) : t('historyConfirmDelete'),
       confirmText: t('historyDeleteBtn'),
       cancelText: t('cancel'),
       destructive: true,
     });
     if (!ok) return;
-    try {
-      await translationsService.remove(id);
-      setItems(prev => prev.filter(item => item.id_traduccion !== id));
-    } catch {
+    // La API no borra por sesion: se borra cada palabra y se quitan de la pantalla
+    // solo las que si se borraron, para no esconder filas que siguen guardadas.
+    const results = await Promise.allSettled(group.ids.map(id => translationsService.remove(id)));
+    const removed = new Set(group.ids.filter((_, i) => results[i].status === 'fulfilled'));
+    setItems(prev => prev.flatMap(item => {
+      if (item.key !== group.key) return [item];
+      const words = item.words.filter(w => !removed.has(w.id));
+      if (words.length === 0) return [];
+      return [{ ...item, ids: words.map(w => w.id), words, phrase: words.map(w => w.word).join(' ') }];
+    }));
+    if (removed.size < group.ids.length) {
       await showAlert({ title: t('error'), message: t('historyDeleteError'), icon: 'error' });
     }
   }, [t]);
 
-  const handleReuse = useCallback(async (item: HistoryItem) => {
-    await showAlert({ title: t('historyReuseTitle'), message: `${t('historyReuseMsg')}\n\n"${item.texto_entrada}"` });
+  const handleReuse = useCallback(async (item: HistoryGroup) => {
+    await showAlert({ title: t('historyReuseTitle'), message: `${t('historyReuseMsg')}\n\n"${item.phrase}"` });
     navigation.navigate('Translation');
   }, [t, navigation]);
 
-  const renderItem: ListRenderItem<HistoryItem> = useCallback(({ item }) => {
-    const config = TIPO_CONFIG[item.tipo] ?? TIPO_CONFIG['texto_sena'];
+  const renderItem: ListRenderItem<HistoryGroup> = useCallback(({ item }) => {
+    const config = TIPO_CONFIG[item.type] ?? TIPO_CONFIG['texto_sena'];
     const badgeColor = isDark ? config.darkColor : config.color;
+    const start = formatTime(item.start);
+    const end = formatTime(item.end);
+    const isSession = item.words.length > 1;
     return (
       <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
         <View style={styles.cardTop}>
@@ -135,11 +136,26 @@ export const HistoryScreen: React.FC = () => {
             <Text style={[styles.typeBadgeText, { color: badgeColor }]}>{config.label}</Text>
           </View>
           <Text style={[styles.cardDate, { color: C.textHint }]}>
-            {item.fecha_traduccion} · {item.hora}
+            {item.start.toLocaleDateString()} · {start === end ? start : `${start} – ${end}`}
           </Text>
         </View>
 
-        <Text style={[styles.cardText, { color: C.textPrimary }]} numberOfLines={3}>{item.texto_entrada}</Text>
+        <Text style={[styles.cardText, { color: C.textPrimary }]} numberOfLines={3}>{item.phrase}</Text>
+
+        {isSession && (
+          <TouchableOpacity
+            style={styles.wordsToggle}
+            onPress={() => setDetail(item)}
+            accessibilityRole="button"
+          >
+            <Ionicons name="chatbubbles-outline" size={15} color={C.textSecondary} />
+            <Text style={[styles.wordsToggleText, { color: C.textSecondary }]}>
+              {t('historyWordCount', { n: item.words.length })}
+            </Text>
+            <Text style={[styles.wordsToggleText, { color: C.primary }]}>{t('historyShowWords')}</Text>
+            <Ionicons name="open-outline" size={14} color={C.primary} />
+          </TouchableOpacity>
+        )}
 
         <View style={[styles.cardFooter, { borderTopColor: C.border }]}>
           <TouchableOpacity
@@ -151,7 +167,7 @@ export const HistoryScreen: React.FC = () => {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.deleteBtn}
-            onPress={() => handleDelete(item.id_traduccion)}
+            onPress={() => handleDelete(item)}
             accessibilityRole="button"
             accessibilityLabel={t('historyDeleteBtn')}
           >
@@ -176,6 +192,12 @@ export const HistoryScreen: React.FC = () => {
             <Ionicons name="layers-outline" size={16} color={C.primaryDark} />
             <Text style={[styles.countText, { color: C.primaryDark }]}>{items.length} {t('historyRecords')}</Text>
           </View>
+        </View>
+
+        {/* El backend borra las traducciones a los 30 dias (retencion de recognition-service). */}
+        <View style={styles.retentionNote}>
+          <Ionicons name="time-outline" size={15} color={C.textHint} />
+          <Text style={[styles.retentionText, { color: C.textHint }]}>{t('historyRetentionNote')}</Text>
         </View>
 
         {/* Buscador */}
@@ -227,6 +249,41 @@ export const HistoryScreen: React.FC = () => {
           />
         )}
       </View>
+
+      <Modal visible={!!detail} transparent animationType="fade" onRequestClose={() => setDetail(null)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setDetail(null)}>
+          {/* Pressable vacio: un toque dentro de la tarjeta no cierra el modal. */}
+          <Pressable style={[styles.modalCard, { backgroundColor: C.surface, borderColor: C.border }]} onPress={() => {}}>
+            {detail && (
+              <>
+                <View style={styles.modalHead}>
+                  <View style={styles.modalHeadText}>
+                    <Text style={[styles.modalTitle, { color: C.textPrimary }]}>
+                      {t('historyWordCount', { n: detail.words.length })}
+                    </Text>
+                    <Text style={[styles.cardDate, { color: C.textHint }]}>
+                      {detail.start.toLocaleDateString()} · {formatTime(detail.start)} – {formatTime(detail.end)}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setDetail(null)} accessibilityRole="button" accessibilityLabel={t('close')}>
+                    <Ionicons name="close" size={24} color={C.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+                <ScrollView style={styles.modalScroll} contentContainerStyle={styles.wordList}>
+                  {detail.words.map(w => (
+                    <View key={w.id} style={[styles.wordChip, { backgroundColor: C.inputBg }]}>
+                      <Text style={[styles.wordChipText, { color: C.textPrimary }]}>{w.word}</Text>
+                      {w.confidence != null && (
+                        <Text style={[styles.wordChipPct, { color: C.textHint }]}>{Math.round(Number(w.confidence) * 100)}%</Text>
+                      )}
+                    </View>
+                  ))}
+                </ScrollView>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -250,6 +307,9 @@ const styles = StyleSheet.create({
     paddingVertical: 9, paddingHorizontal: 18, borderRadius: 999, borderWidth: 1,
   },
   countText: { fontSize: 14, fontWeight: '800' },
+
+  retentionNote: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -6, marginBottom: 12 },
+  retentionText: { fontSize: 13, fontWeight: '600', flexShrink: 1 },
 
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 11,
@@ -280,6 +340,18 @@ const styles = StyleSheet.create({
   typeBadgeText: { fontSize: 12, fontWeight: '800' },
   cardDate: { fontSize: 12, fontWeight: '700' },
   cardText: { fontSize: 17, fontWeight: '700', lineHeight: 24, marginBottom: 16 },
+  wordsToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -6, marginBottom: 14, alignSelf: 'flex-start' },
+  wordsToggleText: { fontSize: 13, fontWeight: '700' },
+  wordList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 4 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  modalCard: { width: '100%', maxWidth: 560, maxHeight: '80%', borderRadius: 20, borderWidth: 1, padding: 22 },
+  modalHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 },
+  modalHeadText: { flexShrink: 1, gap: 4 },
+  modalTitle: { fontSize: 18, fontWeight: '800' },
+  modalScroll: { flexGrow: 0 },
+  wordChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+  wordChipText: { fontSize: 13, fontWeight: '700' },
+  wordChipPct: { fontSize: 11, fontWeight: '600' },
   cardFooter: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingTop: 14, borderTopWidth: 1,
