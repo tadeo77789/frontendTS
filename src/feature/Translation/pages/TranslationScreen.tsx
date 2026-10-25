@@ -1,5 +1,6 @@
 import { useIsFocused } from '@react-navigation/native';
 import { beginVoicePlayback } from '../services/voicePlayback';
+import { DailyChallengeCard } from '../../Profile/components/DailyChallengeCard';
 import { useActiveTranslationTime } from '../../../shared/hooks/useActiveTranslationTime';
 
 import { useAchievementActivity } from '../../../shared/hooks/useAchievementActivity';
@@ -323,6 +324,7 @@ export const TranslationScreen: React.FC = () => {
       <AppHeader />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.shell}>
+          <DailyChallengeCard />
 
           <View style={[styles.grid, isDesktop && styles.gridDesktop]}>
             {/* Cámara */}
