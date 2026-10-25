@@ -66,6 +66,7 @@ export const TranslationScreen: React.FC = () => {
   useTrackSectionView('TRANSLATION');
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
+  const resultScrollRef = useRef<ScrollView>(null);
   const {
     status: agentStatus,
     lastResult: agentLastResult,
@@ -539,24 +540,35 @@ export const TranslationScreen: React.FC = () => {
 
                 <View style={[styles.resultInner, { backgroundColor: C.backgroundGray, borderColor: C.border }]}>
                   {signResult ? (
-                    <>
-                      <Text style={[styles.resultText, { color: C.textPrimary }]}>{signResult}</Text>
-                      {usingGestures && gesture.confirmed.length > 0 && (
-                        <View style={styles.confirmedList}>
+                    // Con textos largos la tarjeta no crece: el texto se desplaza por dentro
+                    // y baja solo hasta la ultima palabra reconocida.
+                    <ScrollView
+                      ref={resultScrollRef}
+                      style={styles.resultScroll}
+                      nestedScrollEnabled
+                      onContentSizeChange={() => resultScrollRef.current?.scrollToEnd({ animated: true })}
+                    >
+                      {usingGestures ? (
+                        // Cada palabra lleva debajo su confianza y si ya se guardo.
+                        <View style={styles.wordFlow}>
                           {gesture.confirmed.map(item => (
-                            <View key={item.id} style={[styles.confirmedChip, { backgroundColor: C.inputBg }]}>
-                              <Ionicons
-                                name={item.saved ? 'cloud-done-outline' : 'cloud-upload-outline'}
-                                size={13}
-                                color={item.saved ? '#059669' : C.textHint}
-                              />
-                              <Text style={[styles.confirmedWord, { color: C.textPrimary }]}>{item.word}</Text>
-                              <Text style={[styles.confirmedScore, { color: C.textHint }]}>{Math.round(item.score * 100)}%</Text>
+                            <View key={item.id} style={styles.wordItem}>
+                              <Text style={[styles.resultText, { color: C.textPrimary }]}>{item.word}</Text>
+                              <View style={styles.wordMeta}>
+                                <Ionicons
+                                  name={item.saved ? 'cloud-done-outline' : 'cloud-upload-outline'}
+                                  size={12}
+                                  color={item.saved ? '#059669' : C.textHint}
+                                />
+                                <Text style={[styles.confirmedScore, { color: C.textHint }]}>{Math.round(item.score * 100)}%</Text>
+                              </View>
                             </View>
                           ))}
                         </View>
+                      ) : (
+                        <Text style={[styles.resultText, { color: C.textPrimary }]}>{signResult}</Text>
                       )}
-                    </>
+                    </ScrollView>
                   ) : (
                     <View style={styles.resultEmpty}>
                       <Ionicons name="scan-outline" size={32} color={C.primaryLighter} />
@@ -763,9 +775,9 @@ const styles = StyleSheet.create({
   vocabWord: { fontSize: 13, fontWeight: '800' },
   vocabHint: { fontSize: 10.5, fontWeight: '500' },
 
-  confirmedList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  confirmedChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
-  confirmedWord: { fontSize: 13, fontWeight: '700' },
+  wordFlow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 14, rowGap: 10 },
+  wordItem: { alignItems: 'center' },
+  wordMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   confirmedScore: { fontSize: 11, fontWeight: '600' },
 
   tipsRow: { gap: 10, marginTop: 16 },
@@ -779,6 +791,7 @@ const styles = StyleSheet.create({
   waitingText: { fontSize: 12, fontWeight: '700' },
 
   resultInner: { borderRadius: 16, borderWidth: 1, padding: 22, minHeight: 180, justifyContent: 'center' },
+  resultScroll: { maxHeight: 240 },
   resultText: { fontSize: 26, fontWeight: '700', lineHeight: 36 },
   resultEmpty: { alignItems: 'center', justifyContent: 'center', gap: 12 },
   resultEmptyText: { fontSize: 14, textAlign: 'center', lineHeight: 21, maxWidth: 260 },
