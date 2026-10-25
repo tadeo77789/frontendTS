@@ -8,6 +8,7 @@ import { useAccess } from '../providers/AccessContext';
 import { useTranslation } from '../config/i18n';
 import { AuthNavigator } from './AuthNavigator';
 import { MainStackNavigator } from './MainStackNavigator';
+import { linking } from './linking';
 import { Colors } from '../../shared/constants/colors';
 
 export const AppNavigator: React.FC = () => {
@@ -31,6 +32,7 @@ export const AppNavigator: React.FC = () => {
 
   return (
     <NavigationContainer
+      linking={linking}
       documentTitle={{ formatter: () => 'Traduce Señas' }}
     >
       {isAuthenticated ? <MainStackNavigator /> : <AuthNavigator />}
