@@ -70,6 +70,7 @@ export const ENDPOINTS = {
   deleteTranslation: (id: number) => `/translations/${id}`,
   translationsStats: '/translations/stats',
   myTranslationStats: '/translations/me/stats',
+  challengeRewardSummary: '/profile/challenges/rewards/summary',
   usersStats: '/users/stats',
 
   iamMyAccess: '/iam/me/access',
