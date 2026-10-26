@@ -181,8 +181,45 @@ token y generación. Recuperar foco o volver del segundo plano consulta de nuevo
 Un temporizador único renueva el día a medianoche de Bogotá; no se muestra el dato de ayer.
 Si el evento tarda más de 12 segundos, recuperar foco o reintentar vuelve a consultar.
 
-No modifica el toast de logros: las notificaciones CHALLENGE_COMPLETED se guardan en Profile,
-pero no se presentan mediante ese lector. La validación visual final de Parte A sigue pendiente.
+`AchievementUnlockAlerts` comparte una cola de retos y logros, con un solo lector de
+notificaciones cada 20 segundos, como antes. Solo consulta el reto si hay candidatos
+o al establecer la referencia inicial; no añade otro temporizador de polling.
+Un reto exige `typeCode=CHALLENGE_COMPLETED`, canal IN_APP, estado SENT sin leer,
+referencia exacta a la asignación, completed/completedAt persistidos y `reward`.
+Muestra el nombre de la instantánea en el idioma actual y `reward.points`, nunca
+los puntos del catálogo. La tarjeta también exige recompensa para decir «otorgados».
+
+La fila de avisos se monta antes del navegador y ocupa espacio propio, sin cubrir
+cámara, controles ni pestañas. Reutiliza tema, áreas seguras, región accesible,
+botón de cierre de 44 puntos y entrada sin animación con movimiento reducido.
+Intenta marcar leído a los 250 ms de presentar la tarjeta (entrada: 180 ms); el
+cierre previo o invalidación cancela ese intento. Un fallo de acuse no bloquea la UI.
+
+Respeta preferencias y exclusión administrativa. Logout, cambio de token/generación,
+desmontaje, segundo plano y reconexiones detectadas vacían la cola; las solicitudes
+se cancelan y las respuestas tardías se invalidan. Cada reactivación establece una
+referencia nueva con logros ya desbloqueados y el reto ya recompensado, que se
+descartan sin marcarlos leídos. No se anuncian retos de días anteriores.
+
+La entrega visual es de mejor esfuerzo: usa hasta 100 notificaciones sin leer por
+consulta y memoria de sesión. Puede omitir un aviso en la ventana de referencia,
+con entregas posteriores a medianoche o si el candidato queda fuera de esa página.
+En web se observan online/offline; en nativo una desconexión se conoce al fallar una
+consulta o cambiar AppState. Una caída breve sin señal observable puede pasar
+inadvertida. No se garantiza exactamente una vez entre pestañas/dispositivos ni
+acuse durable; la campana conserva los avisos no leídos. No se añade push ni sockets.
+
+El frontend solicita `catalogVersion=2&challengeRewards=1`; v2 sin esa capacidad
+conserva las 21 reglas para clientes anteriores con validadores cerrados.
+El catálogo ampliado acepta DAILY_CHALLENGE_POINTS: medallas por 500/1000/3000 puntos
+realmente otorgados por retos diarios, con cero puntos de premio. El backend
+inicializa la historia mediante 010 con fecha de reconocimiento al migrar y sin
+notificaciones retroactivas. Las lecturas no crean progreso. v1 se mantiene.
+Aplicar primero 009/010 y actualizar el backend; después publicar el frontend.
+
+La comprobación visual real en navegador y dispositivo sigue pendiente, incluyendo
+cámara activa, fuente grande, lector de pantalla, movimiento reducido, móvil/web,
+temas y los cuatro idiomas. Las pruebas simuladas y el build no sustituyen ese recorrido.
 
 Pruebas específicas: dailyChallenge.service.test.ts, useDailyChallenge.test.ts,
 DailyChallengeCard.test.tsx y translations.service.test.ts. Usan transporte y plataforma simulados;

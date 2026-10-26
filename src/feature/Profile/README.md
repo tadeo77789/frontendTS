@@ -308,3 +308,55 @@ y después del desbloqueo, cuenta administradora, logout/cambio de token mientra
 hay solicitudes, ocultar la app y cortar/restablecer red. Entrar con logros
 históricos y reactivar avisos no debe producir una ráfaga. Las pruebas automatizadas
 usan servicios simulados; no sustituyen esta comprobación en dispositivos.
+
+
+### Puntos de retos en el resumen superior
+
+Cuarto indicador para usuarios elegibles de retos/logros; se oculta y no se consulta
+mientras se resuelve acceso, ante error de acceso o para administradores `users.manage`.
+El total confirmado procede de `GET /profile/challenges/rewards/summary` en Profile;
+se muestra `0` solo tras una respuesta válida con cero. Nunca se infiere de medallas,
+metas, puntos de catálogo ni recompensas del reto de hoy. Durante la carga muestra
+«—» y texto de carga; ante fallo muestra «—», error localizado y reintento propio.
+Un backend anterior sin esta ruta presenta error, sin fallback que invente un total.
+
+Se consulta al recibir foco en Perfil y al reintentar; se cancela al perder foco,
+desmontarse, cambiar usuario/token/generación o deshabilitarse por acceso.
+Respuestas tardías y callbacks de sesiones anteriores se descartan incluso si el
+transporte ignora AbortSignal. Al volver después de ganar puntos se consulta de nuevo
+el total persistido. La llegada por RabbitMQ es eventual: si sigue pendiente al volver,
+una consulta posterior (reintento o nueva entrada) confirma el total; no hay suma optimista.
+
+Formato numérico del idioma actual ES/EN/FR/PT, colores del tema, cuatro columnas en
+escritorio y dos en móvil, etiquetas y cifras sin truncamiento forzado y separación vertical.
+La verificación de estilos con renderer no sustituye una comprobación visual real.
+
+El error de estadísticas existente pertenece a Recognition (`/translations/me/stats`),
+independiente del total de Profile. Se conserva su aviso y reintento; sus cifras se
+ocultan durante carga/error para no presentar un valor anterior como confirmado.
+La revisión estática confirma ruta y contrato compatibles. El SQL necesita
+`translation_daily_counts` y `translation_user_words` de la migración Recognition 005;
+su ausencia es una hipótesis que debe confirmarse con HTTP/log/esquema local, no una
+causa demostrada. No se consultaron bases de aplicación ni se aplicó esa migración.
+
+
+### Ajuste del encabezado (2026-10-26)
+
+El encabezado agrupa avatar e identidad a la izquierda y los cuatro indicadores a la
+derecha en una sola fila, con columnas iguales y valor sobre etiqueta. Se activa desde
+1024 px con fuente estándar; el umbral aumenta con `fontScale` para reservar espacio
+cuando se amplía el texto. En móvil/tablet o con fuente grande se apila la identidad
+sobre una cuadrícula 2 × 2. La identidad reserva un ancho mínimo en escritorio y no
+se reduce para hacer sitio a los indicadores; nombre y correo permiten varias líneas.
+Los textos conservan escalado nativo, idioma y paleta; no se fija altura ni se truncan.
+Los errores/reintentos independientes quedan debajo del encabezado, fuera de las columnas.
+No cambian cálculos, autenticación, consultas, foco, cancelación ni aislamiento de sesión.
+
+Diagnóstico local: el asistente obtuvo HTTP 401 sin token en ambos endpoints de
+`127.0.0.1:8088`; esto confirma conectividad al gateway, pero NO la ruta autenticada,
+el esquema ni que Profile tenga la versión nueva. Docker necesita contraseña sudo.
+La comprobación de código compilado dentro del contenedor debe preceder a atribuir
+el error de puntos al código. Un 404 autenticado puede corresponder a una imagen antigua;
+500 requiere revisar Profile/esquema y 502/503, disponibilidad del servicio. Estadísticas
+se investigan por separado en Recognition (tablas de retención 005 y respuesta HTTP).
+No se convierten fallos en cero ni se declaran causas sin evidencia.
