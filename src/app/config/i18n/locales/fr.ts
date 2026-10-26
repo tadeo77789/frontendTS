@@ -1,6 +1,18 @@
 import type es from './es';
 
 const fr: typeof es = {
+  dailyChallengeTitle: "Défi du jour",
+  dailyChallengeName: "Traductions enregistrées : {count}",
+  dailyChallengeDescription: "Enregistrez et confirmez {count} traductions aujourd’hui. Chaque traduction enregistrée compte une fois ; les mots d’une phrase ne comptent pas séparément.",
+  dailyChallengeError: "Impossible de charger le défi.",
+  dailyChallengeRetry: "Réessayer",
+  dailyChallengeEmpty: "Aucun défi actif aujourd’hui.",
+  dailyChallengeProgress: "{current} sur {target} traductions",
+  dailyChallengePoints: "{points} points à la fin",
+  dailyChallengeRewarded: "{points} points attribués",
+  dailyChallengeCompleted: "Terminé",
+  dailyChallengePending: "En cours",
+
   appName: 'TraduceSeña',
   appTagline: 'Langue des signes colombienne',
   cancel: 'Annuler',

@@ -55,6 +55,7 @@ export const ENDPOINTS = {
   resetPassword: '/auth/reset-password',
   facebookLogin: '/auth/facebook',
   googleLogin: '/auth/google',
+  dailyChallenge: '/profile/challenges/today',
   achievements: '/achievements',
   notifications: '/notifications',
   notificationRead: (id: string) => `/notifications/${encodeURIComponent(id)}/read`,

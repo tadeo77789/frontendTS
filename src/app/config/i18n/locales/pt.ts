@@ -1,6 +1,18 @@
 import type es from './es';
 
 const pt: typeof es = {
+  dailyChallengeTitle: "Desafio do dia",
+  dailyChallengeName: "Traduções salvas: {count}",
+  dailyChallengeDescription: "Salve e confirme {count} traduções hoje. Cada tradução salva conta uma vez; uma frase não conta por palavra.",
+  dailyChallengeError: "Não foi possível carregar o desafio.",
+  dailyChallengeRetry: "Tentar novamente",
+  dailyChallengeEmpty: "Nenhum desafio ativo hoje.",
+  dailyChallengeProgress: "{current} de {target} traduções",
+  dailyChallengePoints: "{points} pontos ao concluir",
+  dailyChallengeRewarded: "{points} pontos concedidos",
+  dailyChallengeCompleted: "Concluído",
+  dailyChallengePending: "Em andamento",
+
   appName: 'TraduceSeña',
   appTagline: 'Língua de Sinais Colombiana',
   cancel: 'Cancelar',

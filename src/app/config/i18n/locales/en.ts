@@ -1,6 +1,18 @@
 import type es from './es';
 
 const en: typeof es = {
+  dailyChallengeTitle: "Daily challenge",
+  dailyChallengeName: "Saved translations: {count}",
+  dailyChallengeDescription: "Save and confirm {count} translations today. Each saved translation counts once; a sentence is not counted by word.",
+  dailyChallengeError: "Could not load the challenge.",
+  dailyChallengeRetry: "Retry",
+  dailyChallengeEmpty: "No active challenges today.",
+  dailyChallengeProgress: "{current} of {target} translations",
+  dailyChallengePoints: "{points} points on completion",
+  dailyChallengeRewarded: "{points} points awarded",
+  dailyChallengeCompleted: "Completed",
+  dailyChallengePending: "In progress",
+
   appName: 'TraduceSeña',
   appTagline: 'Colombian Sign Language',
   cancel: 'Cancel',

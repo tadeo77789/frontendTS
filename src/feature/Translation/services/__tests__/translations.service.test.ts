@@ -86,3 +86,20 @@ describe('translationsService.remove', () => {
     expect(del).toHaveBeenCalledWith('/translations/3', { params: { user_id: null } });
   });
 });
+
+// La señal local no concede progreso: solicita releer la proyección de Profile.
+it('emite refresco solo después de guardar y si la sesión sigue vigente', async () => {
+  const { translationSaved } = require('../../../../shared/services/translationSaved');
+  const listener=jest.fn();const unsubscribe=translationSaved.subscribe(listener);
+  const input={ inputText:'hola',outputText:'hola',type:'sena_texto' as const };
+  try {
+    post.mockResolvedValue({ data:{ data:SAVED } });
+    await translationsService.save(input,{token:'a',sessionId:'session',eligible:true,isCurrent:()=>false});
+    expect(listener).not.toHaveBeenCalled();
+    await translationsService.save(input,{token:'a',sessionId:'session',eligible:true,isCurrent:()=>true});
+    expect(listener).toHaveBeenCalledWith({userId:7,token:'a'});
+    post.mockRejectedValueOnce(new Error('network'));
+    await expect(translationsService.save(input,{token:'a',sessionId:'session',eligible:true,isCurrent:()=>true})).rejects.toThrow();
+    expect(listener).toHaveBeenCalledTimes(1);
+  } finally { unsubscribe(); }
+});
