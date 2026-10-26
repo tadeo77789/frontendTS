@@ -22,8 +22,8 @@ function AppContent() {
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <AppNavigator />
       <AchievementUnlockAlerts />
+      <AppNavigator />
     </>
   );
 }

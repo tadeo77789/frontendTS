@@ -3,6 +3,7 @@ import { api } from './api.client';
 
 export interface AchievementNotification {
   id: string;
+  typeCode?: string;
   referenceType: string;
   referenceId: string;
   channel: string;
