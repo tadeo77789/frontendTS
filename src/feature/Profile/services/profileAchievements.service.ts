@@ -12,8 +12,9 @@ export const profileAchievementsService = {
     signal: AbortSignal,
   ): Promise<PersistedAchievementProgress[]> {
     const res = await api.get<unknown>(ENDPOINTS.achievements, {
-      // Los servidores antiguos ignoran esta consulta y siguen devolviendo solo los logros anteriores.
-      params: { catalogVersion: 2 },
+      // La capacidad explícita evita enviar la métrica nueva a clientes v2 anteriores.
+      // Los servidores antiguos ignoran la opción y conservan su catálogo.
+      params: { catalogVersion: 2, challengeRewards: 1 },
       headers: { Authorization: `Bearer ${token}` },
       signal,
     });

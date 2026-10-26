@@ -2,6 +2,10 @@ import { api } from '../../../shared/services/api.client';
 import { ENDPOINTS } from '../../../app/config/api.config';
 
 export interface DailyChallenge {
+  /** Campos aditivos: ausentes con servidores anteriores; no confirman recompensa. */
+  assignmentId?: string | null;
+  reward?: { points: number; grantedAt: string } | null;
+  localizations?: Record<string, { name: string; description: string }>;
   challengeId: string; code: string; name: string; description: string;
   targetCount: number; currentCount: number; points: number;
   completed: boolean; completedAt: string | null; date: string;
@@ -19,6 +23,12 @@ export const parseDailyChallenge = (response: unknown): DailyChallenge | null =>
     || !(value.completedAt === null || typeof value.completedAt === 'string' && Number.isFinite(Date.parse(value.completedAt)))
     || value.completed !== (value.completedAt !== null)
     || value.completed !== (value.currentCount === value.targetCount)) throw new Error('Invalid daily challenge');
+  if (value.assignmentId !== undefined && value.assignmentId !== null && typeof value.assignmentId !== 'string') throw new Error('Invalid assignment');
+  if (value.reward != null && (!value.completed || typeof value.assignmentId !== 'string'
+    || !Number.isSafeInteger(value.reward.points) || value.reward.points < 0
+    || typeof value.reward.grantedAt !== 'string' || !Number.isFinite(Date.parse(value.reward.grantedAt)))) throw new Error('Invalid reward');
+  if (value.localizations !== undefined && (!value.localizations || Array.isArray(value.localizations) || typeof value.localizations !== 'object'
+    || !Object.values(value.localizations).every(v => v && typeof v.name === 'string' && typeof v.description === 'string'))) throw new Error('Invalid localizations');
   return value;
 };
 export const dailyChallengeService = {
