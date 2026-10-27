@@ -30,8 +30,8 @@ it.each([
   await view.unmount();
 });
 it('muestra completado y puntos otorgados',async()=>{
-  hook.mockReturnValue({enabled:true,data:{...challenge,currentCount:3,completed:true},loading:false,error:false,retry});
-  await show();expect(screen.getByText('Completado')).toBeTruthy();expect(screen.getByText('10 puntos otorgados')).toBeTruthy();
+  hook.mockReturnValue({enabled:true,data:{...challenge,currentCount:3,completed:true,reward:{points:7,grantedAt:'2026-10-25T12:00:00Z'}},loading:false,error:false,retry});
+  await show();expect(screen.getByText('Completado')).toBeTruthy();expect(screen.getByText('7 puntos otorgados')).toBeTruthy();
 });
 it('carga, error con botón, reintento y ausencia de retos',async()=>{
   hook.mockReturnValue({enabled:true,data:null,loading:true,error:false,retry});
@@ -44,4 +44,9 @@ it('carga, error con botón, reintento y ausencia de retos',async()=>{
 it('sin elegibilidad oculta datos aunque el hook conserve un resultado',async()=>{
   hook.mockReturnValue({enabled:false,data:challenge,loading:false,error:false,retry});
   await show();expect(screen.queryByTestId('daily-challenge-card')).toBeNull();
+});
+
+it('no etiqueta como concedidos los puntos de una respuesta antigua sin recompensa confirmada',async()=>{
+ hook.mockReturnValue({enabled:true,data:{...challenge,currentCount:3,completed:true},loading:false,error:false,retry});
+ await show();expect(screen.queryByText('10 puntos otorgados')).toBeNull();
 });

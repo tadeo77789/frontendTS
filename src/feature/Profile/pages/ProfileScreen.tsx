@@ -29,6 +29,7 @@ import { useAccess, useAdminMode } from '../../../app/providers/AccessContext';
 import { PERMISSIONS } from '../../../shared/types/iam';
 import { userDisplayName } from '../../../shared/utils/userDisplayName';
 import { AchievementsCard } from '../components/AchievementsCard';
+import { useChallengeRewardSummary } from '../hooks/useChallengeRewardSummary';
 import { useMyStats } from '../hooks/useMyStats';
 import { persistedCatalogProgress } from '../data/persistedAchievements';
 import { useMyAchievements } from '../hooks/useMyAchievements';
@@ -60,7 +61,8 @@ const COLOR_ACCENTS: {
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
+  const isHeaderWide = width >= 1024 * Math.max(1, fontScale);
   const isWide = width >= 768;
   const { user, logout, isAuthenticated } = useAuth();
 
@@ -125,6 +127,8 @@ export const ProfileScreen: React.FC = () => {
     reload: reloadAchievements,
   } = useMyAchievements(achievementsEnabled);
 
+  const rewardSummary = useChallengeRewardSummary(achievementsEnabled);
+
   const achievementsSummary = useMemo(
     () => achievements === null
       ? null
@@ -134,7 +138,7 @@ export const ProfileScreen: React.FC = () => {
 
   // Sin estadísticas disponibles, no se muestra una cifra inventada.
   const fmt = (n: number | undefined) =>
-    stats && n !== undefined ? n.toLocaleString(language) : '—';
+    !loading && !error && stats && n !== undefined ? n.toLocaleString(language) : '—';
 
   // El contador procede de Profile, independiente de Recognition.
   const unlockedAchievements =
@@ -247,42 +251,45 @@ export const ProfileScreen: React.FC = () => {
       >
         <View style={styles.inner}>
           {/* Hero */}
-          <View style={[styles.hero, isWide && styles.heroWide]}>
-            <LinearGradient
-              colors={[C.primaryLight, C.primary]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.avatar, { shadowColor: C.primary }]}
-            >
-              <Ionicons name="person" size={48} color="#fff" />
-            </LinearGradient>
+          <View testID="profile-header" style={[styles.hero, isHeaderWide && styles.heroWide]}>
+            <View testID="profile-identity" style={[styles.heroIdentity, isHeaderWide && styles.heroIdentityWide]}>
+              <LinearGradient
+                colors={[C.primaryLight, C.primary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.avatar, isHeaderWide && styles.avatarWide, { shadowColor: C.primary }]}
+              >
+                <Ionicons name="person" size={48} color="#fff" />
+              </LinearGradient>
 
-            <View
-              style={[
-                styles.heroInfo,
-                isWide && styles.heroInfoWide,
-              ]}
-            >
-              <Text
+              <View
                 style={[
-                  styles.userName,
-                  { color: C.textPrimary },
+                  styles.heroInfo,
+                  isHeaderWide && styles.heroInfoWide,
                 ]}
               >
-                {displayName}
-              </Text>
-              <Text
-                style={[
-                  styles.userEmail,
-                  { color: C.textSecondary },
-                ]}
-              >
-                {displayEmail}
-              </Text>
+                <Text
+                  style={[
+                    styles.userName,
+                    { color: C.textPrimary },
+                  ]}
+                >
+                  {displayName}
+                </Text>
+                <Text
+                  style={[
+                    styles.userEmail,
+                    { color: C.textSecondary },
+                  ]}
+                >
+                  {displayEmail}
+                </Text>
+              </View>
+
             </View>
 
-            <View style={styles.heroStats}>
-              <View style={styles.heroStat}>
+            <View testID="profile-summary" style={[styles.heroStats, isHeaderWide && styles.heroStatsWide]}>
+              <View testID="profile-stat-translations" style={[styles.heroStat, isHeaderWide && styles.heroStatWide]}>
                 <Text
                   style={[
                     styles.heroStatValue,
@@ -301,7 +308,7 @@ export const ProfileScreen: React.FC = () => {
                 </Text>
               </View>
 
-              <View style={styles.heroStat}>
+              <View testID="profile-stat-distinct-texts" style={[styles.heroStat, isHeaderWide && styles.heroStatWide]}>
                 <Text
                   style={[
                     styles.heroStatValue,
@@ -321,7 +328,7 @@ export const ProfileScreen: React.FC = () => {
               </View>
 
               {achievementsEnabled && (
-                <View style={styles.heroStat}>
+                <View testID="profile-stat-achievements" style={[styles.heroStat, isHeaderWide && styles.heroStatWide]}>
                   <Text
                     style={[
                       styles.heroStatValue,
@@ -340,11 +347,36 @@ export const ProfileScreen: React.FC = () => {
                   </Text>
                 </View>
               )}
+              {achievementsEnabled && (
+                <View style={[styles.heroStat, isHeaderWide && styles.heroStatWide]} testID="profile-challenge-points">
+                  <Text style={[styles.heroStatValue, { color: C.primary }]}
+                    accessibilityLiveRegion="polite">
+                    {!rewardSummary.loading && !rewardSummary.error && rewardSummary.totalPoints !== null
+                      ? rewardSummary.totalPoints.toLocaleString(language) : '—'}
+                  </Text>
+                  <Text style={[styles.heroStatLabel, { color: C.textSecondary }]}>
+                    {t('profileChallengePoints')}
+                  </Text>
+                  {rewardSummary.loading && <Text style={[styles.heroStatLabel, { color: C.textSecondary }]}>{t('loading')}</Text>}
+                </View>
+              )}
             </View>
           </View>
 
+          {achievementsEnabled && rewardSummary.error && !rewardSummary.loading && (
+            <View testID="profile-reward-error" style={styles.statsError}>
+              <Text accessibilityLiveRegion="polite" style={[styles.statsErrorText, { color: C.textSecondary }]}>
+                {t('profileChallengePointsError')}
+              </Text>
+              <TouchableOpacity onPress={rewardSummary.reload} accessibilityRole="button"
+                accessibilityLabel={`${t('statsRetry')}: ${t('profileChallengePoints')}`}>
+                <Text style={[styles.statsErrorText, { color: C.primaryDark, fontWeight: '800' }]}>{t('statsRetry')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {error && !loading && (
-            <View style={styles.statsError}>
+            <View testID="profile-statistics-error" style={styles.statsError}>
               <Text
                 style={[
                   styles.statsErrorText,
@@ -356,6 +388,7 @@ export const ProfileScreen: React.FC = () => {
               <TouchableOpacity
                 onPress={reload}
                 accessibilityRole="button"
+                accessibilityLabel={`${t('statsRetry')}: ${t('profileTranslations')}`}
               >
                 <Text
                   style={[
@@ -833,8 +866,10 @@ const styles = StyleSheet.create({
     gap: 22,
   },
 
-  hero: { alignItems: 'center', gap: 16, paddingVertical: 8 },
-  heroWide: { flexDirection: 'row' },
+  hero: { alignItems: 'center', gap: 24, paddingVertical: 8 },
+  heroWide: { flexDirection: 'row', alignItems: 'center' },
+  heroIdentity: { alignItems: 'center', gap: 16, width: '100%' },
+  heroIdentityWide: { flexDirection: 'row', width: '34%', minWidth: 280, flexShrink: 0 },
   avatar: {
     width: 96,
     height: 96,
@@ -846,26 +881,31 @@ const styles = StyleSheet.create({
     shadowRadius: 26,
     elevation: 10,
   },
-  heroInfo: { flex: 1, alignItems: 'center' },
-  heroInfoWide: { alignItems: 'flex-start' },
+  avatarWide: { width: 80, height: 80, borderRadius: 40, flexShrink: 0 },
+  heroInfo: { alignItems: 'center', maxWidth: '100%', minWidth: 0 },
+  heroInfoWide: { flex: 1, alignItems: 'flex-start' },
   userName: {
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: -0.5,
     textTransform: 'capitalize',
+    maxWidth: '100%',
   },
-  userEmail: { fontSize: 15, fontWeight: '600', marginTop: 4 },
-  heroStats: { flexDirection: 'row', gap: 26 },
-  heroStat: { alignItems: 'center' },
+  userEmail: { fontSize: 15, fontWeight: '600', marginTop: 4, maxWidth: '100%' },
+  heroStats: { flexDirection: 'row', flexWrap: 'wrap', width: '100%', rowGap: 18 },
+  heroStatsWide: { flex: 1, width: 'auto', minWidth: 0, flexWrap: 'nowrap', alignItems: 'flex-start' },
+  heroStat: { alignItems: 'center', width: '50%', paddingHorizontal: 8, flexShrink: 1 },
   statsError: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
     gap: 10,
     marginBottom: 16,
   },
-  statsErrorText: { fontSize: 13, fontWeight: '600' },
-  heroStatValue: { fontSize: 26, fontWeight: '900' },
-  heroStatLabel: { fontSize: 12, fontWeight: '700', marginTop: 2 },
+  statsErrorText: { fontSize: 13, fontWeight: '600', flexShrink: 1, textAlign: 'center' },
+  heroStatWide: { width: '25%', minWidth: 0 },
+  heroStatValue: { fontSize: 26, fontWeight: '900', textAlign: 'center', maxWidth: '100%', flexShrink: 1 },
+  heroStatLabel: { fontSize: 12, fontWeight: '700', marginTop: 2, textAlign: 'center', flexShrink: 1 },
 
   card: { borderRadius: 20, borderWidth: 1, padding: 26 },
   cardLabel: {

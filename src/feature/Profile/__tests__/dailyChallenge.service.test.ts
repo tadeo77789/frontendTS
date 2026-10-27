@@ -14,3 +14,14 @@ it.each([{}, { data:challenge }, { success:true }, { success:true,data:{ ...chal
   { success:true,data:{ ...challenge,completed:true } }, { success:true,data:{ ...challenge,points:-1 } }])('rechaza respuesta inválida %j', response => {
   expect(() => parseDailyChallenge(response)).toThrow();
 });
+
+it('validates additive persisted rewards and accepts zero without using catalogue points', () => {
+ const confirmed = { ...challenge, assignmentId:'assignment', completed:true,completedAt:'2026-10-25T12:00:00Z',currentCount:1,
+   points:999,reward:{points:0,grantedAt:'2026-10-25T12:00:01Z'} };
+ expect(parseDailyChallenge({success:true,data:confirmed})?.reward?.points).toBe(0);
+ for (const invalid of [{...confirmed,reward:{points:-1,grantedAt:'2026-10-25T12:00:01Z'}},
+   {...confirmed,assignmentId:null},{...confirmed,reward:{points:5,grantedAt:'invalid'}},
+   {...challenge,assignmentId:'assignment',reward:confirmed.reward}]) {
+   expect(()=>parseDailyChallenge({success:true,data:invalid})).toThrow();
+ }
+});

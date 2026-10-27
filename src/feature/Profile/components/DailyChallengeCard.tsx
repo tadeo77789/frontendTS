@@ -33,7 +33,7 @@ export function DailyChallengeCard() {
       <Text accessibilityLiveRegion="polite" style={{ color: C.textPrimary }}>
         {t('dailyChallengeProgress', { current: data.currentCount, target: data.targetCount })}
       </Text>
-      <Text style={{ color: C.primary }}>{t(data.completed ? 'dailyChallengeRewarded' : 'dailyChallengePoints', { points: data.points })}</Text>
+      <Text style={{ color: C.primary }}>{t(data.completed && data.reward ? 'dailyChallengeRewarded' : 'dailyChallengePoints', { points: data.reward?.points ?? data.points })}</Text>
       <Text style={{ color: C.textPrimary }}>{t(data.completed ? 'dailyChallengeCompleted' : 'dailyChallengePending')}</Text>
     </View>}
   </View>;
