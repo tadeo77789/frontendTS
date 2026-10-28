@@ -129,21 +129,20 @@ it('resuming after background establishes a baseline and does not replay the int
  listener.mockRestore();
 });
 
-it.each([
- [1280, true, 34, 'flex-end'],
- [390, false, 102, 'center'],
- [800, false, 120, 'center'],
-])('reserves a separate row and safe areas at %s px', (width, wide, bottom, alignItems) => {
- expect(achievementAlertPosition(Number(width), { bottom: 34, left: 20, right: 16 }, Boolean(wide)))
-   .toEqual({ paddingTop: 12, paddingBottom: 12, paddingLeft: 20, paddingRight: 16, alignItems });
+it('places the wide alert in the corner below the top bar', () => {
+ expect(achievementAlertPosition(1280, { bottom: 34, left: 20, right: 16 }, true)).toEqual({ top: 85, right: 16, width: 440 });
 });
-it('keeps the visible card in flow without covering the navigator', async () => {
+it.each([390, 800])('centers the alert at the top with safe areas at %s px', (width) => {
+ expect(achievementAlertPosition(width, { top: 24, bottom: 34, left: 20, right: 16 }, false))
+   .toEqual({ top: 24, left: 20, right: 16, alignItems: 'center' });
+});
+it('floats the visible card in front of the screen without pushing the layout', async () => {
  await render(<AchievementUnlockAlerts />);
  (profileAchievementsService.getMine as jest.Mock).mockResolvedValue([progress('one')]);
  (api.get as jest.Mock).mockResolvedValue({ data: { data: [notification('one')] } });
  await tick();
  expect(StyleSheet.flatten(screen.getByTestId('achievement-alert-overlay').props.style))
-   .toEqual(expect.objectContaining({ paddingTop: 24, paddingBottom: 12, paddingLeft: 20, paddingRight: 16, alignItems: 'center', flexShrink: 0 }));
+   .toEqual(expect.objectContaining({ position: 'absolute', zIndex: 1000, top: 24, left: 20, right: 16 }));
 });
 
 const daily = (reward: unknown = { points: 7, grantedAt: '2026-10-26T12:00:00.000Z' }) => ({
