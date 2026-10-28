@@ -133,17 +133,17 @@ it.each([
  [1280, true, 34, 'flex-end'],
  [390, false, 102, 'center'],
  [800, false, 120, 'center'],
-])('reserves a separate row and safe areas at %s px', (width, wide, bottom, alignItems) => {
+])('respects safe areas at %s px', (width, wide, bottom, alignItems) => {
  expect(achievementAlertPosition(Number(width), { bottom: 34, left: 20, right: 16 }, Boolean(wide)))
    .toEqual({ paddingTop: 12, paddingBottom: 12, paddingLeft: 20, paddingRight: 16, alignItems });
 });
-it('keeps the visible card in flow without covering the navigator', async () => {
+it('floats the visible card over the screen without pushing the layout', async () => {
  await render(<AchievementUnlockAlerts />);
  (profileAchievementsService.getMine as jest.Mock).mockResolvedValue([progress('one')]);
  (api.get as jest.Mock).mockResolvedValue({ data: { data: [notification('one')] } });
  await tick();
  expect(StyleSheet.flatten(screen.getByTestId('achievement-alert-overlay').props.style))
-   .toEqual(expect.objectContaining({ paddingTop: 24, paddingBottom: 12, paddingLeft: 20, paddingRight: 16, alignItems: 'center', flexShrink: 0, backgroundColor: expect.any(String) }));
+   .toEqual(expect.objectContaining({ paddingTop: 24, paddingBottom: 12, paddingLeft: 20, paddingRight: 16, alignItems: 'center', position: 'absolute', top: 0, left: 0, right: 0 }));
 });
 
 const daily = (reward: unknown = { points: 7, grantedAt: '2026-10-26T12:00:00.000Z' }) => ({

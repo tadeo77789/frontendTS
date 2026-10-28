@@ -153,7 +153,7 @@ function SessionAlerts({ token, current }: { token: string; current: () => boole
   const title = t(notice.kind === 'achievement' ? 'achievementUnlocked' : 'dailyChallengeCompletedAlert');
   const rewardText = notice.kind === 'challenge' ? t('dailyChallengeGrantedPoints').replace('{points}', String(notice.challenge.reward.points)) : '';
   return <View testID="achievement-alert-overlay" pointerEvents="box-none"
-    style={[styles.overlay, achievementAlertPosition(width, insets, isWide), { backgroundColor: C.surface }]}>
+    style={[styles.overlay, achievementAlertPosition(width, insets, isWide)]}>
     <Animated.View style={[styles.card, { opacity, backgroundColor: C.surface, borderColor: C.primary }]}>
       {notice.kind === 'achievement' ? <AchievementMedal achievement={notice.progress} size={44} />
         : <Ionicons name="checkmark-circle" size={44} color={C.primary} />}
@@ -166,7 +166,7 @@ function SessionAlerts({ token, current }: { token: string; current: () => boole
     </Animated.View>
   </View>;
 }
-// El aviso ocupa una fila propia antes del navegador: no cubre cámara ni controles.
+// El aviso flota sobre la pantalla: no empuja el contenido ni deja una franja vacía.
 export function achievementAlertPosition(_width: number, insets: { top?: number; bottom: number; left: number; right: number }, isWide: boolean) {
   return {
     paddingTop: Math.max(insets.top ?? 0, 12), paddingBottom: 12,
@@ -175,7 +175,7 @@ export function achievementAlertPosition(_width: number, insets: { top?: number;
   };
 }
 const styles = StyleSheet.create({
-  overlay: { flexShrink: 0, width: '100%', alignItems: 'center' },
+  overlay: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000, elevation: 10, alignItems: 'center' },
   card: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderWidth: 1,
     borderRadius: 16, maxWidth: 440, width: '100%',
     ...Platform.select({
