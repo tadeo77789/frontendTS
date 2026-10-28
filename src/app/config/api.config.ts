@@ -55,6 +55,7 @@ export const ENDPOINTS = {
   resetPassword: '/auth/reset-password',
   facebookLogin: '/auth/facebook',
   googleLogin: '/auth/google',
+  dailyChallenge: '/profile/challenges/today',
   achievements: '/achievements',
   notifications: '/notifications',
   notificationRead: (id: string) => `/notifications/${encodeURIComponent(id)}/read`,
@@ -69,6 +70,7 @@ export const ENDPOINTS = {
   deleteTranslation: (id: number) => `/translations/${id}`,
   translationsStats: '/translations/stats',
   myTranslationStats: '/translations/me/stats',
+  challengeRewardSummary: '/profile/challenges/rewards/summary',
   usersStats: '/users/stats',
 
   iamMyAccess: '/iam/me/access',

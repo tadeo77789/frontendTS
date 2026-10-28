@@ -1,6 +1,18 @@
 import type es from './es';
 
 const pt: typeof es = {
+  dailyChallengeTitle: "Desafio do dia",
+  dailyChallengeName: "Traduções salvas: {count}",
+  dailyChallengeDescription: "Salve e confirme {count} traduções hoje. Cada tradução salva conta uma vez; uma frase não conta por palavra.",
+  dailyChallengeError: "Não foi possível carregar o desafio.",
+  dailyChallengeRetry: "Tentar novamente",
+  dailyChallengeEmpty: "Nenhum desafio ativo hoje.",
+  dailyChallengeProgress: "{current} de {target} traduções",
+  dailyChallengePoints: "{points} pontos ao concluir",
+  dailyChallengeRewarded: "{points} pontos concedidos",
+  dailyChallengeCompleted: "Concluído",
+  dailyChallengePending: "Em andamento",
+
   appName: 'TraduceSeña',
   appTagline: 'Língua de Sinais Colombiana',
   cancel: 'Cancelar',
@@ -446,6 +458,8 @@ const pt: typeof es = {
   profileAccountDeleted: 'Conta excluída',
   profileTranslations: 'Traduções',
   profileDistinctSigns: 'Sinais distintos',
+  profileChallengePoints: 'Pontos de desafios',
+  profileChallengePointsError: 'Não foi possível carregar seus pontos de desafios.',
   profileStatsError: 'Não foi possível carregar suas estatísticas.',
   achievementsLoading: 'Carregando conquistas...',
   achievementsLoadError: 'Não foi possível carregar suas conquistas.',
@@ -546,6 +560,8 @@ const pt: typeof es = {
   achievementLevelSilver: 'Prata',
   achievementLevelGold: 'Ouro',
   achievementLocked: 'Bloqueada',
+  dailyChallengeCompletedAlert: 'Desafio diário concluído!',
+  dailyChallengeGrantedPoints: '{points} pontos concedidos',
   achievementUnlocked: 'Desbloqueada',
   achievementInProgress: 'Em andamento',
   achievementCompleted: 'Concluída',

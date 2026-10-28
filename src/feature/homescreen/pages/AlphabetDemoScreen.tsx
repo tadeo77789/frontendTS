@@ -8,7 +8,8 @@ import { PublicFooter } from '../../../shared/components/common/PublicFooter';
 import { LandingTheme as D } from '../../../shared/constants/landingTheme';
 import { useTranslation, type TranslationKey } from '../../../app/config/i18n';
 
-const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+// Las 27 letras del alfabeto LSC, con la Ñ (igual que LOCAL_ALPHABET).
+const CHARS = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ'.split('');
 const PALETTE = [
   { bg: '#EFEBFD', badge: '#8B5CF6', faint: '#C9BAF3' },
   { bg: '#E4EEFE', badge: '#3B82F6', faint: '#AECBF6' },

@@ -1,6 +1,18 @@
 import type es from './es';
 
 const en: typeof es = {
+  dailyChallengeTitle: "Daily challenge",
+  dailyChallengeName: "Saved translations: {count}",
+  dailyChallengeDescription: "Save and confirm {count} translations today. Each saved translation counts once; a sentence is not counted by word.",
+  dailyChallengeError: "Could not load the challenge.",
+  dailyChallengeRetry: "Retry",
+  dailyChallengeEmpty: "No active challenges today.",
+  dailyChallengeProgress: "{current} of {target} translations",
+  dailyChallengePoints: "{points} points on completion",
+  dailyChallengeRewarded: "{points} points awarded",
+  dailyChallengeCompleted: "Completed",
+  dailyChallengePending: "In progress",
+
   appName: 'TraduceSeña',
   appTagline: 'Colombian Sign Language',
   cancel: 'Cancel',
@@ -446,6 +458,8 @@ const en: typeof es = {
   profileAccountDeleted: 'Account deleted',
   profileTranslations: 'Translations',
   profileDistinctSigns: 'Distinct signs',
+  profileChallengePoints: 'Challenge points',
+  profileChallengePointsError: 'Could not load your challenge points.',
   profileStatsError: 'Could not load your statistics.',
   achievementsLoading: 'Loading achievements...',
   achievementsLoadError: 'Could not load your achievements.',
@@ -546,6 +560,8 @@ const en: typeof es = {
   achievementLevelSilver: 'Silver',
   achievementLevelGold: 'Gold',
   achievementLocked: 'Locked',
+  dailyChallengeCompletedAlert: 'Daily challenge completed!',
+  dailyChallengeGrantedPoints: '{points} points granted',
   achievementUnlocked: 'Unlocked',
   achievementInProgress: 'In progress',
   achievementCompleted: 'Completed',

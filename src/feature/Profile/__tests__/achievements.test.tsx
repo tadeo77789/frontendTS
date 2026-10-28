@@ -1,9 +1,10 @@
 import React from 'react';
-import { act, render, renderHook, fireEvent, screen } from '@testing-library/react-native';
+import { act, render, renderHook, fireEvent, screen, within } from '@testing-library/react-native';
 import { Colors, DarkColors, GreenColors, GreenDarkColors } from '../../../shared/constants/colors';
 import { AchievementsCard } from '../components/AchievementsCard';
 import { useMyAchievements } from '../hooks/useMyAchievements';
 import { profileAchievementsService } from '../services/profileAchievements.service';
+import { challengeRewardSummaryService } from '../services/challengeRewardSummary.service';
 import { ProfileScreen } from '../pages/ProfileScreen';
 import { catalogue, legacy, translationMilestones, functionalAchievements } from './fixtures';
 
@@ -14,13 +15,15 @@ let mockLanguage = 'es';
 let mockGeneration = 1;
 let mockAuth = { user: { id_usuario: 1, nombre: 'Alice', email: 'alice@test.invalid' }, token: 'a', isAuthenticated: true,
   sessionGeneration: 1, isSessionCurrent: (generation: number) => generation === mockGeneration, logout: jest.fn() };
+let mockStatsError = false;
+let mockStats: { totalTranslations: number; distinctWords: number; activeDays: number } | null = null;
 let mockAdmin = false;
 let mockAccessLoading = false;
 let mockAccessError = false;
 jest.mock('../../../app/providers/AuthContext', () => ({ useAuth: () => mockAuth }));
 jest.mock('../../../app/providers/ThemeContext', () => ({ useColors: () => mockColors,
   useTheme: () => ({ isDark: false, colorAccent: 'purple', toggleTheme: jest.fn(), setColorAccent: jest.fn() }) }));
-jest.mock('../../../app/providers/LanguageContext', () => ({ useLanguage: () => ({ language: 'es', setLanguage: jest.fn() }) }));
+jest.mock('../../../app/providers/LanguageContext', () => ({ useLanguage: () => ({ language: mockLanguage, setLanguage: jest.fn() }) }));
 jest.mock('../../../app/providers/PreferencesContext', () => ({ usePreferences: () => ({ preferences: {}, saveChanges: jest.fn() }) }));
 jest.mock('../../../app/providers/AccessContext', () => ({ useAdminMode: () => ({ adminMode: mockAdmin }),
   useAccess: () => ({ hasPermission: () => false, isLoading: mockAccessLoading, error: mockAccessError }) }));
@@ -37,14 +40,17 @@ jest.mock('expo-linear-gradient', () => ({ LinearGradient: (props: any) => requi
 jest.mock('../../../shared/components/common/AppHeader', () => ({ AppHeader: () => null }));
 jest.mock('../components/DeleteAccountModal', () => ({ DeleteAccountModal: () => null }));
 jest.mock('../../../shared/utils/dialogs', () => ({ showAlert: jest.fn(), showConfirm: jest.fn() }));
-jest.mock('../hooks/useMyStats', () => ({ useMyStats: () => ({ stats: null, loading: false, error: false, reload: jest.fn() }) }));
+jest.mock('../hooks/useMyStats', () => ({ useMyStats: () => ({ stats: mockStats, loading: false, error: mockStatsError, reload: jest.fn() }) }));
 jest.mock('../services/profileAchievements.service', () => ({ profileAchievementsService: { getMine: jest.fn() } }));
+jest.mock('../services/challengeRewardSummary.service', () => ({ challengeRewardSummaryService: { getMine: jest.fn() } }));
+const getRewardSummary = challengeRewardSummaryService.getMine as jest.Mock;
 const getMine = profileAchievementsService.getMine as jest.Mock;
 const pending = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; };
 
 beforeEach(() => { jest.clearAllMocks(); mockLanguage = 'es'; mockColors = Colors; mockGeneration = 1;
-  mockAuth = { ...mockAuth, user: { ...mockAuth.user, id_usuario: 1 }, token: 'a', sessionGeneration: 1 };
+  mockAuth = { ...mockAuth, user: { id_usuario: 1, nombre: 'Alice', email: 'alice@test.invalid' }, token: 'a', sessionGeneration: 1 };
   mockAdmin = false; mockAccessLoading = false; mockAccessError = false;
+  mockStatsError = false; mockStats = null; getRewardSummary.mockResolvedValue(0);
   getMine.mockResolvedValue(catalogue());
 });
 
@@ -120,6 +126,8 @@ it.each(['admin','loading','error'])('hides section and counter and does not que
   await render(<ProfileScreen />);
   expect(screen.queryByText('Logros')).toBeNull();
   expect(screen.queryByText('Logros disponibles')).toBeNull();
+  expect(screen.queryByText('Puntos de retos')).toBeNull();
+  expect(getRewardSummary).not.toHaveBeenCalled();
   expect(screen.queryByText('Próximamente')).toBeNull();
   expect(getMine).not.toHaveBeenCalled();
 });
@@ -308,4 +316,99 @@ it('renders all 21 measured rules pending in grey and completed in color without
  for(const item of items)expect(screen.getByLabelText(`${item.achievement.name} · Pendiente`)).toHaveStyle({backgroundColor:Colors.backgroundGray});
  await view.rerender(<AchievementsCard {...props} achievements={items.map(p=>({...p,currentCount:p.achievement.targetCount,achievedAt:'2026-10-21T12:00:00.000Z'}))}/>);
  for(const item of items)expect(screen.getByLabelText(`${item.achievement.name} · Completado`)).toHaveStyle({backgroundColor:Colors.primaryBg});
+});
+
+
+it.each(['es', 'en', 'fr', 'pt'])('shows confirmed challenge total localized in %s independently of stats and medals', async language => {
+  mockLanguage = language;
+  mockStatsError = true;
+  getRewardSummary.mockResolvedValue(1234567);
+  await render(<ProfileScreen />);
+  expect(await screen.findByText((1234567).toLocaleString(language))).toBeTruthy();
+  const locale = require(`../../../app/config/i18n/locales/${language}`).default;
+  expect(screen.getByText(locale.profileChallengePoints)).toBeTruthy();
+  expect(screen.getByText(locale.profileStatsError)).toBeTruthy();
+});
+
+it('shows confirmed zero and distinguishes loading/error with retry', async () => {
+  const delayed = pending<number>(); getRewardSummary.mockReturnValueOnce(delayed.promise);
+  await render(<ProfileScreen />);
+  expect(within(screen.getByTestId('profile-challenge-points')).getByText('Cargando...')).toBeTruthy();
+  expect(within(screen.getByTestId('profile-challenge-points')).queryByText('0')).toBeNull();
+  await act(async () => { delayed.resolve(0); });
+  expect(within(screen.getByTestId('profile-challenge-points')).getByText('0')).toBeTruthy();
+});
+
+it('keeps reward errors separate from Recognition and retries the confirmed total', async () => {
+  getRewardSummary.mockRejectedValueOnce(new Error('offline'));
+  await render(<ProfileScreen />);
+  expect(await screen.findByText('No se pudieron cargar tus puntos de retos.')).toBeTruthy();
+  expect(screen.queryByText('No se pudieron cargar tus estadísticas.')).toBeNull();
+  expect(within(screen.getByTestId('profile-challenge-points')).queryByText('0')).toBeNull();
+  getRewardSummary.mockResolvedValueOnce(25);
+  await fireEvent.press(screen.getByLabelText('Reintentar: Puntos de retos'));
+  expect(await screen.findByText('25')).toBeTruthy();
+});
+
+it.each([Colors, DarkColors, GreenColors, GreenDarkColors])('uses the current palette for the reward indicator', async colors => {
+  mockColors = colors; getRewardSummary.mockResolvedValue(75);
+  await render(<ProfileScreen />);
+  expect(await screen.findByText('75')).toHaveStyle({ color: colors.primary, fontSize: 26 });
+  expect(screen.getByText('Puntos de retos')).toHaveStyle({ color: colors.textSecondary, textAlign: 'center' });
+});
+
+
+it.each([320, 768, 1024, 1440])('keeps identity and four indicators arranged at width %s', async width => {
+  const spy = jest.spyOn(require('react-native'), 'useWindowDimensions').mockReturnValue({ width, height: 800, scale: 1, fontScale: 1 });
+  try {
+    await render(<ProfileScreen />);
+    expect(screen.getByTestId('profile-challenge-points')).toHaveStyle({ width: width >= 1024 ? '25%' : '50%', flexShrink: 1 });
+    expect(screen.getByText('Puntos de retos')).toHaveStyle({ textAlign: 'center', flexShrink: 1 });
+    expect(screen.getByTestId('profile-summary')).toHaveStyle({ flexDirection: 'row', flexWrap: width >= 1024 ? 'nowrap' : 'wrap' });
+    if (width >= 1024) {
+      expect(screen.getByTestId('profile-header')).toHaveStyle({ flexDirection: 'row' });
+      expect(screen.getByTestId('profile-identity')).toHaveStyle({ flexDirection: 'row', minWidth: 280, flexShrink: 0 });
+    }
+    const summary = within(screen.getByTestId('profile-summary'));
+    expect(summary.getAllByTestId(/profile-stat-|profile-challenge-points/).map(node => node.props.testID)).toEqual([
+      'profile-stat-translations', 'profile-stat-distinct-texts', 'profile-stat-achievements', 'profile-challenge-points',
+    ]);
+  } finally { spy.mockRestore(); }
+});
+
+
+it('does not present stale Recognition figures as confirmed while its error remains visible', async () => {
+  mockStats = { totalTranslations: 4321, distinctWords: 2345, activeDays: 12 }; mockStatsError = true;
+  getRewardSummary.mockResolvedValue(35);
+  await render(<ProfileScreen />);
+  expect(screen.getByText('No se pudieron cargar tus estadísticas.')).toBeTruthy();
+  expect(screen.queryByText((4321).toLocaleString('es'))).toBeNull();
+  expect(screen.queryByText((2345).toLocaleString('es'))).toBeNull();
+  expect(await screen.findByText('35')).toBeTruthy();
+});
+
+
+it.each(['es', 'en', 'fr', 'pt'])('allows large type and long identity in %s without truncating', async language => {
+  mockLanguage = language;
+  mockAuth = { ...mockAuth, user: { ...mockAuth.user, nombre: 'María Fernanda Apellido Compuesto Largo', email: 'cuenta-de-prueba-con-identidad-larga@example.invalid' } };
+  const spy = jest.spyOn(require('react-native'), 'useWindowDimensions').mockReturnValue({ width: 1280, height: 900, scale: 1, fontScale: 2 });
+  try {
+    await render(<ProfileScreen />);
+    expect(screen.getByTestId('profile-challenge-points')).toHaveStyle({ width: '50%' });
+    expect(screen.getByTestId('profile-summary')).toHaveStyle({ flexWrap: 'wrap' });
+    expect(within(screen.getByTestId('profile-identity')).getByText('María Fernanda Apellido Compuesto Largo').props.numberOfLines).toBeUndefined();
+    expect(within(screen.getByTestId('profile-identity')).getByText('cuenta-de-prueba-con-identidad-larga@example.invalid').props.numberOfLines).toBeUndefined();
+  } finally { spy.mockRestore(); }
+});
+
+it('keeps both independent errors and their retries outside the header', async () => {
+  mockStatsError = true; getRewardSummary.mockRejectedValueOnce(new Error('offline'));
+  await render(<ProfileScreen />);
+  expect(await screen.findByText('No se pudieron cargar tus puntos de retos.')).toBeTruthy();
+  expect(screen.getByText('No se pudieron cargar tus estadísticas.')).toBeTruthy();
+  const header = within(screen.getByTestId('profile-header'));
+  expect(header.queryByText('No se pudieron cargar tus puntos de retos.')).toBeNull();
+  expect(header.queryByText('No se pudieron cargar tus estadísticas.')).toBeNull();
+  expect(screen.getByLabelText('Reintentar: Puntos de retos')).toBeTruthy();
+  expect(screen.getByLabelText('Reintentar: Traducciones')).toBeTruthy();
 });

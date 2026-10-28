@@ -12,7 +12,7 @@ it('opts in to v2 without changing authentication or cancellation', async () => 
   const result = await profileAchievementsService.getMine('token-a', signal);
   expect(result).toHaveLength(24);
   expect(get).toHaveBeenCalledWith(expect.any(String), {
-    params: { catalogVersion: 2 }, headers: { Authorization: 'Bearer token-a' }, signal,
+    params: { catalogVersion: 2, challengeRewards: 1 }, headers: { Authorization: 'Bearer token-a' }, signal,
   });
 });
 it('accepts the old server ignoring the opt-in before and after the migration', async () => {
@@ -59,4 +59,14 @@ it.each([1,2])('reads all five measured achievements from a v%s response without
     .toEqual(items.map(p => [p.achievement.id,p.achievement.targetCount,p.currentCount,p.achievedAt]));
   expect(result.every(p => p.achievement.metric === 'TRANSLATIONS_COMPLETED' && p.achievement.availability === 'available')).toBe(true);
   expect(result.slice(3).map(p => p.achievement.points)).toEqual([0,0]);
+});
+
+it.each([500,1000,3000])('reads a daily challenge medal at %s with zero extra points', async target => {
+  const reward=legacy(`dailyChallengePoints${target}`,target);
+  Object.assign(reward.achievement,{metric:'DAILY_CHALLENGE_POINTS',points:0,collection:'catalog',category:'consistency',level:'bronze'});
+  reward.currentCount=target-1;
+  get.mockResolvedValue({data:{data:[reward],meta:{catalogVersion:2}}});
+  const result=await profileAchievementsService.getMine('origin',new AbortController().signal);
+  expect(result).toEqual([reward]);
+  expect(result[0].achievement.points).toBe(0);
 });
