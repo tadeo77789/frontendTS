@@ -26,7 +26,7 @@ import { HoverShadow, HoverShadowSoft } from '../../../shared/constants/hoverSty
 
 const HERO_STATS: { value: string; labelKey: TranslationKey }[] = [
   { value: '+50', labelKey: 'loginStatSigns' },
-  { value: '26', labelKey: 'loginStatLetters' },
+  { value: '27', labelKey: 'loginStatLetters' },
   { value: '100%', labelKey: 'loginStatFree' },
 ];
 
