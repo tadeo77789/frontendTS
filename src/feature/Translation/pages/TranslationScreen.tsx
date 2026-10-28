@@ -328,7 +328,7 @@ export const TranslationScreen: React.FC = () => {
 
           <View style={[styles.grid, isDesktop && styles.gridDesktop]}>
             {/* Cámara */}
-            <View style={styles.gridCol}>
+            <View style={isDesktop && styles.gridColDesktop}>
               <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
                 <View style={styles.cardHead}>
                   <View style={styles.cardHeadLeft}>
@@ -519,7 +519,7 @@ export const TranslationScreen: React.FC = () => {
             </View>
 
             {/* Resultado */}
-            <View style={styles.gridCol}>
+            <View style={isDesktop && styles.gridColDesktop}>
               <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
                 <View style={styles.cardHead}>
                   <View style={styles.cardHeadLeft}>
@@ -691,7 +691,9 @@ const styles = StyleSheet.create({
 
   grid: { gap: 20 },
   gridDesktop: { flexDirection: 'row' },
-  gridCol: { flex: 1 },
+  // Solo en fila: en columna, flex: 1 aplasta las dos tarjetas a la misma
+  // altura y la de la camara se monta sobre la de traduccion.
+  gridColDesktop: { flex: 1 },
 
   card: { borderRadius: 20, borderWidth: 1, padding: 22 },
   cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
