@@ -166,16 +166,16 @@ function SessionAlerts({ token, current }: { token: string; current: () => boole
     </Animated.View>
   </View>;
 }
-// El aviso flota sobre la pantalla: no empuja el contenido ni deja una franja vacía.
+// El aviso flota delante del contenido, en una esquina y debajo de la barra superior:
+// no empuja la página ni tapa el menú. En web es fijo para no moverse con el scroll.
+const WEB_TOP_BAR_HEIGHT = 73;
 export function achievementAlertPosition(_width: number, insets: { top?: number; bottom: number; left: number; right: number }, isWide: boolean) {
-  return {
-    paddingTop: Math.max(insets.top ?? 0, 12), paddingBottom: 12,
-    paddingLeft: Math.max(insets.left, 12), paddingRight: Math.max(insets.right, 12),
-    alignItems: isWide ? 'flex-end' as const : 'center' as const,
-  };
+  return isWide
+    ? { top: WEB_TOP_BAR_HEIGHT + 12, right: Math.max(insets.right, 16), width: 440 }
+    : { top: Math.max(insets.top ?? 0, 12), left: Math.max(insets.left, 12), right: Math.max(insets.right, 12), alignItems: 'center' as const };
 }
 const styles = StyleSheet.create({
-  overlay: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000, elevation: 10, alignItems: 'center' },
+  overlay: { position: (Platform.OS === 'web' ? 'fixed' : 'absolute') as 'absolute', zIndex: 1000, elevation: 10 },
   card: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderWidth: 1,
     borderRadius: 16, maxWidth: 440, width: '100%',
     ...Platform.select({
