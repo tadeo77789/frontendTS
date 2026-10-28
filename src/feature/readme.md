@@ -39,7 +39,7 @@ Flujo completo de autenticación con 5 pantallas encadenadas:
 ### `Alphabet/`
 | Pantalla | Descripción |
 |---|---|
-| `AlphabetScreen.tsx` | Grid con las 26 letras del alfabeto dactilológico colombiano (A-Z), con imagen de cada seña. Toca una letra para verla ampliada |
+| `AlphabetScreen.tsx` | Grid con las 27 letras del alfabeto dactilológico colombiano (A-Z y Ñ), con imagen de cada seña. Toca una letra para verla ampliada |
 
 ### `Stats/`
 | Pantalla | Descripción |
