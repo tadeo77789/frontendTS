@@ -143,7 +143,7 @@ it('keeps the visible card in flow without covering the navigator', async () => 
  (api.get as jest.Mock).mockResolvedValue({ data: { data: [notification('one')] } });
  await tick();
  expect(StyleSheet.flatten(screen.getByTestId('achievement-alert-overlay').props.style))
-   .toEqual(expect.objectContaining({ paddingTop: 24, paddingBottom: 12, paddingLeft: 20, paddingRight: 16, alignItems: 'center', flexShrink: 0 }));
+   .toEqual(expect.objectContaining({ paddingTop: 24, paddingBottom: 12, paddingLeft: 20, paddingRight: 16, alignItems: 'center', flexShrink: 0, backgroundColor: expect.any(String) }));
 });
 
 const daily = (reward: unknown = { points: 7, grantedAt: '2026-10-26T12:00:00.000Z' }) => ({

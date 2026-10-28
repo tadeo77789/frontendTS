@@ -153,7 +153,7 @@ function SessionAlerts({ token, current }: { token: string; current: () => boole
   const title = t(notice.kind === 'achievement' ? 'achievementUnlocked' : 'dailyChallengeCompletedAlert');
   const rewardText = notice.kind === 'challenge' ? t('dailyChallengeGrantedPoints').replace('{points}', String(notice.challenge.reward.points)) : '';
   return <View testID="achievement-alert-overlay" pointerEvents="box-none"
-    style={[styles.overlay, achievementAlertPosition(width, insets, isWide)]}>
+    style={[styles.overlay, achievementAlertPosition(width, insets, isWide), { backgroundColor: C.surface }]}>
     <Animated.View style={[styles.card, { opacity, backgroundColor: C.surface, borderColor: C.primary }]}>
       {notice.kind === 'achievement' ? <AchievementMedal achievement={notice.progress} size={44} />
         : <Ionicons name="checkmark-circle" size={44} color={C.primary} />}
