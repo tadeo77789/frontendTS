@@ -22,8 +22,9 @@ function AppContent() {
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <AchievementUnlockAlerts />
       <AppNavigator />
+      {/* Después del navegador para pintarse delante de las pantallas. */}
+      <AchievementUnlockAlerts />
     </>
   );
 }
